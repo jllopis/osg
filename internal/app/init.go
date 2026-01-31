@@ -1,0 +1,52 @@
+package app
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"osg/internal/config"
+)
+
+func RunInit(_ context.Context, opts CLIOptions) error {
+	cfg := config.Default()
+
+	if opts.OsgContentDir != "" {
+		cfg.ContentDir = opts.OsgContentDir
+	}
+
+	dirs := []string{
+		cfg.ContentDir,
+		cfg.PluginsDir,
+		cfg.SassDir,
+		cfg.StaticDir,
+		cfg.TemplatesDir,
+		cfg.ThemesDir,
+	}
+
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("create dir %s: %w", dir, err)
+		}
+	}
+
+	configPath := opts.ConfigPath
+	if configPath == "" {
+		configPath = "config.yaml"
+	}
+
+	if _, err := os.Stat(configPath); err == nil {
+		return nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil && filepath.Dir(configPath) != "." {
+		return fmt.Errorf("create config dir: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, []byte(config.DefaultConfigYAML()), 0o644); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+
+	return nil
+}

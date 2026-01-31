@@ -1,0 +1,16 @@
+# Build outputs
+/build/
+/bin/
+/coverage/
+cover.out
+
+# Go
+*.test
+*.out
+
+# OS
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
