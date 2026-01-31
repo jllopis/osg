@@ -29,6 +29,7 @@ type Config struct {
 	SassDir       string           `koanf:"sass_dir" yaml:"sass_dir"`
 	ContentLayout string           `koanf:"content_layout" yaml:"content_layout"`
 	IncludeDrafts bool             `koanf:"include_drafts" yaml:"include_drafts"`
+	CompileSass   bool             `koanf:"compile_sass" yaml:"compile_sass"`
 	Logging       LoggingConfig    `koanf:"logging" yaml:"logging"`
 	Taxonomies    []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
 }
@@ -54,6 +55,7 @@ func Default() Config {
 		SassDir:       "sass",
 		ContentLayout: "{date}/{slug}",
 		IncludeDrafts: false,
+		CompileSass:   false,
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
@@ -109,6 +111,7 @@ plugins_dir: plugins
 sass_dir: sass
 content_layout: "{date}/{slug}"
 include_drafts: false
+compile_sass: false
 logging:
   level: info
   format: json

@@ -61,6 +61,10 @@ osg version
 ## Configuracion
 Por defecto se lee `config.yaml`. Se puede sobreescribir con `-c` o `--config`.
 
+Sass:
+- `compile_sass: true` para compilar `sass/` a `public/`.
+- Las carpetas `themes/<theme>/sass` se compilan siempre (requiere `sass` en PATH).
+
 ## Notas
 - `update-content` es el comando por defecto.
 - `build` se implementara en fase 2.

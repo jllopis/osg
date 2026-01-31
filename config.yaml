@@ -10,6 +10,7 @@ plugins_dir: plugins
 sass_dir: sass
 content_layout: "{date}/{slug}"
 include_drafts: false
+compile_sass: false
 logging:
   level: info
   format: json

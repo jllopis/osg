@@ -25,5 +25,6 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 3) Sitemap (split index si aplica)
 [done] (Phase 3) robots.txt + 404
 [done] (Phase 3) load_data + helpers de templates
-[todo] (Phase 4) Sass + assets
+[done] (Phase 4) Sass + assets
+[done] (Phase 4) Static copy + cachebust (get_url + get_hash)
 [todo] (Phase 5) WASM plugins + TUI avanzada

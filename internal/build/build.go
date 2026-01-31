@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"osg/internal/assets"
 	"osg/internal/config"
 	"osg/internal/logging"
 	"osg/internal/render"
@@ -40,6 +41,10 @@ func Run(cfg config.Config, verbose bool) error {
 
 	if err := os.MkdirAll(cfg.PublicDir, 0o755); err != nil {
 		return fmt.Errorf("create public dir: %w", err)
+	}
+
+	if err := assets.Prepare(cfg, logger); err != nil {
+		return err
 	}
 
 	siteIndex := site.New()

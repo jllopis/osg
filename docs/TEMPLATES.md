@@ -108,6 +108,7 @@ Funciones:
 Notas de implementacion:
 - `load_data` soporta json/yaml/toml/csv/xml (otros formatos se devuelven como string).
 - `trans` devuelve la key (placeholder hasta i18n).
+- `get_url(..., cachebust=true)` agrega `?v=` con hash del recurso (usa `get_hash`).
 
 ## Implementacion (Go text/template)
 
