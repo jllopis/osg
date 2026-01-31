@@ -18,11 +18,17 @@ type CLI struct {
 	IncludeDrafts *bool  `help:"Include drafts (publish: \"draft\")"`
 	VaultPath     string `help:"Path to Obsidian vault"`
 	OsgContentDir string `help:"Content directory override"`
+	PublicDir     string `help:"Public directory override"`
 
 	Init          struct{} `cmd:"" help:"Initialize project structure"`
 	UpdateContent struct{} `cmd:"" help:"Sync content from vault"`
 	Build         struct{} `cmd:"" help:"Build static site (HTML)"`
+	Serve         ServeCmd `cmd:"" help:"Serve public directory"`
 	Version       struct{} `cmd:"" help:"Show version information"`
+}
+
+type ServeCmd struct {
+	Addr string `help:"Address to serve (host:port)" default:":1313"`
 }
 
 func main() {
@@ -55,6 +61,8 @@ func main() {
 		IncludeDrafts: cli.IncludeDrafts,
 		VaultPath:     cli.VaultPath,
 		OsgContentDir: cli.OsgContentDir,
+		PublicDir:     cli.PublicDir,
+		ServeAddr:     cli.Serve.Addr,
 	}
 
 	var runErr error
@@ -65,6 +73,8 @@ func main() {
 		runErr = app.RunUpdateContent(context.Background(), opts)
 	case "build":
 		runErr = app.RunBuild(context.Background(), opts)
+	case "serve":
+		runErr = app.RunServe(context.Background(), opts)
 	case "version":
 		printVersion()
 	default:

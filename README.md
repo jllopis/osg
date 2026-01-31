@@ -34,6 +34,12 @@ Build HTML:
 osg build
 ```
 
+Serve local:
+
+```bash
+osg serve --addr :1313
+```
+
 ## Makefile
 Comandos habituales:
 
@@ -43,6 +49,7 @@ make fmt
 make test
 make build
 make update-content VAULT_PATH=/ruta/al/vault
+make serve SERVE_ADDR=:1313
 ```
 
 Mostrar version:

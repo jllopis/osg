@@ -21,13 +21,15 @@ COVERAGE_DIR := ./coverage
 CONFIG ?= config.yaml
 VAULT_PATH ?=
 OSG_CONTENT_DIR ?=
+PUBLIC_DIR ?=
 INCLUDE_DRAFTS ?= false
 DRY_RUN ?= false
 VERBOSE ?= false
 ARGS ?=
+SERVE_ADDR ?= :1313
 INSTALL_PATH := $(HOME)/.local/bin
 
-.PHONY: all build build-all clean test test-coverage lint fmt vet tidy deps run init update-content install uninstall version help
+.PHONY: all build build-all clean test test-coverage lint fmt vet tidy deps run init update-content serve install uninstall version help
 
 ## Default target
 all: tidy fmt vet test build
@@ -97,6 +99,12 @@ deps:
 ## Run the CLI
 run:
 	@$(GO) run ./cmd/osg $(ARGS)
+
+## Serve public directory
+serve:
+	@$(GO) run ./cmd/osg serve -c $(CONFIG) \
+		$(if $(PUBLIC_DIR),--public-dir $(PUBLIC_DIR),) \
+		--addr $(SERVE_ADDR)
 
 ## Initialize project structure
 init:

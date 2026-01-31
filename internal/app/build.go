@@ -16,6 +16,9 @@ func RunBuild(_ context.Context, opts CLIOptions) error {
 	if opts.OsgContentDir != "" {
 		cfg.ContentDir = opts.OsgContentDir
 	}
+	if opts.PublicDir != "" {
+		cfg.PublicDir = opts.PublicDir
+	}
 	if opts.IncludeDrafts != nil {
 		cfg.IncludeDrafts = *opts.IncludeDrafts
 	}

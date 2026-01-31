@@ -7,4 +7,6 @@ type CLIOptions struct {
 	IncludeDrafts *bool
 	VaultPath     string
 	OsgContentDir string
+	PublicDir     string
+	ServeAddr     string
 }
