@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>{{ .taxonomy.name }}: {{ .term.name }}</title>
+    <link>{{ .feed_url }}</link>
+    <description>{{ .taxonomy.name }} feed</description>
+    <lastBuildDate>{{ .last_updated }}</lastBuildDate>
+    {{ if .pages }}
+    {{ range .pages }}
+    <item>
+      <title>{{ .title }}</title>
+      <link>{{ .permalink }}</link>
+      <guid>{{ .permalink }}</guid>
+      <pubDate>{{ .date }}</pubDate>
+      {{ if .summary }}<description>{{ .summary }}</description>{{ end }}
+    </item>
+    {{ end }}
+    {{ end }}
+  </channel>
+</rss>

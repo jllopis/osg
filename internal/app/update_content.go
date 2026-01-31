@@ -34,12 +34,6 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 	if opts.VaultPath != "" {
 		cfg.VaultPath = opts.VaultPath
 	}
-	if opts.ObsidianVaultBase != "" {
-		cfg.VaultBase = opts.ObsidianVaultBase
-	}
-	if opts.Vault != "" {
-		cfg.Vault = opts.Vault
-	}
 	if opts.OsgContentDir != "" {
 		cfg.ContentDir = opts.OsgContentDir
 	}

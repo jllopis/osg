@@ -46,7 +46,7 @@ US06 - Observabilidad
 - Aceptacion: logs incluyen nivel, evento y ruta de archivo
 
 ## Functional requirements
-- Leer vault dado `--vault-path` o `--obsidian-vault-base` + `--vault`.
+- Leer vault dado `--vault-path`.
 - Parsear frontmatter YAML entre `---`.
 - Filtro publish: true, "true", "draft".
 - Convertir frontmatter a esquema de salida definido.

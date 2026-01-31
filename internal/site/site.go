@@ -350,20 +350,67 @@ func pickTaxonomies(fm map[string]any) map[string][]string {
 	}
 
 	value, ok := fm["taxonomies"]
-	if !ok || value == nil {
-		return out
+	if ok && value != nil {
+		switch v := value.(type) {
+		case map[string]any:
+			for key, raw := range v {
+				out[key] = toStringSlice(raw)
+			}
+		case map[string][]string:
+			for key, raw := range v {
+				out[key] = raw
+			}
+		}
 	}
 
-	switch v := value.(type) {
-	case map[string]any:
-		for key, raw := range v {
-			out[key] = toStringSlice(raw)
-		}
-	case map[string][]string:
-		return v
-	}
+	mergeTaxonomy(out, "tags", toStringSlice(fm["tags"]))
+	mergeTaxonomy(out, "area", toStringSlice(fm["area"]))
+	mergeTaxonomy(out, "type", toStringSlice(fm["type"]))
 
 	return out
+}
+
+func mergeTaxonomy(out map[string][]string, key string, values []string) {
+	if len(values) == 0 {
+		return
+	}
+	values = normalizeTerms(values)
+	existing := out[key]
+	merged := append(existing, values...)
+	out[key] = uniqueStrings(merged)
+}
+
+func normalizeTerms(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if term := normalizeTerm(value); term != "" {
+			out = append(out, term)
+		}
+	}
+	return out
+}
+
+func normalizeTerm(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	if strings.HasPrefix(value, "#") {
+		value = strings.TrimPrefix(value, "#")
+	}
+	if strings.HasPrefix(value, "[[") && strings.HasSuffix(value, "]]") {
+		inner := strings.TrimSuffix(strings.TrimPrefix(value, "[["), "]]")
+		inner = strings.TrimSpace(inner)
+		if inner == "" {
+			return ""
+		}
+		if parts := strings.SplitN(inner, "|", 2); len(parts) > 0 {
+			value = strings.TrimSpace(parts[0])
+		} else {
+			value = inner
+		}
+	}
+	return strings.TrimSpace(value)
 }
 
 func toStringSlice(value any) []string {
@@ -402,6 +449,24 @@ func compactStrings(values []string) []string {
 		if s != "" {
 			out = append(out, s)
 		}
+	}
+	return out
+}
+
+func uniqueStrings(values []string) []string {
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, value)
 	}
 	return out
 }

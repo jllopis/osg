@@ -1,0 +1,31 @@
+vault_path: ""
+base_url: ""
+theme: ""
+content_dir: content
+public_dir: public
+templates_dir: templates
+static_dir: static
+themes_dir: themes
+plugins_dir: plugins
+sass_dir: sass
+content_layout: "{date}/{slug}"
+include_drafts: false
+logging:
+  level: info
+  format: json
+taxonomies:
+  - name: tags
+    paginate_by: 10
+    paginate_path: page
+    feed: false
+    render: true
+  - name: area
+    paginate_by: 10
+    paginate_path: page
+    feed: false
+    render: true
+  - name: type
+    paginate_by: 10
+    paginate_path: page
+    feed: false
+    render: true

@@ -12,6 +12,14 @@ import (
 func RunInit(_ context.Context, opts CLIOptions) error {
 	cfg := config.Default()
 
+	if opts.VaultPath != "" {
+		cfg.VaultPath = opts.VaultPath
+	}
+
+	if opts.IncludeDrafts != nil {
+		cfg.IncludeDrafts = *opts.IncludeDrafts
+	}
+
 	if opts.OsgContentDir != "" {
 		cfg.ContentDir = opts.OsgContentDir
 	}

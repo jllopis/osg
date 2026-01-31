@@ -12,13 +12,17 @@ type Renderer struct {
 	templates *template.Template
 }
 
-func New(userDir string, themeDir string) (*Renderer, error) {
-	loader := TemplateLoader{UserDir: userDir, ThemeDir: themeDir}
+func New(userDir string, themeDir string, ctx Context) (*Renderer, error) {
+	loader := TemplateLoader{UserDir: userDir, ThemeDir: themeDir, Funcs: FuncMap(ctx)}
 	templates, err := loader.Load()
 	if err != nil {
 		return nil, err
 	}
 	return &Renderer{templates: templates}, nil
+}
+
+func (r *Renderer) HasTemplate(name string) bool {
+	return r.templates.Lookup(name) != nil
 }
 
 func (r *Renderer) RenderToFile(name string, ctx map[string]any, outputPath string) error {

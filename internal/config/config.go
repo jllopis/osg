@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/knadh/koanf/parsers/yaml"
@@ -18,21 +17,28 @@ type LoggingConfig struct {
 }
 
 type Config struct {
-	BaseURL       string        `koanf:"base_url" yaml:"base_url"`
-	Theme         string        `koanf:"theme" yaml:"theme"`
-	VaultPath     string        `koanf:"vault_path" yaml:"vault_path"`
-	VaultBase     string        `koanf:"vault_base" yaml:"vault_base"`
-	Vault         string        `koanf:"vault" yaml:"vault"`
-	ContentDir    string        `koanf:"content_dir" yaml:"content_dir"`
-	PublicDir     string        `koanf:"public_dir" yaml:"public_dir"`
-	TemplatesDir  string        `koanf:"templates_dir" yaml:"templates_dir"`
-	StaticDir     string        `koanf:"static_dir" yaml:"static_dir"`
-	ThemesDir     string        `koanf:"themes_dir" yaml:"themes_dir"`
-	PluginsDir    string        `koanf:"plugins_dir" yaml:"plugins_dir"`
-	SassDir       string        `koanf:"sass_dir" yaml:"sass_dir"`
-	ContentLayout string        `koanf:"content_layout" yaml:"content_layout"`
-	IncludeDrafts bool          `koanf:"include_drafts" yaml:"include_drafts"`
-	Logging       LoggingConfig `koanf:"logging" yaml:"logging"`
+	BaseURL       string           `koanf:"base_url" yaml:"base_url"`
+	Theme         string           `koanf:"theme" yaml:"theme"`
+	VaultPath     string           `koanf:"vault_path" yaml:"vault_path"`
+	ContentDir    string           `koanf:"content_dir" yaml:"content_dir"`
+	PublicDir     string           `koanf:"public_dir" yaml:"public_dir"`
+	TemplatesDir  string           `koanf:"templates_dir" yaml:"templates_dir"`
+	StaticDir     string           `koanf:"static_dir" yaml:"static_dir"`
+	ThemesDir     string           `koanf:"themes_dir" yaml:"themes_dir"`
+	PluginsDir    string           `koanf:"plugins_dir" yaml:"plugins_dir"`
+	SassDir       string           `koanf:"sass_dir" yaml:"sass_dir"`
+	ContentLayout string           `koanf:"content_layout" yaml:"content_layout"`
+	IncludeDrafts bool             `koanf:"include_drafts" yaml:"include_drafts"`
+	Logging       LoggingConfig    `koanf:"logging" yaml:"logging"`
+	Taxonomies    []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
+}
+
+type TaxonomyConfig struct {
+	Name         string `koanf:"name" yaml:"name"`
+	PaginateBy   int    `koanf:"paginate_by" yaml:"paginate_by"`
+	PaginatePath string `koanf:"paginate_path" yaml:"paginate_path"`
+	Feed         bool   `koanf:"feed" yaml:"feed"`
+	Render       bool   `koanf:"render" yaml:"render"`
 }
 
 func Default() Config {
@@ -87,16 +93,11 @@ func ResolveVaultPath(cfg Config) (string, error) {
 	if cfg.VaultPath != "" {
 		return cfg.VaultPath, nil
 	}
-	if cfg.VaultBase != "" && cfg.Vault != "" {
-		return filepath.Join(cfg.VaultBase, cfg.Vault), nil
-	}
-	return "", fmt.Errorf("vault path not configured (use --vault-path or --obsidian-vault-base + --vault)")
+	return "", fmt.Errorf("vault path not configured (use --vault-path)")
 }
 
 func DefaultConfigYAML() string {
 	return strings.TrimSpace(`vault_path: ""
-# vault_base: ""
-# vault: ""
 base_url: ""
 theme: ""
 content_dir: content
@@ -111,6 +112,22 @@ include_drafts: false
 logging:
   level: info
   format: json
+# taxonomies:
+#   - name: tags
+#     paginate_by: 10
+#     paginate_path: page
+#     feed: true
+#     render: true
+#   - name: area
+#     paginate_by: 10
+#     paginate_path: page
+#     feed: false
+#     render: true
+#   - name: type
+#     paginate_by: 10
+#     paginate_path: page
+#     feed: false
+#     render: true
 `) + "\n"
 }
 

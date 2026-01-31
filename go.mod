@@ -8,6 +8,7 @@ require (
 	github.com/knadh/koanf/providers/env v1.1.0
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/v2 v2.3.2
+	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/yuin/goldmark v1.7.16
 	golang.org/x/text v0.33.0
 	gopkg.in/yaml.v3 v3.0.1

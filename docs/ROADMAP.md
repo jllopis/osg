@@ -18,11 +18,12 @@
 - [done] templates base (index/section/page)
 - [done] render a public/
 
-## Phase 3 - contenido avanzado (todo)
-- [todo] taxonomias
-- [todo] paginacion
-- [todo] feeds, sitemap, robots, 404
-- [todo] load_data + helpers
+## Phase 3 - contenido avanzado (done)
+- [done] taxonomias
+- [done] paginacion
+- [done] feeds
+- [done] sitemap, robots, 404
+- [done] load_data + helpers
 
 ## Phase 4 - assets (todo)
 - [todo] sass pipeline

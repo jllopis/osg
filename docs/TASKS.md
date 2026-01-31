@@ -20,6 +20,10 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 2) Indexado de contenido para build
 [done] (Phase 2) Templates base (index/section/page) + overrides basicos
 [done] (Phase 2) Render HTML a public/
-[todo] (Phase 3) Taxonomias + paginacion + feeds
+[done] (Phase 3) Taxonomias + paginacion
+[done] (Phase 3) Feeds por taxonomia
+[done] (Phase 3) Sitemap (split index si aplica)
+[done] (Phase 3) robots.txt + 404
+[done] (Phase 3) load_data + helpers de templates
 [todo] (Phase 4) Sass + assets
 [todo] (Phase 5) WASM plugins + TUI avanzada

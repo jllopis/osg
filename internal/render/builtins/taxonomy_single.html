@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="{{ .lang }}">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ .term.name }}</title>
+</head>
+<body>
+  <main>
+    <h1>{{ .term.name }}</h1>
+    {{ if .paginator }}
+      <ul>
+      {{ range .paginator.pages }}
+        <li><a href="{{ .path }}">{{ .title }}</a></li>
+      {{ end }}
+      </ul>
+    {{ else if .term.pages }}
+      <ul>
+      {{ range .term.pages }}
+        <li><a href="{{ .path }}">{{ .title }}</a></li>
+      {{ end }}
+      </ul>
+    {{ end }}
+  </main>
+</body>
+</html>

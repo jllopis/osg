@@ -13,7 +13,7 @@ taxonomies:
     paginate_path: page
     feed: true
     render: true
-  - name: categories
+  - name: area
     render: true
 ```
 
@@ -29,8 +29,11 @@ Campos:
 ```yaml
 taxonomies:
   tags: ["go", "obsidian"]
-  categories: ["engineering"]
+  area: ["Filosofia"]
+  type: ["concepto"]
 ```
+
+Nota: En el flujo de Obsidian, OSG tambien detecta automaticamente `tags`, `area` y `type` en el frontmatter y los mapea a taxonomias con esos mismos nombres.
 
 ## Objetos de contexto
 
@@ -62,7 +65,7 @@ Si `paginate_by` esta definido, el termino se pagina en `/$TAXONOMY/$TERM/$pagin
 2) Extraer `taxonomies` de frontmatter
 3) Agregar por taxonomia y termino
 4) Generar paginas list/single
-5) Generar feeds por termino si `feed=true`
+5) Generar feeds por termino si `feed=true` (atom.xml y/o rss.xml si las plantillas existen)
 
 ## Diagrama de flujo
 

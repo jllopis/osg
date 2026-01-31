@@ -12,14 +12,12 @@ import (
 )
 
 type CLI struct {
-	Config            string `help:"Path to config file" short:"c" default:"config.yaml"`
-	Verbose           bool   `help:"Enable verbose logging"`
-	DryRun            bool   `help:"Do not write files"`
-	IncludeDrafts     *bool  `help:"Include drafts (publish: \"draft\")"`
-	VaultPath         string `help:"Path to Obsidian vault"`
-	ObsidianVaultBase string `help:"Base path for Obsidian vaults"`
-	Vault             string `help:"Vault name (used with --obsidian-vault-base)"`
-	OsgContentDir     string `help:"Content directory override"`
+	Config        string `help:"Path to config file" short:"c" default:"config.yaml"`
+	Verbose       bool   `help:"Enable verbose logging"`
+	DryRun        bool   `help:"Do not write files"`
+	IncludeDrafts *bool  `help:"Include drafts (publish: \"draft\")"`
+	VaultPath     string `help:"Path to Obsidian vault"`
+	OsgContentDir string `help:"Content directory override"`
 
 	Init          struct{} `cmd:"" help:"Initialize project structure"`
 	UpdateContent struct{} `cmd:"" help:"Sync content from vault"`
@@ -51,14 +49,12 @@ func main() {
 	}
 
 	opts := app.CLIOptions{
-		ConfigPath:        cli.Config,
-		Verbose:           cli.Verbose,
-		DryRun:            cli.DryRun,
-		IncludeDrafts:     cli.IncludeDrafts,
-		VaultPath:         cli.VaultPath,
-		ObsidianVaultBase: cli.ObsidianVaultBase,
-		Vault:             cli.Vault,
-		OsgContentDir:     cli.OsgContentDir,
+		ConfigPath:    cli.Config,
+		Verbose:       cli.Verbose,
+		DryRun:        cli.DryRun,
+		IncludeDrafts: cli.IncludeDrafts,
+		VaultPath:     cli.VaultPath,
+		OsgContentDir: cli.OsgContentDir,
 	}
 
 	var runErr error

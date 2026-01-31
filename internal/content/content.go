@@ -26,8 +26,12 @@ func NormalizeFrontmatter(fm map[string]any, slug string, dateISO string, isDraf
 		out["tags"] = tags
 	}
 
-	if categories := toStringSlice(pickValue(fm, "categories", "category")); len(categories) > 0 {
-		out["categories"] = categories
+	if area, ok := fm["area"]; ok && area != nil {
+		out["area"] = area
+	}
+
+	if t, ok := fm["type"]; ok && t != nil {
+		out["type"] = t
 	}
 
 	if template := pickString(fm, "template"); template != "" {

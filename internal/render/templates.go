@@ -17,10 +17,14 @@ var builtinFS embed.FS
 type TemplateLoader struct {
 	UserDir  string
 	ThemeDir string
+	Funcs    template.FuncMap
 }
 
 func (l TemplateLoader) Load() (*template.Template, error) {
-	root := template.New("root").Funcs(FuncMap())
+	root := template.New("root")
+	if len(l.Funcs) > 0 {
+		root = root.Funcs(l.Funcs)
+	}
 
 	if err := parseEmbedded(root, builtinFS); err != nil {
 		return nil, err

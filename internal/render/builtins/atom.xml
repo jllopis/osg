@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{{ .taxonomy.name }}: {{ .term.name }}</title>
+  <id>{{ .feed_url }}</id>
+  <link href="{{ .feed_url }}" rel="self" />
+  <updated>{{ .last_updated }}</updated>
+  {{ if .pages }}
+  {{ range .pages }}
+  <entry>
+    <title>{{ .title }}</title>
+    <id>{{ .permalink }}</id>
+    <link href="{{ .permalink }}" />
+    <updated>{{ .date }}</updated>
+    {{ if .summary }}<summary type="html">{{ .summary }}</summary>{{ end }}
+    <content type="html">{{ .content }}</content>
+  </entry>
+  {{ end }}
+  {{ end }}
+</feed>

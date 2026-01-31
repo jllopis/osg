@@ -105,6 +105,10 @@ Funciones:
 - `load_data(path|url, format?, required?)`
 - `trans(key, lang?)`
 
+Notas de implementacion:
+- `load_data` soporta json/yaml/toml/csv/xml (otros formatos se devuelven como string).
+- `trans` devuelve la key (placeholder hasta i18n).
+
 ## Implementacion (Go text/template)
 
 - `template.FuncMap` para filtros y funciones.

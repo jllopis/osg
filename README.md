@@ -19,12 +19,6 @@ osg --vault-path /ruta/al/vault
 O usando base + nombre de vault:
 
 ```bash
-osg --obsidian-vault-base /ruta/a/vaults --vault MiVault
-```
-
-Incluye drafts:
-
-```bash
 osg --vault-path /ruta/al/vault --include-drafts
 ```
 

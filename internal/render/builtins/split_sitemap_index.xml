@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  {{ if .sitemaps }}
+  {{ range .sitemaps }}
+  <sitemap>
+    <loc>{{ .loc }}</loc>
+    <lastmod>{{ .lastmod }}</lastmod>
+  </sitemap>
+  {{ end }}
+  {{ end }}
+</sitemapindex>

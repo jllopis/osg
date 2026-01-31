@@ -40,8 +40,6 @@ CLI (MVP):
 
 Flags (MVP):
 - --vault-path
-- --obsidian-vault-base (alias)
-- --vault (alias)
 - --osg-content-dir
 - --dry-run
 - --verbose

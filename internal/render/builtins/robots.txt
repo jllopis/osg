@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: {{ get_url "/sitemap.xml" }}

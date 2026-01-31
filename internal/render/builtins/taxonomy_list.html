@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="{{ .lang }}">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ .taxonomy.name }}</title>
+</head>
+<body>
+  <main>
+    <h1>{{ .taxonomy.name }}</h1>
+    {{ if .terms }}
+      <ul>
+      {{ range .terms }}
+        <li><a href="{{ .path }}">{{ .name }}</a> ({{ .page_count }})</li>
+      {{ end }}
+      </ul>
+    {{ end }}
+  </main>
+</body>
+</html>
