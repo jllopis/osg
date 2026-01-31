@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="{{ .lang }}">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ .section.title }}</title>
+</head>
+<body>
+  <main>
+    <h1>{{ .section.title }}</h1>
+    {{ .section.content }}
+    {{ if .section.pages }}
+      <ul>
+      {{ range .section.pages }}
+        <li><a href="{{ .path }}">{{ .title }}</a></li>
+      {{ end }}
+      </ul>
+    {{ else if .site.pages }}
+      <ul>
+      {{ range .site.pages }}
+        <li><a href="{{ .path }}">{{ .title }}</a></li>
+      {{ end }}
+      </ul>
+    {{ end }}
+  </main>
+</body>
+</html>

@@ -30,7 +30,7 @@ func Derive(fm map[string]any, info os.FileInfo) time.Time {
 	if fm != nil {
 		for _, key := range candidateKeys {
 			if val, ok := fm[key]; ok {
-				if t, ok := parseTime(val); ok {
+				if t, ok := Parse(val); ok {
 					return t
 				}
 			}
@@ -47,7 +47,7 @@ func FormatPath(t time.Time) string {
 	return fmt.Sprintf("%04d/%02d/%02d", t.Year(), t.Month(), t.Day())
 }
 
-func parseTime(val any) (time.Time, bool) {
+func Parse(val any) (time.Time, bool) {
 	switch v := val.(type) {
 	case time.Time:
 		return v, true

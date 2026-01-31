@@ -18,6 +18,8 @@ type LoggingConfig struct {
 }
 
 type Config struct {
+	BaseURL       string        `koanf:"base_url" yaml:"base_url"`
+	Theme         string        `koanf:"theme" yaml:"theme"`
 	VaultPath     string        `koanf:"vault_path" yaml:"vault_path"`
 	VaultBase     string        `koanf:"vault_base" yaml:"vault_base"`
 	Vault         string        `koanf:"vault" yaml:"vault"`
@@ -35,6 +37,8 @@ type Config struct {
 
 func Default() Config {
 	return Config{
+		BaseURL:       "",
+		Theme:         "",
 		ContentDir:    "content",
 		PublicDir:     "public",
 		TemplatesDir:  "templates",
@@ -93,6 +97,8 @@ func DefaultConfigYAML() string {
 	return strings.TrimSpace(`vault_path: ""
 # vault_base: ""
 # vault: ""
+base_url: ""
+theme: ""
 content_dir: content
 public_dir: public
 templates_dir: templates

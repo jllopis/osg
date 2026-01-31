@@ -14,8 +14,12 @@ Formato: [todo|doing|done] Tarea
 [done] Implementar dry-run
 [done] Tests unitarios (parser, filtro, mapper, layout)
 [done] Documentacion basica de uso
+[done] Especificacion de templates (contexto, filtros, funciones, resolucion)
+[done] Especificacion de taxonomias (objetos, rutas, plantillas, flujo)
 
-[todo] (Phase 2) Implementar render HTML y templates basicos
+[done] (Phase 2) Indexado de contenido para build
+[done] (Phase 2) Templates base (index/section/page) + overrides basicos
+[done] (Phase 2) Render HTML a public/
 [todo] (Phase 3) Taxonomias + paginacion + feeds
 [todo] (Phase 4) Sass + assets
 [todo] (Phase 5) WASM plugins + TUI avanzada

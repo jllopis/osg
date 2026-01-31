@@ -34,6 +34,12 @@ Dry run:
 osg --vault-path /ruta/al/vault --dry-run
 ```
 
+Build HTML:
+
+```bash
+osg build
+```
+
 ## Makefile
 Comandos habituales:
 

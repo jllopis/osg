@@ -12,10 +12,11 @@
 - [done] tests basicos
 - [done] documentacion basica de uso
 
-## Phase 2 - build HTML basico (todo)
-- [todo] indexado de contenido
-- [todo] templates base (index/section/page)
-- [todo] render a public/
+## Phase 2 - build HTML basico (done)
+- [done] especificacion templates/taxonomias
+- [done] indexado de contenido
+- [done] templates base (index/section/page)
+- [done] render a public/
 
 ## Phase 3 - contenido avanzado (todo)
 - [todo] taxonomias
