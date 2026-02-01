@@ -39,7 +39,7 @@
 - [done] plugin WASM de ejemplo (RSS feed en Rust)
 - [done] live reload + watch (serve + build incremental)
 - [done] build incremental con cache de contenido
-- [todo] search index opcional (lunr/algolia export)
+- [done] search index opcional (via plugin)
 - [done] starter kit de theme (scaffold + docs)
 - [todo] SDK/CLI para plugins (plantillas + tests)
 - [todo] sample site + quickstart mejorado

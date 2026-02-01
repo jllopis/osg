@@ -32,7 +32,7 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 6) Plugin WASM de ejemplo (RSS feed en Rust)
 [done] (Phase 6) Live reload + watch (serve + build incremental)
 [done] (Phase 6) Build incremental con cache
-[todo] (Phase 6) Search index opcional
+[done] (Phase 6) Search index opcional (via plugin)
 [done] (Phase 6) Starter kit de theme (scaffold + docs)
 [todo] (Phase 6) SDK/CLI para plugins (plantillas + tests)
 [todo] (Phase 6) Sample site + quickstart

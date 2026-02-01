@@ -45,6 +45,15 @@ La salida es JSON.
 - `taxonomy.list.render`
 - `taxonomy.term.render`
 
+## Ciclo de vida
+1) OSG carga todos los `.wasm` al inicio del build (orden alfabetico por nombre de archivo).
+2) Se emite `build.started` antes de renderizar.
+3) Por cada seccion/pagina/taxonomia se emiten `section.render`, `page.render`, `taxonomy.list.render` y `taxonomy.term.render`.
+4) Se emite `build.finished` al final.
+5) OSG cierra los plugins al terminar el build.
+
+Errores en un plugin no detienen el build; se registran como warning.
+
 ## Payloads (resumen)
 - `build.started`: { config, site, taxonomies, stats }
 - `build.finished`: { config, site, taxonomies, stats }
@@ -59,7 +68,9 @@ La salida es JSON.
 - El host mergea `payload` sobre el contexto actual (merge profundo de mapas).
 - Plugins que fallen no detienen el build, solo generan warning.
 
-## Ejemplo (feed RSS en Rust)
+## Ejemplos (Rust)
+
+### RSS feed
 En `examples/plugins/feed` hay un plugin Rust que:
 - escucha `build.finished`
 - genera `public/rss.xml` a partir de `site.pages`
@@ -72,4 +83,17 @@ cargo build --target wasm32-wasi --release
 cp target/wasm32-wasi/release/osg_feed.wasm feed.wasm
 ```
 
-Copia `feed.wasm` a `plugins/` para activarlo.
+### Search index
+En `examples/plugins/search` hay un plugin Rust que:
+- escucha `build.finished`
+- genera `public/search.json` y `public/search/index.html`
+
+Build:
+```bash
+cd examples/plugins/search
+rustup target add wasm32-wasi
+cargo build --target wasm32-wasi --release
+cp target/wasm32-wasi/release/osg_search.wasm search.wasm
+```
+
+Copia `feed.wasm` / `search.wasm` a `plugins/` para activarlos.
