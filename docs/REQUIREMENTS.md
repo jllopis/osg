@@ -15,11 +15,10 @@ In-scope (actual):
 - Assets: static copy + sass (opcional)
 - Plugins WASM (hooks en render)
 - TUI para ejecutar comandos y ver logs
-- Serve local de `public/`
+- Serve local de `public/` con watch y live reload
 
 Out-of-scope (por ahora):
 - Editor visual / CMS
-- Live reload avanzado
 - Search index integrado
 - i18n completo
 

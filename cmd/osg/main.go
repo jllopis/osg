@@ -29,7 +29,10 @@ type CLI struct {
 }
 
 type ServeCmd struct {
-	Addr string `help:"Address to serve (host:port)" default:":1313"`
+	Addr       string `help:"Address to serve (host:port)" default:":1313"`
+	Watch      *bool  `help:"Watch files and rebuild"`
+	LiveReload *bool  `help:"Enable live reload (requires watch)"`
+	DebounceMs *int   `help:"Debounce watch events in ms"`
 }
 
 func main() {
@@ -64,6 +67,9 @@ func main() {
 		OsgContentDir: cli.OsgContentDir,
 		PublicDir:     cli.PublicDir,
 		ServeAddr:     cli.Serve.Addr,
+		ServeWatch:    cli.Serve.Watch,
+		ServeReload:   cli.Serve.LiveReload,
+		ServeDebounce: cli.Serve.DebounceMs,
 	}
 
 	var runErr error

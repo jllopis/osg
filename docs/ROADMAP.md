@@ -37,7 +37,7 @@
 
 ## Phase 6 - producto y DX (todo)
 - [done] plugin WASM de ejemplo (RSS feed en Rust)
-- [todo] live reload + watch (serve + build incremental)
+- [done] live reload + watch (serve + build incremental)
 - [todo] build incremental con cache de contenido
 - [todo] search index opcional (lunr/algolia export)
 - [todo] starter kit de theme (scaffold + docs)

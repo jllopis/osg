@@ -11,6 +11,9 @@ type CLIOptions struct {
 	OsgContentDir string
 	PublicDir     string
 	ServeAddr     string
+	ServeWatch    *bool
+	ServeReload   *bool
+	ServeDebounce *int
 	TUI           bool
 	LogWriter     io.Writer
 }

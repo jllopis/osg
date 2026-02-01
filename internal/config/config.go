@@ -32,6 +32,9 @@ type Config struct {
 	CompileSass   bool             `koanf:"compile_sass" yaml:"compile_sass"`
 	TUIPrefix     string           `koanf:"tui_prefix" yaml:"tui_prefix"`
 	TUIPrefixMs   int              `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
+	ServeWatch    bool             `koanf:"serve_watch" yaml:"serve_watch"`
+	ServeReload   bool             `koanf:"serve_live_reload" yaml:"serve_live_reload"`
+	ServeDebounce int              `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
 	Logging       LoggingConfig    `koanf:"logging" yaml:"logging"`
 	Taxonomies    []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
 }
@@ -60,6 +63,9 @@ func Default() Config {
 		CompileSass:   false,
 		TUIPrefix:     "space",
 		TUIPrefixMs:   600,
+		ServeWatch:    true,
+		ServeReload:   true,
+		ServeDebounce: 300,
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
@@ -122,6 +128,9 @@ include_drafts: false
 compile_sass: false
 tui_prefix: space
 tui_prefix_ms: 600
+serve_watch: true
+serve_live_reload: true
+serve_debounce_ms: 300
 logging:
   level: info
   format: json

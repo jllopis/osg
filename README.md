@@ -46,6 +46,12 @@ Serve local:
 osg serve --addr :1313
 ```
 
+Serve con watch + live reload:
+
+```bash
+osg serve --watch --live-reload
+```
+
 TUI:
 
 ```bash
@@ -85,6 +91,11 @@ Sass:
 TUI:
 - `tui_prefix`: tecla prefijo para atajos (por defecto `space`).
 - `tui_prefix_ms`: timeout del prefijo en milisegundos (por defecto `600`).
+
+Serve:
+- `serve_watch`: habilita watch y rebuild (por defecto `true`).
+- `serve_live_reload`: habilita live reload (por defecto `true`).
+- `serve_debounce_ms`: debounce de eventos (por defecto `300`).
 
 Plugins WASM:
 - Coloca `.wasm` en `plugins/`.
