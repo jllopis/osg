@@ -16,6 +16,7 @@ In-scope (actual):
 - Plugins WASM (hooks en render)
 - TUI para ejecutar comandos y ver logs
 - Serve local de `public/` con watch y live reload
+- Build incremental con cache
 
 Out-of-scope (por ahora):
 - Editor visual / CMS

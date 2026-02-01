@@ -17,26 +17,28 @@ type LoggingConfig struct {
 }
 
 type Config struct {
-	BaseURL       string           `koanf:"base_url" yaml:"base_url"`
-	Theme         string           `koanf:"theme" yaml:"theme"`
-	VaultPath     string           `koanf:"vault_path" yaml:"vault_path"`
-	ContentDir    string           `koanf:"content_dir" yaml:"content_dir"`
-	PublicDir     string           `koanf:"public_dir" yaml:"public_dir"`
-	TemplatesDir  string           `koanf:"templates_dir" yaml:"templates_dir"`
-	StaticDir     string           `koanf:"static_dir" yaml:"static_dir"`
-	ThemesDir     string           `koanf:"themes_dir" yaml:"themes_dir"`
-	PluginsDir    string           `koanf:"plugins_dir" yaml:"plugins_dir"`
-	SassDir       string           `koanf:"sass_dir" yaml:"sass_dir"`
-	ContentLayout string           `koanf:"content_layout" yaml:"content_layout"`
-	IncludeDrafts bool             `koanf:"include_drafts" yaml:"include_drafts"`
-	CompileSass   bool             `koanf:"compile_sass" yaml:"compile_sass"`
-	TUIPrefix     string           `koanf:"tui_prefix" yaml:"tui_prefix"`
-	TUIPrefixMs   int              `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
-	ServeWatch    bool             `koanf:"serve_watch" yaml:"serve_watch"`
-	ServeReload   bool             `koanf:"serve_live_reload" yaml:"serve_live_reload"`
-	ServeDebounce int              `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
-	Logging       LoggingConfig    `koanf:"logging" yaml:"logging"`
-	Taxonomies    []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
+	BaseURL          string           `koanf:"base_url" yaml:"base_url"`
+	Theme            string           `koanf:"theme" yaml:"theme"`
+	VaultPath        string           `koanf:"vault_path" yaml:"vault_path"`
+	ContentDir       string           `koanf:"content_dir" yaml:"content_dir"`
+	PublicDir        string           `koanf:"public_dir" yaml:"public_dir"`
+	TemplatesDir     string           `koanf:"templates_dir" yaml:"templates_dir"`
+	StaticDir        string           `koanf:"static_dir" yaml:"static_dir"`
+	ThemesDir        string           `koanf:"themes_dir" yaml:"themes_dir"`
+	PluginsDir       string           `koanf:"plugins_dir" yaml:"plugins_dir"`
+	SassDir          string           `koanf:"sass_dir" yaml:"sass_dir"`
+	ContentLayout    string           `koanf:"content_layout" yaml:"content_layout"`
+	IncludeDrafts    bool             `koanf:"include_drafts" yaml:"include_drafts"`
+	CompileSass      bool             `koanf:"compile_sass" yaml:"compile_sass"`
+	TUIPrefix        string           `koanf:"tui_prefix" yaml:"tui_prefix"`
+	TUIPrefixMs      int              `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
+	ServeWatch       bool             `koanf:"serve_watch" yaml:"serve_watch"`
+	ServeReload      bool             `koanf:"serve_live_reload" yaml:"serve_live_reload"`
+	ServeDebounce    int              `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
+	BuildIncremental bool             `koanf:"build_incremental" yaml:"build_incremental"`
+	BuildCacheDir    string           `koanf:"build_cache_dir" yaml:"build_cache_dir"`
+	Logging          LoggingConfig    `koanf:"logging" yaml:"logging"`
+	Taxonomies       []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
 }
 
 type TaxonomyConfig struct {
@@ -49,23 +51,25 @@ type TaxonomyConfig struct {
 
 func Default() Config {
 	return Config{
-		BaseURL:       "",
-		Theme:         "default",
-		ContentDir:    "content",
-		PublicDir:     "public",
-		TemplatesDir:  "templates",
-		StaticDir:     "static",
-		ThemesDir:     "themes",
-		PluginsDir:    "plugins",
-		SassDir:       "sass",
-		ContentLayout: "{date}/{slug}",
-		IncludeDrafts: false,
-		CompileSass:   false,
-		TUIPrefix:     "space",
-		TUIPrefixMs:   600,
-		ServeWatch:    true,
-		ServeReload:   true,
-		ServeDebounce: 300,
+		BaseURL:          "",
+		Theme:            "default",
+		ContentDir:       "content",
+		PublicDir:        "public",
+		TemplatesDir:     "templates",
+		StaticDir:        "static",
+		ThemesDir:        "themes",
+		PluginsDir:       "plugins",
+		SassDir:          "sass",
+		ContentLayout:    "{date}/{slug}",
+		IncludeDrafts:    false,
+		CompileSass:      false,
+		TUIPrefix:        "space",
+		TUIPrefixMs:      600,
+		ServeWatch:       true,
+		ServeReload:      true,
+		ServeDebounce:    300,
+		BuildIncremental: true,
+		BuildCacheDir:    ".osg/cache",
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
@@ -131,6 +135,8 @@ tui_prefix_ms: 600
 serve_watch: true
 serve_live_reload: true
 serve_debounce_ms: 300
+build_incremental: true
+build_cache_dir: .osg/cache
 logging:
   level: info
   format: json

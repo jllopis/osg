@@ -53,7 +53,7 @@ La salida es JSON.
 - `taxonomy.list.render`: { config, taxonomy, terms, current_path, current_url, lang }
 - `taxonomy.term.render`: { config, taxonomy, term, paginator?, current_path, current_url, lang }
 
-`stats` incluye: total, rendered, skipped, errors, pages, sections.
+`stats` incluye: total, rendered, skipped, cached, errors, pages, sections.
 
 ## Notas
 - El host mergea `payload` sobre el contexto actual (merge profundo de mapas).

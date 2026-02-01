@@ -97,6 +97,11 @@ Serve:
 - `serve_live_reload`: habilita live reload (por defecto `true`).
 - `serve_debounce_ms`: debounce de eventos (por defecto `300`).
 
+Build:
+- `build_incremental`: cache incremental del build (por defecto `true`).
+- `build_cache_dir`: directorio para el cache (por defecto `.osg/cache`).
+  - guarda `build.json` con stamps de contenido/templates/assets/plugins.
+
 Plugins WASM:
 - Coloca `.wasm` en `plugins/`.
 - Ver `docs/PLUGINS.md` para ABI y eventos.

@@ -26,6 +26,7 @@ type Stats struct {
 	Total    int
 	Rendered int
 	Skipped  int
+	Cached   int
 	Errors   int
 }
 
@@ -52,6 +53,15 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 
 	if err := assets.Prepare(cfg, logger); err != nil {
 		return err
+	}
+
+	plan, cacheToSave := buildPlanFromCache(cfg, files, logger)
+	if plan.incremental {
+		if plan.full {
+			logger.Info("build incremental", "mode", "full", "reason", plan.reason)
+		} else {
+			logger.Info("build incremental", "mode", "partial", "changed", len(plan.changedFiles), "removed", plan.removed)
+		}
 	}
 
 	siteIndex := site.New()
@@ -114,48 +124,54 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 		return err
 	}
 
-	renderedSections, err := renderSections(ctx, renderer, cfg, baseCtx, siteIndex, plugins)
+	renderedSections, cachedSections, err := renderSections(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += renderedSections
+	stats.Cached += cachedSections
 
-	renderedPages, err := renderPages(ctx, renderer, cfg, baseCtx, siteIndex, plugins)
+	renderedPages, cachedPages, err := renderPages(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += renderedPages
+	stats.Cached += cachedPages
 
-	taxonomyRendered, err := renderTaxonomies(ctx, renderer, cfg, baseCtx, siteIndex, indices, plugins)
+	taxonomyRendered, taxonomyCached, err := renderTaxonomies(ctx, renderer, cfg, baseCtx, siteIndex, indices, plugins, plan)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += taxonomyRendered
+	stats.Cached += taxonomyCached
 
 	sitemapEntries := collectSitemapEntries(cfg, siteIndex, indices)
-	sitemapRendered, err := renderSitemap(renderer, cfg, baseCtx, sitemapEntries)
+	sitemapRendered, sitemapCached, err := renderSitemap(renderer, cfg, baseCtx, sitemapEntries, plan)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += sitemapRendered
+	stats.Cached += sitemapCached
 
-	robotsRendered, err := renderRobots(renderer, cfg, baseCtx)
+	robotsRendered, robotsCached, err := renderRobots(renderer, cfg, baseCtx, plan)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += robotsRendered
+	stats.Cached += robotsCached
 
-	notFoundRendered, err := renderNotFound(renderer, cfg, baseCtx)
+	notFoundRendered, notFoundCached, err := renderNotFound(renderer, cfg, baseCtx, plan)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += notFoundRendered
+	stats.Cached += notFoundCached
 
 	if plugins != nil {
 		finishPayload := cloneMap(baseCtx)
@@ -167,6 +183,7 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 		"total", stats.Total,
 		"rendered", stats.Rendered,
 		"skipped", stats.Skipped,
+		"cached", stats.Cached,
 		"errors", stats.Errors,
 	)
 
@@ -174,11 +191,18 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 		return fmt.Errorf("completed with %d errors", stats.Errors)
 	}
 
+	if cacheToSave != nil && stats.Errors == 0 {
+		if err := saveBuildCache(buildCachePath(cfg), cacheToSave); err != nil {
+			logger.Warn("cache write failed", "error", err)
+		}
+	}
+
 	return nil
 }
 
-func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager) (int, error) {
+func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
 	rendered := 0
+	cached := 0
 	for _, page := range siteIndex.Pages {
 		templateName := page.Template
 		if templateName == "" {
@@ -186,18 +210,23 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 		}
 
 		outputPath := outputHTMLPath(cfg.PublicDir, page.Path)
+		if !plan.shouldRenderPage(page, outputPath) {
+			cached++
+			continue
+		}
 		renderCtx := pageContext(baseCtx, page)
 		renderCtx = applyPluginOverrides(ctx, plugins, "page.render", renderCtx)
 		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
-			return rendered, err
+			return rendered, cached, err
 		}
 		rendered++
 	}
-	return rendered, nil
+	return rendered, cached, nil
 }
 
-func renderSections(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager) (int, error) {
+func renderSections(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
 	rendered := 0
+	cached := 0
 	for _, section := range siteIndex.Sections {
 		templateName := section.Template
 		if templateName == "" {
@@ -209,14 +238,18 @@ func renderSections(ctx context.Context, renderer *render.Renderer, cfg config.C
 		}
 
 		outputPath := outputHTMLPath(cfg.PublicDir, section.Path)
+		if !plan.shouldRenderCollection(outputPath) {
+			cached++
+			continue
+		}
 		renderCtx := sectionContext(baseCtx, section)
 		renderCtx = applyPluginOverrides(ctx, plugins, "section.render", renderCtx)
 		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
-			return rendered, err
+			return rendered, cached, err
 		}
 		rendered++
 	}
-	return rendered, nil
+	return rendered, cached, nil
 }
 
 func outputHTMLPath(publicDir string, sitePath string) string {
@@ -284,6 +317,8 @@ func configView(cfg config.Config) map[string]any {
 		"serve_watch":       cfg.ServeWatch,
 		"serve_live_reload": cfg.ServeReload,
 		"serve_debounce_ms": cfg.ServeDebounce,
+		"build_incremental": cfg.BuildIncremental,
+		"build_cache_dir":   cfg.BuildCacheDir,
 		"logging": map[string]any{
 			"level":  cfg.Logging.Level,
 			"format": cfg.Logging.Format,
@@ -308,6 +343,7 @@ func buildStatsView(stats Stats, siteIndex *site.Site) map[string]any {
 		"total":    stats.Total,
 		"rendered": stats.Rendered,
 		"skipped":  stats.Skipped,
+		"cached":   stats.Cached,
 		"errors":   stats.Errors,
 		"pages":    len(siteIndex.Pages),
 		"sections": len(siteIndex.Sections),
@@ -344,12 +380,13 @@ func themeTemplatesDir(cfg config.Config) string {
 	return path.Join(cfg.ThemesDir, cfg.Theme, "templates")
 }
 
-func renderTaxonomies(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, indices map[string]*taxonomy.Index, plugins *plugin.Manager) (int, error) {
+func renderTaxonomies(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, indices map[string]*taxonomy.Index, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
 	if len(cfg.Taxonomies) == 0 {
-		return 0, nil
+		return 0, 0, nil
 	}
 
 	rendered := 0
+	cached := 0
 
 	for _, taxCfg := range cfg.Taxonomies {
 		if !taxCfg.Render {
@@ -365,12 +402,16 @@ func renderTaxonomies(ctx context.Context, renderer *render.Renderer, cfg config
 		listTemplate := taxonomyTemplateName(renderer, taxCfg.Name, "list.html", "taxonomy_list.html")
 		listPath := ensureTrailingSlash(path.Join("/", taxCfg.Name))
 		listOutput := outputHTMLPath(cfg.PublicDir, listPath)
-		listCtx := taxonomyListContext(baseCtx, cfg, taxCfg, terms, listPath)
-		listCtx = applyPluginOverrides(ctx, plugins, "taxonomy.list.render", listCtx)
-		if err := renderer.RenderToFile(listTemplate, listCtx, listOutput); err != nil {
-			return rendered, err
+		if !plan.shouldRenderCollection(listOutput) {
+			cached++
+		} else {
+			listCtx := taxonomyListContext(baseCtx, cfg, taxCfg, terms, listPath)
+			listCtx = applyPluginOverrides(ctx, plugins, "taxonomy.list.render", listCtx)
+			if err := renderer.RenderToFile(listTemplate, listCtx, listOutput); err != nil {
+				return rendered, cached, err
+			}
+			rendered++
 		}
-		rendered++
 
 		singleTemplate := taxonomyTemplateName(renderer, taxCfg.Name, "single.html", "taxonomy_single.html")
 		for _, term := range terms {
@@ -378,39 +419,49 @@ func renderTaxonomies(ctx context.Context, renderer *render.Renderer, cfg config
 			if len(paginators) == 0 {
 				termPath := term.Path
 				outputPath := outputHTMLPath(cfg.PublicDir, termPath)
-				termCtx := taxonomyTermContext(baseCtx, cfg, taxCfg, term, termPath, nil)
-				termCtx = applyPluginOverrides(ctx, plugins, "taxonomy.term.render", termCtx)
-				if err := renderer.RenderToFile(singleTemplate, termCtx, outputPath); err != nil {
-					return rendered, err
+				if !plan.shouldRenderCollection(outputPath) {
+					cached++
+				} else {
+					termCtx := taxonomyTermContext(baseCtx, cfg, taxCfg, term, termPath, nil)
+					termCtx = applyPluginOverrides(ctx, plugins, "taxonomy.term.render", termCtx)
+					if err := renderer.RenderToFile(singleTemplate, termCtx, outputPath); err != nil {
+						return rendered, cached, err
+					}
+					rendered++
 				}
-				rendered++
-				renderedFeeds, err := renderTaxonomyFeeds(renderer, cfg, baseCtx, taxCfg, term)
+				renderedFeeds, cachedFeeds, err := renderTaxonomyFeeds(renderer, cfg, baseCtx, taxCfg, term, plan)
 				if err != nil {
-					return rendered, err
+					return rendered, cached, err
 				}
 				rendered += renderedFeeds
+				cached += cachedFeeds
 				continue
 			}
 
 			for i, paginator := range paginators {
 				pagePath := taxonomyPagePath(term.Path, taxCfg.PaginatePath, i)
 				outputPath := outputHTMLPath(cfg.PublicDir, pagePath)
+				if !plan.shouldRenderCollection(outputPath) {
+					cached++
+					continue
+				}
 				termCtx := taxonomyTermContext(baseCtx, cfg, taxCfg, term, pagePath, &paginator)
 				termCtx = applyPluginOverrides(ctx, plugins, "taxonomy.term.render", termCtx)
 				if err := renderer.RenderToFile(singleTemplate, termCtx, outputPath); err != nil {
-					return rendered, err
+					return rendered, cached, err
 				}
 				rendered++
 			}
-			renderedFeeds, err := renderTaxonomyFeeds(renderer, cfg, baseCtx, taxCfg, term)
+			renderedFeeds, cachedFeeds, err := renderTaxonomyFeeds(renderer, cfg, baseCtx, taxCfg, term, plan)
 			if err != nil {
-				return rendered, err
+				return rendered, cached, err
 			}
 			rendered += renderedFeeds
+			cached += cachedFeeds
 		}
 	}
 
-	return rendered, nil
+	return rendered, cached, nil
 }
 
 func taxonomyTemplateName(renderer *render.Renderer, taxonomyName string, specific string, fallback string) string {
@@ -468,9 +519,9 @@ func ensureTrailingSlash(input string) string {
 	return input + "/"
 }
 
-func renderTaxonomyFeeds(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, taxCfg config.TaxonomyConfig, term *taxonomy.Term) (int, error) {
+func renderTaxonomyFeeds(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, taxCfg config.TaxonomyConfig, term *taxonomy.Term, plan buildPlan) (int, int, error) {
 	if !taxCfg.Feed {
-		return 0, nil
+		return 0, 0, nil
 	}
 
 	feedTemplates := []string{}
@@ -481,24 +532,29 @@ func renderTaxonomyFeeds(renderer *render.Renderer, cfg config.Config, baseCtx m
 		feedTemplates = append(feedTemplates, "rss.xml")
 	}
 	if len(feedTemplates) == 0 {
-		return 0, nil
+		return 0, 0, nil
 	}
 
 	lastUpdated := latestUpdated(term.Pages)
 	rendered := 0
+	cached := 0
 
 	for _, tmpl := range feedTemplates {
 		filename := tmpl
 		feedURL := buildURL(cfg.BaseURL, path.Join(term.Path, filename))
 		outputPath := outputFilePath(cfg.PublicDir, term.Path, filename)
+		if !plan.shouldRenderCollection(outputPath) {
+			cached++
+			continue
+		}
 		ctx := feedContext(baseCtx, cfg, taxCfg, term, feedURL, lastUpdated)
 		if err := renderer.RenderToFile(tmpl, ctx, outputPath); err != nil {
-			return rendered, err
+			return rendered, cached, err
 		}
 		rendered++
 	}
 
-	return rendered, nil
+	return rendered, cached, nil
 }
 
 func latestUpdated(pages []*site.Page) time.Time {
@@ -556,12 +612,12 @@ type SitemapEntry struct {
 
 const maxSitemapEntries = 50000
 
-func renderSitemap(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, entries []SitemapEntry) (int, error) {
+func renderSitemap(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, entries []SitemapEntry, plan buildPlan) (int, int, error) {
 	if len(entries) == 0 {
-		return 0, nil
+		return 0, 0, nil
 	}
 	if !renderer.HasTemplate("sitemap.xml") {
-		return 0, nil
+		return 0, 0, nil
 	}
 
 	sort.SliceStable(entries, func(i, j int) bool {
@@ -572,18 +628,22 @@ func renderSitemap(renderer *render.Renderer, cfg config.Config, baseCtx map[str
 		ctx := cloneMap(baseCtx)
 		ctx["entries"] = sitemapEntryViews(entries)
 		outputPath := filepath.Join(cfg.PublicDir, "sitemap.xml")
-		if err := renderer.RenderToFile("sitemap.xml", ctx, outputPath); err != nil {
-			return 0, err
+		if !plan.shouldRenderCollection(outputPath) {
+			return 0, 1, nil
 		}
-		return 1, nil
+		if err := renderer.RenderToFile("sitemap.xml", ctx, outputPath); err != nil {
+			return 0, 0, err
+		}
+		return 1, 0, nil
 	}
 
 	if !renderer.HasTemplate("split_sitemap_index.xml") {
-		return 0, fmt.Errorf("split sitemap required but split_sitemap_index.xml template missing")
+		return 0, 0, fmt.Errorf("split sitemap required but split_sitemap_index.xml template missing")
 	}
 
 	sitemaps := make([]map[string]any, 0)
 	rendered := 0
+	cached := 0
 	for i := 0; i < len(entries); i += maxSitemapEntries {
 		end := i + maxSitemapEntries
 		if end > len(entries) {
@@ -592,30 +652,36 @@ func renderSitemap(renderer *render.Renderer, cfg config.Config, baseCtx map[str
 		chunk := entries[i:end]
 		filename := fmt.Sprintf("sitemap_%d.xml", (i/maxSitemapEntries)+1)
 		outputPath := filepath.Join(cfg.PublicDir, filename)
-		ctx := cloneMap(baseCtx)
-		ctx["entries"] = sitemapEntryViews(chunk)
-		if err := renderer.RenderToFile("sitemap.xml", ctx, outputPath); err != nil {
-			return rendered, err
-		}
-		rendered++
-
 		loc := buildURL(cfg.BaseURL, "/"+filename)
 		lastmod := chunk[len(chunk)-1].Updated.Format(time.RFC3339)
 		sitemaps = append(sitemaps, map[string]any{
 			"loc":     loc,
 			"lastmod": lastmod,
 		})
+		if !plan.shouldRenderCollection(outputPath) {
+			cached++
+			continue
+		}
+		ctx := cloneMap(baseCtx)
+		ctx["entries"] = sitemapEntryViews(chunk)
+		if err := renderer.RenderToFile("sitemap.xml", ctx, outputPath); err != nil {
+			return rendered, cached, err
+		}
+		rendered++
 	}
 
 	indexCtx := cloneMap(baseCtx)
 	indexCtx["sitemaps"] = sitemaps
 	indexPath := filepath.Join(cfg.PublicDir, "sitemap.xml")
+	if !plan.shouldRenderCollection(indexPath) {
+		return rendered, cached + 1, nil
+	}
 	if err := renderer.RenderToFile("split_sitemap_index.xml", indexCtx, indexPath); err != nil {
-		return rendered, err
+		return rendered, cached, err
 	}
 	rendered++
 
-	return rendered, nil
+	return rendered, cached, nil
 }
 
 func sitemapEntryViews(entries []SitemapEntry) []map[string]any {
@@ -630,29 +696,35 @@ func sitemapEntryViews(entries []SitemapEntry) []map[string]any {
 	return out
 }
 
-func renderRobots(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any) (int, error) {
+func renderRobots(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, plan buildPlan) (int, int, error) {
 	if !renderer.HasTemplate("robots.txt") {
-		return 0, nil
+		return 0, 0, nil
 	}
 	ctx := cloneMap(baseCtx)
 	outputPath := filepath.Join(cfg.PublicDir, "robots.txt")
-	if err := renderer.RenderToFile("robots.txt", ctx, outputPath); err != nil {
-		return 0, err
+	if !plan.shouldRenderCollection(outputPath) {
+		return 0, 1, nil
 	}
-	return 1, nil
+	if err := renderer.RenderToFile("robots.txt", ctx, outputPath); err != nil {
+		return 0, 0, err
+	}
+	return 1, 0, nil
 }
 
-func renderNotFound(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any) (int, error) {
+func renderNotFound(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, plan buildPlan) (int, int, error) {
 	if !renderer.HasTemplate("404.html") {
-		return 0, nil
+		return 0, 0, nil
 	}
 	ctx := cloneMap(baseCtx)
 	ctx["lang"] = ""
 	outputPath := filepath.Join(cfg.PublicDir, "404.html")
-	if err := renderer.RenderToFile("404.html", ctx, outputPath); err != nil {
-		return 0, err
+	if !plan.shouldRenderCollection(outputPath) {
+		return 0, 1, nil
 	}
-	return 1, nil
+	if err := renderer.RenderToFile("404.html", ctx, outputPath); err != nil {
+		return 0, 0, err
+	}
+	return 1, 0, nil
 }
 
 func collectSitemapEntries(cfg config.Config, siteIndex *site.Site, indices map[string]*taxonomy.Index) []SitemapEntry {

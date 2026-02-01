@@ -30,7 +30,8 @@ Componentes principales:
 3) build: parse `content/` -> index site -> build taxonomies -> render templates -> public/
 4) assets: copy static/theme static + compile sass si aplica
 5) plugins: hooks en build.started/build.finished y render de pages/sections/taxonomies
-6) serve/tui: previsualizacion y control del flujo
+6) build incremental: cache de inputs para saltar renders cuando no hay cambios
+7) serve/tui: previsualizacion y control del flujo
 
 ## APIs / Interfaces
 CLI:
@@ -69,6 +70,7 @@ Frontmatter output:
 - Theme por defecto: entrega salida usable sin obligar a templates custom.
 - Plugins WASM: extensibilidad con ABI reducido y sin dependencias nativas.
 - TUI: feedback inmediato sin dependencias externas.
+- Build incremental: usa stamps (mtime/size) y requiere full rebuild si cambian templates/assets/plugins.
 
 ## Risks / Non-goals
 Riesgos:
@@ -76,6 +78,7 @@ Riesgos:
 - Frontmatter inconsistente: fechas mixtas, campos faltantes.
 - Colisiones de slug/fecha -> rutas duplicadas.
 - Plugins defectuosos: deben fallar en modo warning.
+- Eliminacion de contenido no limpia `public/` automaticamente (stale files).
 
 No goals (por ahora):
 - CMS completo o editor online.

@@ -20,6 +20,7 @@ type Page struct {
 	Slug       string
 	Path       string
 	Permalink  string
+	SourcePath string
 	Date       time.Time
 	Updated    time.Time
 	Draft      bool
@@ -37,6 +38,7 @@ type Section struct {
 	Slug        string
 	Path        string
 	Permalink   string
+	SourcePath  string
 	Content     string
 	Template    string
 	Pages       []*Page
@@ -199,14 +201,15 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 
 	if isSection {
 		section := &Section{
-			Title:     title,
-			Slug:      slug,
-			Path:      pagePath,
-			Permalink: permalink,
-			Content:   contentHTML,
-			Template:  pickString(fm, "template"),
-			Extra:     fm,
-			IsRoot:    pagePath == "/",
+			Title:      title,
+			Slug:       slug,
+			Path:       pagePath,
+			Permalink:  permalink,
+			SourcePath: filePath,
+			Content:    contentHTML,
+			Template:   pickString(fm, "template"),
+			Extra:      fm,
+			IsRoot:     pagePath == "/",
 		}
 		return nil, section, nil
 	}
@@ -216,6 +219,7 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		Slug:       slug,
 		Path:       pagePath,
 		Permalink:  permalink,
+		SourcePath: filePath,
 		Date:       fileDate,
 		Draft:      pickBool(fm, "draft"),
 		Summary:    pickString(fm, "summary", "description", "excerpt"),

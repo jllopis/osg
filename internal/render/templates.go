@@ -1,18 +1,64 @@
 package render
 
 import (
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"sync"
 
 	"html/template"
 )
 
 //go:embed builtins/*
 var builtinFS embed.FS
+
+var (
+	builtinsOnce      sync.Once
+	builtinsSignature string
+	builtinsErr       error
+)
+
+func BuiltinsSignature() (string, error) {
+	builtinsOnce.Do(func() {
+		entries := []string{}
+		err := fs.WalkDir(builtinFS, ".", func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if !isTemplateFile(path) {
+				return nil
+			}
+			entries = append(entries, path)
+			return nil
+		})
+		if err != nil {
+			builtinsErr = err
+			return
+		}
+		sort.Strings(entries)
+		hasher := sha256.New()
+		for _, path := range entries {
+			data, err := fs.ReadFile(builtinFS, path)
+			if err != nil {
+				builtinsErr = err
+				return
+			}
+			_, _ = hasher.Write([]byte(path))
+			_, _ = hasher.Write(data)
+		}
+		builtinsSignature = hex.EncodeToString(hasher.Sum(nil))
+	})
+	return builtinsSignature, builtinsErr
+}
 
 type TemplateLoader struct {
 	UserDir  string
