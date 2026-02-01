@@ -82,23 +82,24 @@ func main() {
 	}
 
 	var runErr error
-	switch ctx.Command() {
-	case "init":
+	command := ctx.Command()
+	switch {
+	case command == "init":
 		runErr = app.RunInit(context.Background(), opts)
-	case "update-content":
+	case command == "update-content":
 		runErr = app.RunUpdateContent(context.Background(), opts)
-	case "build":
+	case command == "build":
 		runErr = app.RunBuild(context.Background(), opts)
-	case "serve":
+	case command == "serve":
 		runErr = app.RunServe(context.Background(), opts)
-	case "tui":
+	case command == "tui":
 		runErr = app.RunTUI(context.Background(), opts)
-	case "theme init":
+	case strings.HasPrefix(command, "theme init"):
 		runErr = app.RunThemeInit(context.Background(), opts, cli.Theme.Init.Name)
-	case "version":
+	case command == "version":
 		printVersion()
 	default:
-		runErr = fmt.Errorf("unknown command: %s", ctx.Command())
+		runErr = fmt.Errorf("unknown command: %s", command)
 	}
 
 	if runErr != nil {
