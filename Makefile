@@ -30,6 +30,7 @@ SERVE_ADDR ?= :1313
 INSTALL_PATH := $(HOME)/.local/bin
 
 .PHONY: all build build-all clean test test-coverage lint fmt vet tidy deps run init update-content serve tui install uninstall version help
+.PHONY: plugins plugins-feed
 
 ## Default target
 all: tidy fmt vet test build
@@ -152,3 +153,12 @@ help:
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## /  /'
 	@echo ""
 	@echo "Usage: make [target]"
+
+## Build example WASM plugins
+plugins: plugins-feed
+
+## Build RSS feed plugin (Rust WASM)
+plugins-feed:
+	@echo "Building feed plugin..."
+	@cd examples/plugins/feed && ./build.sh
+	@echo "Built: examples/plugins/feed/feed.wasm"

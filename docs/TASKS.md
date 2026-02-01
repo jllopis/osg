@@ -29,3 +29,10 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 4) Static copy + cachebust (get_url + get_hash)
 [done] (Phase 5) WASM plugins + TUI avanzada
 [done] Tema base por defecto (templates + CSS)
+[done] (Phase 6) Plugin WASM de ejemplo (RSS feed en Rust)
+[todo] (Phase 6) Live reload + watch (serve + build incremental)
+[todo] (Phase 6) Build incremental con cache
+[todo] (Phase 6) Search index opcional
+[todo] (Phase 6) Starter kit de theme (scaffold + docs)
+[todo] (Phase 6) SDK/CLI para plugins (plantillas + tests)
+[todo] (Phase 6) Sample site + quickstart

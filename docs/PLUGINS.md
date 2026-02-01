@@ -58,3 +58,18 @@ La salida es JSON.
 ## Notas
 - El host mergea `payload` sobre el contexto actual (merge profundo de mapas).
 - Plugins que fallen no detienen el build, solo generan warning.
+
+## Ejemplo (feed RSS en Rust)
+En `examples/plugins/feed` hay un plugin Rust que:
+- escucha `build.finished`
+- genera `public/rss.xml` a partir de `site.pages`
+
+Build:
+```bash
+cd examples/plugins/feed
+rustup target add wasm32-wasi
+cargo build --target wasm32-wasi --release
+cp target/wasm32-wasi/release/osg_feed.wasm feed.wasm
+```
+
+Copia `feed.wasm` a `plugins/` para activarlo.

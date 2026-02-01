@@ -34,3 +34,12 @@
 - [done] plugins WASM con wazero
 - [done] hooks y filtros externos
 - [done] TUI avanzada
+
+## Phase 6 - producto y DX (todo)
+- [done] plugin WASM de ejemplo (RSS feed en Rust)
+- [todo] live reload + watch (serve + build incremental)
+- [todo] build incremental con cache de contenido
+- [todo] search index opcional (lunr/algolia export)
+- [todo] starter kit de theme (scaffold + docs)
+- [todo] SDK/CLI para plugins (plantillas + tests)
+- [todo] sample site + quickstart mejorado

@@ -89,6 +89,7 @@ TUI:
 Plugins WASM:
 - Coloca `.wasm` en `plugins/`.
 - Ver `docs/PLUGINS.md` para ABI y eventos.
+- Ejemplo: `examples/plugins/feed`.
 
 ## Notas
 - `update-content` es el comando por defecto.
