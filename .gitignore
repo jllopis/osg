@@ -14,3 +14,9 @@ cover.out
 # Editor
 .idea/
 .vscode/
+
+# Rust / WASM examples
+examples/plugins/**/target/
+examples/plugins/**/Cargo.lock
+examples/plugins/**/*.wasm
+plugins/*.wasm

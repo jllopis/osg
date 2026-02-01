@@ -94,7 +94,7 @@ fn write_search(payload: &Value) -> Result<(), ()> {
 }
 
 fn search_html() -> String {
-    let html = r#"<!doctype html>
+    let html = r##"<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -149,6 +149,6 @@ fn search_html() -> String {
       }
     </script>
   </body>
-</html>"#;
+</html>"##;
     html.to_string()
 }
