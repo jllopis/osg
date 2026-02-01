@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -9,6 +10,14 @@ import (
 )
 
 func New(cfg config.LoggingConfig, verbose bool) *slog.Logger {
+	return NewWithWriter(cfg, verbose, os.Stdout)
+}
+
+func NewWithWriter(cfg config.LoggingConfig, verbose bool, writer io.Writer) *slog.Logger {
+	if writer == nil {
+		writer = os.Stdout
+	}
+
 	level := parseLevel(cfg.Level)
 	if verbose {
 		level = slog.LevelDebug
@@ -18,10 +27,10 @@ func New(cfg config.LoggingConfig, verbose bool) *slog.Logger {
 
 	format := strings.ToLower(strings.TrimSpace(cfg.Format))
 	if format == "text" {
-		return slog.New(slog.NewTextHandler(os.Stdout, opts))
+		return slog.New(slog.NewTextHandler(writer, opts))
 	}
 
-	return slog.New(slog.NewJSONHandler(os.Stdout, opts))
+	return slog.New(slog.NewJSONHandler(writer, opts))
 }
 
 func parseLevel(level string) slog.Level {

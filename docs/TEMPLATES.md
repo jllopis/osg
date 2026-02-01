@@ -10,7 +10,7 @@ Definir el sistema de plantillas de OSG para renderizar paginas HTML desde conte
 ## Estructura de directorios
 - `templates/`: plantillas de usuario
 - `themes/<theme>/templates/`: plantillas del tema (si aplica)
-- `internal/templates/builtins/`: plantillas incorporadas
+- `internal/render/builtins/`: plantillas incorporadas (embebidas)
 
 ## Resolucion de plantillas (prioridad)
 1) Usuario: `templates/` (raiz y subdirectorios)
@@ -36,9 +36,13 @@ Si existe un archivo con el mismo nombre en un nivel superior, se usa ese.
 Variables disponibles en todas las plantillas:
 - `config`: Config global (incluye `base_url` y `theme`)
 - `site`: vista global del sitio (paginas y raiz)
+- `taxonomies`: mapa de indices (name -> { taxonomy, terms })
 - `current_path`: ruta relativa iniciando por `/` (no disponible en 404)
 - `current_url`: URL absoluta (no disponible en 404)
 - `lang`: idioma actual
+
+Notas:
+- `config` expone claves en snake_case, igual que `config.yaml`.
 
 ## Contexto de pagina
 Estructura propuesta:

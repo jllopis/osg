@@ -29,7 +29,7 @@ ARGS ?=
 SERVE_ADDR ?= :1313
 INSTALL_PATH := $(HOME)/.local/bin
 
-.PHONY: all build build-all clean test test-coverage lint fmt vet tidy deps run init update-content serve install uninstall version help
+.PHONY: all build build-all clean test test-coverage lint fmt vet tidy deps run init update-content serve tui install uninstall version help
 
 ## Default target
 all: tidy fmt vet test build
@@ -105,6 +105,10 @@ serve:
 	@$(GO) run ./cmd/osg serve -c $(CONFIG) \
 		$(if $(PUBLIC_DIR),--public-dir $(PUBLIC_DIR),) \
 		--addr $(SERVE_ADDR)
+
+## Launch TUI
+tui:
+	@$(GO) run ./cmd/osg tui
 
 ## Initialize project structure
 init:

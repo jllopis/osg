@@ -30,6 +30,8 @@ type Config struct {
 	ContentLayout string           `koanf:"content_layout" yaml:"content_layout"`
 	IncludeDrafts bool             `koanf:"include_drafts" yaml:"include_drafts"`
 	CompileSass   bool             `koanf:"compile_sass" yaml:"compile_sass"`
+	TUIPrefix     string           `koanf:"tui_prefix" yaml:"tui_prefix"`
+	TUIPrefixMs   int              `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
 	Logging       LoggingConfig    `koanf:"logging" yaml:"logging"`
 	Taxonomies    []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
 }
@@ -45,7 +47,7 @@ type TaxonomyConfig struct {
 func Default() Config {
 	return Config{
 		BaseURL:       "",
-		Theme:         "",
+		Theme:         "default",
 		ContentDir:    "content",
 		PublicDir:     "public",
 		TemplatesDir:  "templates",
@@ -56,6 +58,8 @@ func Default() Config {
 		ContentLayout: "{date}/{slug}",
 		IncludeDrafts: false,
 		CompileSass:   false,
+		TUIPrefix:     "space",
+		TUIPrefixMs:   600,
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
@@ -88,6 +92,10 @@ func Load(path string) (Config, error) {
 		}
 	}
 
+	if strings.TrimSpace(cfg.Theme) == "" {
+		cfg.Theme = Default().Theme
+	}
+
 	return cfg, nil
 }
 
@@ -101,7 +109,7 @@ func ResolveVaultPath(cfg Config) (string, error) {
 func DefaultConfigYAML() string {
 	return strings.TrimSpace(`vault_path: ""
 base_url: ""
-theme: ""
+theme: default
 content_dir: content
 public_dir: public
 templates_dir: templates
@@ -112,6 +120,8 @@ sass_dir: sass
 content_layout: "{date}/{slug}"
 include_drafts: false
 compile_sass: false
+tui_prefix: space
+tui_prefix_ms: 600
 logging:
   level: info
   format: json

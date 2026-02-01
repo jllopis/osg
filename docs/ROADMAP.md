@@ -28,8 +28,9 @@
 ## Phase 4 - assets (done)
 - [done] sass pipeline
 - [done] static copy + cachebust
+- [done] tema base por defecto (templates + CSS)
 
-## Phase 5 - extensibilidad (todo)
-- [todo] plugins WASM con wazero
-- [todo] hooks y filtros externos
-- [todo] TUI avanzada
+## Phase 5 - extensibilidad (done)
+- [done] plugins WASM con wazero
+- [done] hooks y filtros externos
+- [done] TUI avanzada

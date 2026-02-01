@@ -1,67 +1,75 @@
 # REQUIREMENTS - OSG
 
 ## Goal
-Construir un generador de contenido estatico desde un vault de Obsidian, con un pipeline claro para copiar y normalizar contenido en `content/` y, en fases posteriores, renderizar a `public/`.
+Construir un generador de sitios estaticos desde un vault de Obsidian, con un pipeline claro para sincronizar contenido en `content/`, renderizar HTML en `public/`, y ofrecer previsualizacion local.
 
 ## Scope
-In-scope (MVP):
+In-scope (actual):
 - Lectura de vault y archivos Markdown
 - Parse YAML frontmatter
-- Filtro publish (true, "true", "draft")
-- Normalizacion de frontmatter de salida (YAML)
+- Filtro publish + include-drafts
+- Normalizacion de frontmatter de salida
 - Copia a `content/{YYYY/MM/DD}/{slug}/index.md`
-- CLI moderna (init, update-content default)
-- Logging estructurado
-- Tests basicos
+- Build HTML con templates y theme
+- Taxonomias, paginacion, feeds, sitemap, robots y 404
+- Assets: static copy + sass (opcional)
+- Plugins WASM (hooks en render)
+- TUI para ejecutar comandos y ver logs
+- Serve local de `public/`
 
-Out-of-scope (MVP):
-- Render HTML completo
-- Taxonomias, feeds, sitemap
-- Plugins WASM
-- TUI avanzada
+Out-of-scope (por ahora):
+- Editor visual / CMS
+- Live reload avanzado
+- Search index integrado
+- i18n completo
 
 ## User stories (con aceptacion)
-US01 - Leer frontmatter
-- Como autor, quiero que OSG lea frontmatter YAML y preserve el body sin cambios
-- Aceptacion: el body no se modifica y el frontmatter se parsea sin perder campos
+US01 - Sincronizar contenido
+- Como autor, quiero exportar notas desde Obsidian a `content/`.
+- Aceptacion: se generan rutas deterministas y frontmatter normalizado.
 
-US02 - Filtrar por publish
-- Como editor, quiero exportar solo notas con publish=true/"true"/"draft"
-- Aceptacion: notas sin publish no se exportan
+US02 - Render HTML
+- Como operador, quiero generar HTML en `public/`.
+- Aceptacion: `osg build` crea paginas, taxonomias y archivos especiales.
 
-US03 - Respetar drafts
-- Como editor, quiero excluir drafts por defecto y poder incluirlos con flag
-- Aceptacion: publish="draft" solo se copia si se pasa --include-drafts
+US03 - Previsualizar
+- Como editor, quiero levantar un servidor local para revisar el sitio.
+- Aceptacion: `osg serve` sirve `public/` y se puede detener desde la TUI.
 
-US04 - Normalizar metadatos
-- Como usuario, quiero un frontmatter de salida consistente
-- Aceptacion: los campos minimos aparecen en salida y los originales quedan bajo `obsidian`
+US04 - Theme base
+- Como usuario, quiero un tema por defecto usable.
+- Aceptacion: `theme: default` entrega HTML y CSS sin templates custom.
 
-US05 - Estructura de directorios
-- Como operador, quiero una estructura inicial con `osg init`
-- Aceptacion: se crean directorios y config base sin errores
+US05 - Plugins
+- Como developer, quiero enganchar hooks para extender el build.
+- Aceptacion: plugins WASM pueden modificar contexto sin romper el build.
 
-US06 - Observabilidad
-- Como operador, quiero logs estructurados y modo verbose
-- Aceptacion: logs incluyen nivel, evento y ruta de archivo
+US06 - TUI operativa
+- Como operador, quiero lanzar init/update/build/serve desde una UI.
+- Aceptacion: TUI ejecuta comandos y muestra logs en el panel central.
 
 ## Functional requirements
 - Leer vault dado `--vault-path`.
 - Parsear frontmatter YAML entre `---`.
 - Filtro publish: true, "true", "draft".
-- Convertir frontmatter a esquema de salida definido.
-- Copiar a `content/{YYYY/MM/DD}/{slug}/index.md`.
-- Soportar `--dry-run`.
-- Soportar `--include-drafts`.
-- Soportar config file (propuesto: YAML).
+- `--include-drafts` controla drafts.
+- Write a `content/{YYYY/MM/DD}/{slug}/index.md`.
+- Build HTML con templates y theme (prioridad: user > theme > builtins).
+- Render taxonomias + paginacion.
+- Generar feeds (atom/rss), sitemap, robots, 404 si hay templates.
+- Copiar static y assets del theme.
+- Compilar sass si `compile_sass=true` y `sass` disponible.
+- `osg serve` sirve `public/`.
+- TUI: acciones rapidas + prompt + logs.
+- Plugins WASM opcionales con hooks definidos.
 
 ## Non-functional requirements
 - Go 1.25.x.
-- Rendimiento aceptable en vault medianos.
-- Errores de parseo deben registrar warning y continuar.
-- Pruebas unitarias para parsing y mapping basicos.
+- Output determinista para el mismo input.
+- Logs estructurados en JSON.
+- Fallos de plugin no deben detener el build (warning).
+- Dependencias externas opcionales (sass).
 
 ## Constraints / Dependencies
 - Go modules.
-- Librerias: kong (CLI), koanf (config), log estructurado (slog o zap), yaml parser.
-- Sin dependencia C (wazero cuando llegue fase WASM).
+- Librerias clave: kong (CLI), koanf (config), bubbletea/bubbles (TUI), wazero (plugins).

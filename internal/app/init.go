@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"osg/internal/config"
+	"osg/internal/theme"
 )
 
 func RunInit(_ context.Context, opts CLIOptions) error {
@@ -37,6 +38,10 @@ func RunInit(_ context.Context, opts CLIOptions) error {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("create dir %s: %w", dir, err)
 		}
+	}
+
+	if err := theme.EnsureDefaultTheme(cfg.ThemesDir); err != nil {
+		return fmt.Errorf("init theme: %w", err)
 	}
 
 	configPath := opts.ConfigPath

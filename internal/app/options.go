@@ -1,5 +1,7 @@
 package app
 
+import "io"
+
 type CLIOptions struct {
 	ConfigPath    string
 	Verbose       bool
@@ -9,4 +11,6 @@ type CLIOptions struct {
 	OsgContentDir string
 	PublicDir     string
 	ServeAddr     string
+	TUI           bool
+	LogWriter     io.Writer
 }

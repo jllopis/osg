@@ -46,7 +46,7 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 		return err
 	}
 
-	logger := logging.New(cfg.Logging, opts.Verbose)
+	logger := logging.NewWithWriter(cfg.Logging, opts.Verbose, opts.LogWriter)
 
 	files, err := vault.ListMarkdownFiles(vaultPath)
 	if err != nil {

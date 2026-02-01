@@ -24,6 +24,7 @@ type CLI struct {
 	UpdateContent struct{} `cmd:"" help:"Sync content from vault"`
 	Build         struct{} `cmd:"" help:"Build static site (HTML)"`
 	Serve         ServeCmd `cmd:"" help:"Serve public directory"`
+	TUI           struct{} `cmd:"" help:"Launch TUI"`
 	Version       struct{} `cmd:"" help:"Show version information"`
 }
 
@@ -75,6 +76,8 @@ func main() {
 		runErr = app.RunBuild(context.Background(), opts)
 	case "serve":
 		runErr = app.RunServe(context.Background(), opts)
+	case "tui":
+		runErr = app.RunTUI(context.Background(), opts)
 	case "version":
 		printVersion()
 	default:

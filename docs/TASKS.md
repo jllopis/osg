@@ -27,4 +27,5 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 3) load_data + helpers de templates
 [done] (Phase 4) Sass + assets
 [done] (Phase 4) Static copy + cachebust (get_url + get_hash)
-[todo] (Phase 5) WASM plugins + TUI avanzada
+[done] (Phase 5) WASM plugins + TUI avanzada
+[done] Tema base por defecto (templates + CSS)

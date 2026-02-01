@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"osg/internal/config"
 	"osg/internal/logging"
 )
 
-func RunServe(_ context.Context, opts CLIOptions) error {
+func RunServe(ctx context.Context, opts CLIOptions) error {
 	cfg, err := config.Load(opts.ConfigPath)
 	if err != nil {
 		return err
@@ -24,7 +25,7 @@ func RunServe(_ context.Context, opts CLIOptions) error {
 		addr = ":1313"
 	}
 
-	logger := logging.New(cfg.Logging, opts.Verbose)
+	logger := logging.NewWithWriter(cfg.Logging, opts.Verbose, opts.LogWriter)
 	logger.Info("serving public", "dir", cfg.PublicDir, "addr", addr)
 
 	server := &http.Server{
@@ -32,8 +33,24 @@ func RunServe(_ context.Context, opts CLIOptions) error {
 		Handler: http.FileServer(http.Dir(cfg.PublicDir)),
 	}
 
-	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- server.ListenAndServe()
+	}()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdownCtx)
+		err := <-errCh
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+	case err := <-errCh:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
 	}
 
 	return nil

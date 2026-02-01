@@ -7,7 +7,7 @@ import (
 	"osg/internal/config"
 )
 
-func RunBuild(_ context.Context, opts CLIOptions) error {
+func RunBuild(ctx context.Context, opts CLIOptions) error {
 	cfg, err := config.Load(opts.ConfigPath)
 	if err != nil {
 		return err
@@ -23,5 +23,5 @@ func RunBuild(_ context.Context, opts CLIOptions) error {
 		cfg.IncludeDrafts = *opts.IncludeDrafts
 	}
 
-	return build.Run(cfg, opts.Verbose)
+	return build.Run(ctx, cfg, opts.Verbose, opts.LogWriter)
 }

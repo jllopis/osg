@@ -1,7 +1,9 @@
 package build
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,6 +15,7 @@ import (
 	"osg/internal/assets"
 	"osg/internal/config"
 	"osg/internal/logging"
+	"osg/internal/plugin"
 	"osg/internal/render"
 	"osg/internal/site"
 	"osg/internal/taxonomy"
@@ -26,8 +29,12 @@ type Stats struct {
 	Errors   int
 }
 
-func Run(cfg config.Config, verbose bool) error {
-	logger := logging.New(cfg.Logging, verbose)
+func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writer) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	logger := logging.NewWithWriter(cfg.Logging, verbose, logWriter)
 
 	files, err := vault.ListMarkdownFiles(cfg.ContentDir)
 	if err != nil {
@@ -74,6 +81,26 @@ func Run(cfg config.Config, verbose bool) error {
 	siteIndex.BuildHierarchy()
 	indices := taxonomy.Build(cfg.Taxonomies, siteIndex.Pages, cfg.BaseURL)
 	siteView := siteIndex.View()
+	baseCtx := baseContext(cfg, siteView, indices)
+
+	plugins, err := plugin.Load(ctx, cfg.PluginsDir, logger)
+	if err != nil {
+		logger.Warn("plugins disabled", "error", err)
+		plugins = nil
+	}
+	if plugins != nil {
+		defer func() {
+			if err := plugins.Close(ctx); err != nil {
+				logger.Warn("failed to close plugins", "error", err)
+			}
+		}()
+
+		startPayload := cloneMap(baseCtx)
+		startPayload["stats"] = buildStatsView(stats, siteIndex)
+		if overrides := plugins.Emit(ctx, "build.started", startPayload); overrides != nil {
+			plugin.Merge(baseCtx, overrides)
+		}
+	}
 
 	renderer, err := render.New(cfg.TemplatesDir, themeTemplatesDir(cfg), render.Context{
 		BaseURL:    cfg.BaseURL,
@@ -87,21 +114,21 @@ func Run(cfg config.Config, verbose bool) error {
 		return err
 	}
 
-	renderedSections, err := renderSections(renderer, cfg, siteView, siteIndex)
+	renderedSections, err := renderSections(ctx, renderer, cfg, baseCtx, siteIndex, plugins)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += renderedSections
 
-	renderedPages, err := renderPages(renderer, cfg, siteView, siteIndex)
+	renderedPages, err := renderPages(ctx, renderer, cfg, baseCtx, siteIndex, plugins)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += renderedPages
 
-	taxonomyRendered, err := renderTaxonomies(renderer, cfg, siteView, siteIndex, indices)
+	taxonomyRendered, err := renderTaxonomies(ctx, renderer, cfg, baseCtx, siteIndex, indices, plugins)
 	if err != nil {
 		stats.Errors++
 		return err
@@ -109,26 +136,32 @@ func Run(cfg config.Config, verbose bool) error {
 	stats.Rendered += taxonomyRendered
 
 	sitemapEntries := collectSitemapEntries(cfg, siteIndex, indices)
-	sitemapRendered, err := renderSitemap(renderer, cfg, siteView, sitemapEntries)
+	sitemapRendered, err := renderSitemap(renderer, cfg, baseCtx, sitemapEntries)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += sitemapRendered
 
-	robotsRendered, err := renderRobots(renderer, cfg, siteView)
+	robotsRendered, err := renderRobots(renderer, cfg, baseCtx)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += robotsRendered
 
-	notFoundRendered, err := renderNotFound(renderer, cfg, siteView)
+	notFoundRendered, err := renderNotFound(renderer, cfg, baseCtx)
 	if err != nil {
 		stats.Errors++
 		return err
 	}
 	stats.Rendered += notFoundRendered
+
+	if plugins != nil {
+		finishPayload := cloneMap(baseCtx)
+		finishPayload["stats"] = buildStatsView(stats, siteIndex)
+		_ = plugins.Emit(ctx, "build.finished", finishPayload)
+	}
 
 	logger.Info("build summary",
 		"total", stats.Total,
@@ -144,7 +177,7 @@ func Run(cfg config.Config, verbose bool) error {
 	return nil
 }
 
-func renderPages(renderer *render.Renderer, cfg config.Config, siteView map[string]any, siteIndex *site.Site) (int, error) {
+func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager) (int, error) {
 	rendered := 0
 	for _, page := range siteIndex.Pages {
 		templateName := page.Template
@@ -153,8 +186,9 @@ func renderPages(renderer *render.Renderer, cfg config.Config, siteView map[stri
 		}
 
 		outputPath := outputHTMLPath(cfg.PublicDir, page.Path)
-		ctx := pageContext(cfg, siteView, page)
-		if err := renderer.RenderToFile(templateName, ctx, outputPath); err != nil {
+		renderCtx := pageContext(baseCtx, page)
+		renderCtx = applyPluginOverrides(ctx, plugins, "page.render", renderCtx)
+		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
 			return rendered, err
 		}
 		rendered++
@@ -162,7 +196,7 @@ func renderPages(renderer *render.Renderer, cfg config.Config, siteView map[stri
 	return rendered, nil
 }
 
-func renderSections(renderer *render.Renderer, cfg config.Config, siteView map[string]any, siteIndex *site.Site) (int, error) {
+func renderSections(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager) (int, error) {
 	rendered := 0
 	for _, section := range siteIndex.Sections {
 		templateName := section.Template
@@ -175,8 +209,9 @@ func renderSections(renderer *render.Renderer, cfg config.Config, siteView map[s
 		}
 
 		outputPath := outputHTMLPath(cfg.PublicDir, section.Path)
-		ctx := sectionContext(cfg, siteView, section)
-		if err := renderer.RenderToFile(templateName, ctx, outputPath); err != nil {
+		renderCtx := sectionContext(baseCtx, section)
+		renderCtx = applyPluginOverrides(ctx, plugins, "section.render", renderCtx)
+		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
 			return rendered, err
 		}
 		rendered++
@@ -195,26 +230,105 @@ func outputHTMLPath(publicDir string, sitePath string) string {
 	return filepath.Join(publicDir, rel, "index.html")
 }
 
-func pageContext(cfg config.Config, siteView map[string]any, page *site.Page) map[string]any {
+func pageContext(baseCtx map[string]any, page *site.Page) map[string]any {
+	ctx := cloneMap(baseCtx)
+	ctx["page"] = page.View()
+	ctx["current_path"] = page.Path
+	ctx["current_url"] = page.Permalink
+	ctx["lang"] = page.Lang
+	return ctx
+}
+
+func sectionContext(baseCtx map[string]any, section *site.Section) map[string]any {
+	ctx := cloneMap(baseCtx)
+	ctx["section"] = section.View()
+	ctx["current_path"] = section.Path
+	ctx["current_url"] = section.Permalink
+	ctx["lang"] = ""
+	return ctx
+}
+
+func baseContext(cfg config.Config, siteView map[string]any, indices map[string]*taxonomy.Index) map[string]any {
+	ctx := map[string]any{
+		"config": configView(cfg),
+		"site":   siteView,
+	}
+	if len(indices) > 0 {
+		ctx["taxonomies"] = taxonomiesView(indices)
+	}
+	return ctx
+}
+
+func configView(cfg config.Config) map[string]any {
+	taxonomies := make([]map[string]any, 0, len(cfg.Taxonomies))
+	for _, taxCfg := range cfg.Taxonomies {
+		taxonomies = append(taxonomies, taxonomy.ConfigView(taxCfg))
+	}
+
 	return map[string]any{
-		"config":       cfg,
-		"site":         siteView,
-		"page":         page.View(),
-		"current_path": page.Path,
-		"current_url":  page.Permalink,
-		"lang":         page.Lang,
+		"base_url":       cfg.BaseURL,
+		"theme":          cfg.Theme,
+		"vault_path":     cfg.VaultPath,
+		"content_dir":    cfg.ContentDir,
+		"public_dir":     cfg.PublicDir,
+		"templates_dir":  cfg.TemplatesDir,
+		"static_dir":     cfg.StaticDir,
+		"themes_dir":     cfg.ThemesDir,
+		"plugins_dir":    cfg.PluginsDir,
+		"sass_dir":       cfg.SassDir,
+		"content_layout": cfg.ContentLayout,
+		"include_drafts": cfg.IncludeDrafts,
+		"compile_sass":   cfg.CompileSass,
+		"tui_prefix":     cfg.TUIPrefix,
+		"tui_prefix_ms":  cfg.TUIPrefixMs,
+		"logging": map[string]any{
+			"level":  cfg.Logging.Level,
+			"format": cfg.Logging.Format,
+		},
+		"taxonomies": taxonomies,
 	}
 }
 
-func sectionContext(cfg config.Config, siteView map[string]any, section *site.Section) map[string]any {
-	return map[string]any{
-		"config":       cfg,
-		"site":         siteView,
-		"section":      section.View(),
-		"current_path": section.Path,
-		"current_url":  section.Permalink,
-		"lang":         "",
+func taxonomiesView(indices map[string]*taxonomy.Index) map[string]any {
+	out := map[string]any{}
+	for name, index := range indices {
+		out[name] = map[string]any{
+			"taxonomy": taxonomy.ConfigView(index.Config),
+			"terms":    taxonomy.TermViews(index.TermsSorted()),
+		}
 	}
+	return out
+}
+
+func buildStatsView(stats Stats, siteIndex *site.Site) map[string]any {
+	return map[string]any{
+		"total":    stats.Total,
+		"rendered": stats.Rendered,
+		"skipped":  stats.Skipped,
+		"errors":   stats.Errors,
+		"pages":    len(siteIndex.Pages),
+		"sections": len(siteIndex.Sections),
+	}
+}
+
+func cloneMap(input map[string]any) map[string]any {
+	out := make(map[string]any, len(input))
+	for key, value := range input {
+		out[key] = value
+	}
+	return out
+}
+
+func applyPluginOverrides(ctx context.Context, plugins *plugin.Manager, event string, payload map[string]any) map[string]any {
+	if plugins == nil {
+		return payload
+	}
+	overrides := plugins.Emit(ctx, event, payload)
+	if overrides == nil {
+		return payload
+	}
+	plugin.Merge(payload, overrides)
+	return payload
 }
 
 func themeTemplatesDir(cfg config.Config) string {
@@ -227,7 +341,7 @@ func themeTemplatesDir(cfg config.Config) string {
 	return path.Join(cfg.ThemesDir, cfg.Theme, "templates")
 }
 
-func renderTaxonomies(renderer *render.Renderer, cfg config.Config, siteView map[string]any, siteIndex *site.Site, indices map[string]*taxonomy.Index) (int, error) {
+func renderTaxonomies(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, indices map[string]*taxonomy.Index, plugins *plugin.Manager) (int, error) {
 	if len(cfg.Taxonomies) == 0 {
 		return 0, nil
 	}
@@ -248,7 +362,8 @@ func renderTaxonomies(renderer *render.Renderer, cfg config.Config, siteView map
 		listTemplate := taxonomyTemplateName(renderer, taxCfg.Name, "list.html", "taxonomy_list.html")
 		listPath := ensureTrailingSlash(path.Join("/", taxCfg.Name))
 		listOutput := outputHTMLPath(cfg.PublicDir, listPath)
-		listCtx := taxonomyListContext(cfg, siteView, taxCfg, terms, listPath)
+		listCtx := taxonomyListContext(baseCtx, cfg, taxCfg, terms, listPath)
+		listCtx = applyPluginOverrides(ctx, plugins, "taxonomy.list.render", listCtx)
 		if err := renderer.RenderToFile(listTemplate, listCtx, listOutput); err != nil {
 			return rendered, err
 		}
@@ -260,12 +375,13 @@ func renderTaxonomies(renderer *render.Renderer, cfg config.Config, siteView map
 			if len(paginators) == 0 {
 				termPath := term.Path
 				outputPath := outputHTMLPath(cfg.PublicDir, termPath)
-				ctx := taxonomyTermContext(cfg, siteView, taxCfg, term, termPath, nil)
-				if err := renderer.RenderToFile(singleTemplate, ctx, outputPath); err != nil {
+				termCtx := taxonomyTermContext(baseCtx, cfg, taxCfg, term, termPath, nil)
+				termCtx = applyPluginOverrides(ctx, plugins, "taxonomy.term.render", termCtx)
+				if err := renderer.RenderToFile(singleTemplate, termCtx, outputPath); err != nil {
 					return rendered, err
 				}
 				rendered++
-				renderedFeeds, err := renderTaxonomyFeeds(renderer, cfg, siteView, taxCfg, term)
+				renderedFeeds, err := renderTaxonomyFeeds(renderer, cfg, baseCtx, taxCfg, term)
 				if err != nil {
 					return rendered, err
 				}
@@ -276,13 +392,14 @@ func renderTaxonomies(renderer *render.Renderer, cfg config.Config, siteView map
 			for i, paginator := range paginators {
 				pagePath := taxonomyPagePath(term.Path, taxCfg.PaginatePath, i)
 				outputPath := outputHTMLPath(cfg.PublicDir, pagePath)
-				ctx := taxonomyTermContext(cfg, siteView, taxCfg, term, pagePath, &paginator)
-				if err := renderer.RenderToFile(singleTemplate, ctx, outputPath); err != nil {
+				termCtx := taxonomyTermContext(baseCtx, cfg, taxCfg, term, pagePath, &paginator)
+				termCtx = applyPluginOverrides(ctx, plugins, "taxonomy.term.render", termCtx)
+				if err := renderer.RenderToFile(singleTemplate, termCtx, outputPath); err != nil {
 					return rendered, err
 				}
 				rendered++
 			}
-			renderedFeeds, err := renderTaxonomyFeeds(renderer, cfg, siteView, taxCfg, term)
+			renderedFeeds, err := renderTaxonomyFeeds(renderer, cfg, baseCtx, taxCfg, term)
 			if err != nil {
 				return rendered, err
 			}
@@ -301,28 +418,23 @@ func taxonomyTemplateName(renderer *render.Renderer, taxonomyName string, specif
 	return fallback
 }
 
-func taxonomyListContext(cfg config.Config, siteView map[string]any, taxCfg config.TaxonomyConfig, terms []*taxonomy.Term, currentPath string) map[string]any {
-	return map[string]any{
-		"config":       cfg,
-		"site":         siteView,
-		"taxonomy":     taxonomy.ConfigView(taxCfg),
-		"terms":        taxonomy.TermViews(terms),
-		"current_path": currentPath,
-		"current_url":  buildURL(cfg.BaseURL, currentPath),
-		"lang":         "",
-	}
+func taxonomyListContext(baseCtx map[string]any, cfg config.Config, taxCfg config.TaxonomyConfig, terms []*taxonomy.Term, currentPath string) map[string]any {
+	ctx := cloneMap(baseCtx)
+	ctx["taxonomy"] = taxonomy.ConfigView(taxCfg)
+	ctx["terms"] = taxonomy.TermViews(terms)
+	ctx["current_path"] = currentPath
+	ctx["current_url"] = buildURL(cfg.BaseURL, currentPath)
+	ctx["lang"] = ""
+	return ctx
 }
 
-func taxonomyTermContext(cfg config.Config, siteView map[string]any, taxCfg config.TaxonomyConfig, term *taxonomy.Term, currentPath string, paginator *taxonomy.Paginator) map[string]any {
-	ctx := map[string]any{
-		"config":       cfg,
-		"site":         siteView,
-		"taxonomy":     taxonomy.ConfigView(taxCfg),
-		"term":         taxonomy.TermView(term),
-		"current_path": currentPath,
-		"current_url":  buildURL(cfg.BaseURL, currentPath),
-		"lang":         "",
-	}
+func taxonomyTermContext(baseCtx map[string]any, cfg config.Config, taxCfg config.TaxonomyConfig, term *taxonomy.Term, currentPath string, paginator *taxonomy.Paginator) map[string]any {
+	ctx := cloneMap(baseCtx)
+	ctx["taxonomy"] = taxonomy.ConfigView(taxCfg)
+	ctx["term"] = taxonomy.TermView(term)
+	ctx["current_path"] = currentPath
+	ctx["current_url"] = buildURL(cfg.BaseURL, currentPath)
+	ctx["lang"] = ""
 	if paginator != nil {
 		ctx["paginator"] = taxonomy.PaginatorView(*paginator)
 	}
@@ -353,7 +465,7 @@ func ensureTrailingSlash(input string) string {
 	return input + "/"
 }
 
-func renderTaxonomyFeeds(renderer *render.Renderer, cfg config.Config, siteView map[string]any, taxCfg config.TaxonomyConfig, term *taxonomy.Term) (int, error) {
+func renderTaxonomyFeeds(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, taxCfg config.TaxonomyConfig, term *taxonomy.Term) (int, error) {
 	if !taxCfg.Feed {
 		return 0, nil
 	}
@@ -376,7 +488,7 @@ func renderTaxonomyFeeds(renderer *render.Renderer, cfg config.Config, siteView 
 		filename := tmpl
 		feedURL := buildURL(cfg.BaseURL, path.Join(term.Path, filename))
 		outputPath := outputFilePath(cfg.PublicDir, term.Path, filename)
-		ctx := feedContext(cfg, siteView, taxCfg, term, feedURL, lastUpdated)
+		ctx := feedContext(baseCtx, cfg, taxCfg, term, feedURL, lastUpdated)
 		if err := renderer.RenderToFile(tmpl, ctx, outputPath); err != nil {
 			return rendered, err
 		}
@@ -399,17 +511,15 @@ func latestUpdated(pages []*site.Page) time.Time {
 	return latest
 }
 
-func feedContext(cfg config.Config, siteView map[string]any, taxCfg config.TaxonomyConfig, term *taxonomy.Term, feedURL string, lastUpdated time.Time) map[string]any {
-	return map[string]any{
-		"config":       cfg,
-		"site":         siteView,
-		"taxonomy":     taxonomy.ConfigView(taxCfg),
-		"term":         taxonomy.TermView(term),
-		"pages":        feedPages(term.Pages),
-		"feed_url":     feedURL,
-		"last_updated": lastUpdated.Format(time.RFC3339),
-		"lang":         "",
-	}
+func feedContext(baseCtx map[string]any, cfg config.Config, taxCfg config.TaxonomyConfig, term *taxonomy.Term, feedURL string, lastUpdated time.Time) map[string]any {
+	ctx := cloneMap(baseCtx)
+	ctx["taxonomy"] = taxonomy.ConfigView(taxCfg)
+	ctx["term"] = taxonomy.TermView(term)
+	ctx["pages"] = feedPages(term.Pages)
+	ctx["feed_url"] = feedURL
+	ctx["last_updated"] = lastUpdated.Format(time.RFC3339)
+	ctx["lang"] = ""
+	return ctx
 }
 
 func feedPages(pages []*site.Page) []map[string]any {
@@ -443,7 +553,7 @@ type SitemapEntry struct {
 
 const maxSitemapEntries = 50000
 
-func renderSitemap(renderer *render.Renderer, cfg config.Config, siteView map[string]any, entries []SitemapEntry) (int, error) {
+func renderSitemap(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, entries []SitemapEntry) (int, error) {
 	if len(entries) == 0 {
 		return 0, nil
 	}
@@ -456,11 +566,8 @@ func renderSitemap(renderer *render.Renderer, cfg config.Config, siteView map[st
 	})
 
 	if len(entries) <= maxSitemapEntries {
-		ctx := map[string]any{
-			"config":  cfg,
-			"site":    siteView,
-			"entries": sitemapEntryViews(entries),
-		}
+		ctx := cloneMap(baseCtx)
+		ctx["entries"] = sitemapEntryViews(entries)
 		outputPath := filepath.Join(cfg.PublicDir, "sitemap.xml")
 		if err := renderer.RenderToFile("sitemap.xml", ctx, outputPath); err != nil {
 			return 0, err
@@ -482,11 +589,8 @@ func renderSitemap(renderer *render.Renderer, cfg config.Config, siteView map[st
 		chunk := entries[i:end]
 		filename := fmt.Sprintf("sitemap_%d.xml", (i/maxSitemapEntries)+1)
 		outputPath := filepath.Join(cfg.PublicDir, filename)
-		ctx := map[string]any{
-			"config":  cfg,
-			"site":    siteView,
-			"entries": sitemapEntryViews(chunk),
-		}
+		ctx := cloneMap(baseCtx)
+		ctx["entries"] = sitemapEntryViews(chunk)
 		if err := renderer.RenderToFile("sitemap.xml", ctx, outputPath); err != nil {
 			return rendered, err
 		}
@@ -500,11 +604,8 @@ func renderSitemap(renderer *render.Renderer, cfg config.Config, siteView map[st
 		})
 	}
 
-	indexCtx := map[string]any{
-		"config":   cfg,
-		"site":     siteView,
-		"sitemaps": sitemaps,
-	}
+	indexCtx := cloneMap(baseCtx)
+	indexCtx["sitemaps"] = sitemaps
 	indexPath := filepath.Join(cfg.PublicDir, "sitemap.xml")
 	if err := renderer.RenderToFile("split_sitemap_index.xml", indexCtx, indexPath); err != nil {
 		return rendered, err
@@ -526,14 +627,11 @@ func sitemapEntryViews(entries []SitemapEntry) []map[string]any {
 	return out
 }
 
-func renderRobots(renderer *render.Renderer, cfg config.Config, siteView map[string]any) (int, error) {
+func renderRobots(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any) (int, error) {
 	if !renderer.HasTemplate("robots.txt") {
 		return 0, nil
 	}
-	ctx := map[string]any{
-		"config": cfg,
-		"site":   siteView,
-	}
+	ctx := cloneMap(baseCtx)
 	outputPath := filepath.Join(cfg.PublicDir, "robots.txt")
 	if err := renderer.RenderToFile("robots.txt", ctx, outputPath); err != nil {
 		return 0, err
@@ -541,15 +639,12 @@ func renderRobots(renderer *render.Renderer, cfg config.Config, siteView map[str
 	return 1, nil
 }
 
-func renderNotFound(renderer *render.Renderer, cfg config.Config, siteView map[string]any) (int, error) {
+func renderNotFound(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any) (int, error) {
 	if !renderer.HasTemplate("404.html") {
 		return 0, nil
 	}
-	ctx := map[string]any{
-		"config": cfg,
-		"site":   siteView,
-		"lang":   "",
-	}
+	ctx := cloneMap(baseCtx)
+	ctx["lang"] = ""
 	outputPath := filepath.Join(cfg.PublicDir, "404.html")
 	if err := renderer.RenderToFile("404.html", ctx, outputPath); err != nil {
 		return 0, err
