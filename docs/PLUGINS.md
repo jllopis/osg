@@ -6,6 +6,12 @@ Permitir ampliar OSG mediante plugins WASM seguros (Wazero), con hooks sobre el 
 ## Directorio
 - `plugins/`: colocar archivos `.wasm`
 
+## Activar / desactivar
+- Activo si existe un `.wasm` dentro de `plugins/`.
+- Desactivar: borrar o mover el `.wasm` fuera de `plugins/`.
+- Cambiar de plugin: reemplazar el archivo y ejecutar `osg build`.
+- El orden de carga es alfabetico por nombre de archivo.
+
 ## ABI
 El plugin debe exportar:
 - `alloc(size: i32) -> i32`
