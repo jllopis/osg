@@ -78,9 +78,10 @@ En `examples/plugins/feed` hay un plugin Rust que:
 Build:
 ```bash
 cd examples/plugins/feed
-rustup target add wasm32-wasi
-cargo build --target wasm32-wasi --release
-cp target/wasm32-wasi/release/osg_feed.wasm feed.wasm
+rustc --print=target-list | grep -q "^wasm32-wasi$" && TARGET="wasm32-wasi" || TARGET="wasm32-wasip1"
+rustup target add "$TARGET"
+cargo build --target "$TARGET" --release
+cp target/$TARGET/release/osg_feed.wasm feed.wasm
 ```
 
 ### Search index
@@ -91,9 +92,10 @@ En `examples/plugins/search` hay un plugin Rust que:
 Build:
 ```bash
 cd examples/plugins/search
-rustup target add wasm32-wasi
-cargo build --target wasm32-wasi --release
-cp target/wasm32-wasi/release/osg_search.wasm search.wasm
+rustc --print=target-list | grep -q "^wasm32-wasi$" && TARGET="wasm32-wasi" || TARGET="wasm32-wasip1"
+rustup target add "$TARGET"
+cargo build --target "$TARGET" --release
+cp target/$TARGET/release/osg_search.wasm search.wasm
 ```
 
 Copia `feed.wasm` / `search.wasm` a `plugins/` para activarlos.

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-rustup target add wasm32-wasi
-cargo build --target wasm32-wasi --release
-cp target/wasm32-wasi/release/osg_search.wasm search.wasm
+TARGET="wasm32-wasi"
+if ! rustc --print=target-list | grep -q "^wasm32-wasi$"; then
+  TARGET="wasm32-wasip1"
+fi
+
+rustup target add "$TARGET"
+cargo build --target "$TARGET" --release
+cp "target/$TARGET/release/osg_search.wasm" search.wasm

@@ -7,9 +7,11 @@ Genera:
 ## Build
 
 ```bash
-rustup target add wasm32-wasi
-cargo build --target wasm32-wasi --release
-cp target/wasm32-wasi/release/osg_search.wasm search.wasm
+# Usa wasm32-wasi si esta disponible, o wasm32-wasip1 en toolchains nuevas.
+rustc --print=target-list | grep -q "^wasm32-wasi$" && TARGET="wasm32-wasi" || TARGET="wasm32-wasip1"
+rustup target add "$TARGET"
+cargo build --target "$TARGET" --release
+cp target/$TARGET/release/osg_search.wasm search.wasm
 ```
 
 Luego copia `search.wasm` a `plugins/`.
