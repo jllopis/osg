@@ -52,6 +52,14 @@ Serve con watch + live reload:
 osg serve --watch --live-reload
 ```
 
+Crear un theme starter:
+
+```bash
+osg theme init my-theme
+```
+
+Luego actualiza `config.yaml` con `theme: my-theme`.
+
 TUI:
 
 ```bash
@@ -83,6 +91,7 @@ Por defecto se lee `config.yaml`. Se puede sobreescribir con `-c` o `--config`.
 Theme:
 - `theme: default` usa el tema base en `themes/default` (templates + CSS).
 - `osg init` crea `themes/default` si no existe.
+- Ver `docs/THEMES.md` para estructura y scaffold.
 
 Sass:
 - `compile_sass: true` para compilar `sass/` a `public/`.

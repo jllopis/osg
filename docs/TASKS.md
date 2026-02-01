@@ -33,6 +33,6 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 6) Live reload + watch (serve + build incremental)
 [done] (Phase 6) Build incremental con cache
 [todo] (Phase 6) Search index opcional
-[todo] (Phase 6) Starter kit de theme (scaffold + docs)
+[done] (Phase 6) Starter kit de theme (scaffold + docs)
 [todo] (Phase 6) SDK/CLI para plugins (plantillas + tests)
 [todo] (Phase 6) Sample site + quickstart

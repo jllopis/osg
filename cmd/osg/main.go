@@ -25,6 +25,7 @@ type CLI struct {
 	Build         struct{} `cmd:"" help:"Build static site (HTML)"`
 	Serve         ServeCmd `cmd:"" help:"Serve public directory"`
 	TUI           struct{} `cmd:"" help:"Launch TUI"`
+	Theme         ThemeCmd `cmd:"" help:"Theme tools"`
 	Version       struct{} `cmd:"" help:"Show version information"`
 }
 
@@ -33,6 +34,14 @@ type ServeCmd struct {
 	Watch      *bool  `help:"Watch files and rebuild"`
 	LiveReload *bool  `help:"Enable live reload (requires watch)"`
 	DebounceMs *int   `help:"Debounce watch events in ms"`
+}
+
+type ThemeCmd struct {
+	Init ThemeInitCmd `cmd:"" help:"Create a new theme scaffold"`
+}
+
+type ThemeInitCmd struct {
+	Name string `arg:"" help:"Theme name"`
 }
 
 func main() {
@@ -84,6 +93,8 @@ func main() {
 		runErr = app.RunServe(context.Background(), opts)
 	case "tui":
 		runErr = app.RunTUI(context.Background(), opts)
+	case "theme init":
+		runErr = app.RunThemeInit(context.Background(), opts, cli.Theme.Init.Name)
 	case "version":
 		printVersion()
 	default:

@@ -40,6 +40,6 @@
 - [done] live reload + watch (serve + build incremental)
 - [done] build incremental con cache de contenido
 - [todo] search index opcional (lunr/algolia export)
-- [todo] starter kit de theme (scaffold + docs)
+- [done] starter kit de theme (scaffold + docs)
 - [todo] SDK/CLI para plugins (plantillas + tests)
 - [todo] sample site + quickstart mejorado
