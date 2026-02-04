@@ -36,7 +36,8 @@ Componentes principales:
 ## APIs / Interfaces
 CLI:
 - osg init
-- osg update-content (default)
+- osg tui (default)
+- osg update-content
 - osg build
 - osg serve
 - osg tui

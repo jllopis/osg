@@ -81,8 +81,8 @@ func main() {
 	}
 
 	args := os.Args[1:]
-	if shouldDefaultToUpdate(args) {
-		args = append([]string{"update-content"}, args...)
+	if shouldDefaultToTUI(args) {
+		args = append([]string{"tui"}, args...)
 	}
 
 	ctx, err := parser.Parse(args)
@@ -133,7 +133,7 @@ func main() {
 	case strings.HasPrefix(command, "plugin init"):
 		runErr = app.RunPluginInit(context.Background(), opts, cli.Plugin.Init.Name, cli.Plugin.Init.Dir)
 	case command == "version":
-		printVersion()
+		fmt.Println(app.VersionInfo())
 	default:
 		runErr = fmt.Errorf("unknown command: %s", command)
 	}
@@ -144,17 +144,7 @@ func main() {
 	}
 }
 
-var (
-	version = "dev"
-	commit  = "none"
-	date    = "unknown"
-)
-
-func printVersion() {
-	fmt.Printf("version: %s\ncommit:  %s\ndate:    %s\n", version, commit, date)
-}
-
-func shouldDefaultToUpdate(args []string) bool {
+func shouldDefaultToTUI(args []string) bool {
 	if hasHelpFlag(args) {
 		return false
 	}

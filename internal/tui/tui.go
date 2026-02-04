@@ -28,9 +28,15 @@ type Actions struct {
 	Update        func(context.Context) error
 	Build         func(context.Context) error
 	Serve         func(context.Context) error
+	Doctor        func(context.Context) error
+	ThemeInit     func(context.Context, string) error
 	PluginEnable  func(context.Context, string) error
 	PluginDisable func(context.Context, string) error
 	PluginToggle  func(context.Context, string) error
+	PluginInstall func(context.Context, string, string) error
+	PluginList    func(context.Context) error
+	PluginInit    func(context.Context, string, string) error
+	Version       func() string
 }
 
 type Options struct {
@@ -140,6 +146,11 @@ type pluginActionFinishedMsg struct {
 	err     error
 }
 
+type simpleActionFinishedMsg struct {
+	label string
+	err   error
+}
+
 type logLineMsg struct {
 	line string
 }
@@ -184,7 +195,7 @@ func New(actions Actions, options Options, sink *LogSink, history *History) Mode
 
 	input := textinput.New()
 	input.Prompt = "> "
-	input.Placeholder = "init | update | build | serve | stop | plugin ... | help"
+	input.Placeholder = "init | update | build | serve | stop | doctor | theme ... | plugin ... | help"
 	input.Focus()
 
 	spin := spinner.New()
@@ -292,6 +303,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.finishTask(msg)
 	case pluginActionFinishedMsg:
 		return m.finishPluginAction(msg)
+	case simpleActionFinishedMsg:
+		return m.finishSimpleAction(msg)
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
@@ -490,6 +503,17 @@ func (m Model) finishPluginAction(msg pluginActionFinishedMsg) (tea.Model, tea.C
 	return m, nil
 }
 
+func (m Model) finishSimpleAction(msg simpleActionFinishedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.appendMessage("ERROR", fmt.Sprintf("%s failed: %v", msg.label, msg.err))
+		m.lastAction = msg.label + " failed"
+		return m, nil
+	}
+	m.appendMessage("INFO", fmt.Sprintf("%s completed", msg.label))
+	m.lastAction = msg.label + " completed"
+	return m, nil
+}
+
 func (m Model) handlePrefixKey(key string) (tea.Model, tea.Cmd, bool) {
 	switch strings.ToLower(key) {
 	case "i":
@@ -550,10 +574,16 @@ func (m Model) handleCommand() (tea.Model, tea.Cmd) {
 		}
 		return m.toggleServe()
 	case "help", "h":
-		m.appendMessage("INFO", "Commands: init, update, build, serve, stop, plugin enable/disable/toggle/list <name>, help, quit")
+		m.appendMessage("INFO", "Commands: init, update, build, serve, stop, doctor, theme init <name>, plugin enable/disable/toggle/list/install/init, version, help, quit")
 		return m, nil
+	case "doctor":
+		return m.runSimpleAction("Doctor", m.actions.Doctor)
+	case "theme":
+		return m.handleThemeCommand(fields)
 	case "plugin":
-		return m.handlePluginCommand(normalized)
+		return m.handlePluginCommand(fields)
+	case "version":
+		return m.handleVersionCommand()
 	case "quit", "exit":
 		m.appendHistory("EXIT", "User quit via command")
 		return m, tea.Quit
@@ -563,16 +593,18 @@ func (m Model) handleCommand() (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m Model) handlePluginCommand(raw string) (tea.Model, tea.Cmd) {
-	fields := strings.Fields(raw)
+func (m Model) handlePluginCommand(fields []string) (tea.Model, tea.Cmd) {
 	if len(fields) < 2 {
-		m.appendMessage("ERROR", "Usage: plugin <enable|disable|toggle|list> [name]")
+		m.appendMessage("ERROR", "Usage: plugin <enable|disable|toggle|list|install|init> [args]")
 		return m, nil
 	}
 
 	sub := strings.ToLower(fields[1])
 	switch sub {
 	case "list":
+		if m.actions.PluginList != nil {
+			return m.runSimpleAction("Plugin list", m.actions.PluginList)
+		}
 		return m.renderPluginList()
 	case "enable", "disable", "toggle":
 		if len(fields) < 3 {
@@ -585,8 +617,38 @@ func (m Model) handlePluginCommand(raw string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m.runPluginAction(sub, name)
+	case "install":
+		if len(fields) < 3 {
+			m.appendMessage("ERROR", "Usage: plugin install <path> [name]")
+			return m, nil
+		}
+		if m.actions.PluginInstall == nil {
+			m.appendMessage("ERROR", "Plugin install not available")
+			return m, nil
+		}
+		path := fields[2]
+		name := ""
+		if len(fields) >= 4 {
+			name = fields[3]
+		}
+		return m.runPluginInstall(path, name)
+	case "init":
+		if len(fields) < 3 {
+			m.appendMessage("ERROR", "Usage: plugin init <name> [dir]")
+			return m, nil
+		}
+		if m.actions.PluginInit == nil {
+			m.appendMessage("ERROR", "Plugin init not available")
+			return m, nil
+		}
+		name := fields[2]
+		dir := ""
+		if len(fields) >= 4 {
+			dir = fields[3]
+		}
+		return m.runPluginInit(name, dir)
 	default:
-		m.appendMessage("ERROR", "Usage: plugin <enable|disable|toggle|list> [name]")
+		m.appendMessage("ERROR", "Usage: plugin <enable|disable|toggle|list|install|init> [args]")
 		return m, nil
 	}
 }
@@ -629,6 +691,18 @@ func (m Model) runPluginAction(action string, name string) (tea.Model, tea.Cmd) 
 	}
 }
 
+func (m Model) runPluginInstall(path string, name string) (tea.Model, tea.Cmd) {
+	m.appendMessage("PROGRESS", fmt.Sprintf("Installing plugin from %s...", path))
+	m.lastAction = "Plugin install"
+	return m, runPluginInstallCmd(context.Background(), path, name, m.actions.PluginInstall)
+}
+
+func (m Model) runPluginInit(name string, dir string) (tea.Model, tea.Cmd) {
+	m.appendMessage("PROGRESS", fmt.Sprintf("Scaffolding plugin %s...", name))
+	m.lastAction = "Plugin init"
+	return m, runPluginInitCmd(context.Background(), name, dir, m.actions.PluginInit)
+}
+
 func (m Model) renderPluginList() (tea.Model, tea.Cmd) {
 	if len(m.options.Plugins) == 0 && len(m.enabledPlugins) == 0 {
 		m.appendMessage("INFO", "No plugins installed")
@@ -652,6 +726,44 @@ func (m Model) renderPluginList() (tea.Model, tea.Cmd) {
 		m.appendMessage("WARN", fmt.Sprintf("Plugin %s: missing (enabled but not installed)", name))
 	}
 
+	return m, nil
+}
+
+func (m Model) runSimpleAction(label string, action func(context.Context) error) (tea.Model, tea.Cmd) {
+	if action == nil {
+		m.appendMessage("ERROR", fmt.Sprintf("%s not available", label))
+		return m, nil
+	}
+	m.appendMessage("PROGRESS", fmt.Sprintf("%s started", label))
+	m.lastAction = label + " started"
+	return m, runSimpleActionCmd(context.Background(), label, action)
+}
+
+func (m Model) handleThemeCommand(fields []string) (tea.Model, tea.Cmd) {
+	if len(fields) < 2 || strings.ToLower(fields[1]) != "init" {
+		m.appendMessage("ERROR", "Usage: theme init <name>")
+		return m, nil
+	}
+	if len(fields) < 3 {
+		m.appendMessage("ERROR", "Usage: theme init <name>")
+		return m, nil
+	}
+	if m.actions.ThemeInit == nil {
+		m.appendMessage("ERROR", "Theme init not available")
+		return m, nil
+	}
+	name := fields[2]
+	m.appendMessage("PROGRESS", fmt.Sprintf("Scaffolding theme %s...", name))
+	m.lastAction = "Theme init"
+	return m, runThemeInitCmd(context.Background(), name, m.actions.ThemeInit)
+}
+
+func (m Model) handleVersionCommand() (tea.Model, tea.Cmd) {
+	if m.actions.Version == nil {
+		m.appendMessage("ERROR", "Version not available")
+		return m, nil
+	}
+	m.appendMessage("INFO", m.actions.Version())
 	return m, nil
 }
 
@@ -810,6 +922,46 @@ func runPluginActionCmd(ctx context.Context, action string, name string, enabled
 		}
 		err := handler(ctx, name)
 		return pluginActionFinishedMsg{action: action, name: name, enabled: enabled, err: err}
+	}
+}
+
+func runSimpleActionCmd(ctx context.Context, label string, action func(context.Context) error) tea.Cmd {
+	return func() tea.Msg {
+		if action == nil {
+			return simpleActionFinishedMsg{label: label, err: fmt.Errorf("action not available")}
+		}
+		err := action(ctx)
+		return simpleActionFinishedMsg{label: label, err: err}
+	}
+}
+
+func runThemeInitCmd(ctx context.Context, name string, action func(context.Context, string) error) tea.Cmd {
+	return func() tea.Msg {
+		if action == nil {
+			return simpleActionFinishedMsg{label: "Theme init", err: fmt.Errorf("action not available")}
+		}
+		err := action(ctx, name)
+		return simpleActionFinishedMsg{label: "Theme init", err: err}
+	}
+}
+
+func runPluginInstallCmd(ctx context.Context, path string, name string, action func(context.Context, string, string) error) tea.Cmd {
+	return func() tea.Msg {
+		if action == nil {
+			return simpleActionFinishedMsg{label: "Plugin install", err: fmt.Errorf("action not available")}
+		}
+		err := action(ctx, path, name)
+		return simpleActionFinishedMsg{label: "Plugin install", err: err}
+	}
+}
+
+func runPluginInitCmd(ctx context.Context, name string, dir string, action func(context.Context, string, string) error) tea.Cmd {
+	return func() tea.Msg {
+		if action == nil {
+			return simpleActionFinishedMsg{label: "Plugin init", err: fmt.Errorf("action not available")}
+		}
+		err := action(ctx, name, dir)
+		return simpleActionFinishedMsg{label: "Plugin init", err: err}
 	}
 }
 

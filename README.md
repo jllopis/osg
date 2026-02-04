@@ -10,28 +10,34 @@ Inicializa la estructura y el archivo de configuracion:
 osg init
 ```
 
-Sincroniza contenido desde el vault (comando por defecto):
+Lanza la TUI (comando por defecto):
+
+```bash
+osg
+```
+
+TUI con vault preconfigurado:
 
 ```bash
 osg --vault-path /ruta/al/vault
 ```
 
+Sincroniza contenido desde el vault:
+
+```bash
+osg update-content --vault-path /ruta/al/vault
+```
+
 Con include-drafts:
 
 ```bash
-osg --vault-path /ruta/al/vault --include-drafts
+osg update-content --vault-path /ruta/al/vault --include-drafts
 ```
 
 Dry run:
 
 ```bash
-osg --vault-path /ruta/al/vault --dry-run
-```
-
-Comando explicito:
-
-```bash
-osg update-content --vault-path /ruta/al/vault
+osg update-content --vault-path /ruta/al/vault --dry-run
 ```
 
 Build HTML:
@@ -127,6 +133,6 @@ Plugins WASM:
 - Search: `examples/plugins/search` genera `search.json` + `search/index.html`.
 
 ## Notas
-- `update-content` es el comando por defecto.
+- `tui` es el comando por defecto.
 - `build` genera HTML en `public/`.
 - Ver `docs/QUICKSTART.md` y `examples/sample-site/` para empezar rapido.

@@ -59,6 +59,12 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		Serve: func(actionCtx context.Context) error {
 			return RunServe(actionCtx, withLog())
 		},
+		Doctor: func(actionCtx context.Context) error {
+			return RunDoctor(actionCtx, withLog())
+		},
+		ThemeInit: func(actionCtx context.Context, name string) error {
+			return RunThemeInit(actionCtx, withLog(), name)
+		},
 		PluginEnable: func(actionCtx context.Context, name string) error {
 			return RunPluginEnable(actionCtx, withLog(), name)
 		},
@@ -67,6 +73,18 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		},
 		PluginToggle: func(actionCtx context.Context, name string) error {
 			return RunPluginToggle(actionCtx, withLog(), name)
+		},
+		PluginInstall: func(actionCtx context.Context, path string, name string) error {
+			return RunPluginInstall(actionCtx, withLog(), path, name)
+		},
+		PluginList: func(actionCtx context.Context) error {
+			return RunPluginList(actionCtx, withLog(), logSink)
+		},
+		PluginInit: func(actionCtx context.Context, name string, dir string) error {
+			return RunPluginInit(actionCtx, withLog(), name, dir)
+		},
+		Version: func() string {
+			return VersionInfo()
 		},
 	}
 
