@@ -23,6 +23,12 @@ const version = "v0.1.0"
 const maxMessages = 200
 const defaultPrefixTimeout = 600 * time.Millisecond
 
+var (
+	colorPrimary = lipgloss.Color("#8ECDF2")
+	colorAccent  = lipgloss.Color("#F6A000")
+	colorMuted   = lipgloss.Color("#7A7A7A")
+)
+
 type Actions struct {
 	Init          func(context.Context) error
 	Update        func(context.Context) error
@@ -200,11 +206,11 @@ func New(actions Actions, options Options, sink *LogSink, history *History) Mode
 
 	spin := spinner.New()
 	spin.Spinner = spinner.Line
-	spin.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#F6A000"))
+	spin.Style = lipgloss.NewStyle().Foreground(colorAccent)
 
 	statusSpin := spinner.New()
 	statusSpin.Spinner = spinner.MiniDot
-	statusSpin.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("#8ECDF2"))
+	statusSpin.Style = lipgloss.NewStyle().Foreground(colorPrimary)
 
 	bar := progress.New(progress.WithDefaultGradient())
 	prefixKey := normalizePrefix(options.PrefixKey)
@@ -1031,7 +1037,7 @@ func renderHeader(width int) string {
 	}
 
 	bannerStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#8ECDF2")).
+		Foreground(colorPrimary).
 		Padding(0, 1)
 
 	lines := []string{}
@@ -1049,7 +1055,8 @@ func renderLeftPanel(steps []Step, width int, height int, spin string, now time.
 		Width(width).
 		Height(height)
 
-	lines := []string{panelTitle("Workflow")}
+	hint := lipgloss.NewStyle().Foreground(colorMuted).Render("Use prefix for quick actions.")
+	lines := []string{panelTitle("Workflow"), hint}
 	for _, step := range steps {
 		lines = append(lines, formatStep(step, spin, now))
 	}
@@ -1084,7 +1091,7 @@ func renderCenterPanel(messages []Message, width int, height int, input string) 
 		lines = append(lines, formatMessage(msg))
 	}
 	lines = append(lines, "")
-	lines = append(lines, "Prompt (type help):")
+	lines = append(lines, lipgloss.NewStyle().Foreground(colorMuted).Render("Prompt (type help):"))
 	lines = append(lines, input)
 
 	return panelStyle.Render(strings.Join(lines, "\n"))
@@ -1162,7 +1169,7 @@ func renderStatusBar(width int, lastAction string, serveRunning bool, progressVi
 
 func panelTitle(title string) string {
 	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#8ECDF2")).
+		Foreground(colorPrimary).
 		Bold(true).
 		Render(title)
 }
@@ -1193,11 +1200,11 @@ func stepIcon(status StepStatus, spin string) (string, lipgloss.Style) {
 		if spin != "" {
 			icon = spin
 		}
-		return icon, lipgloss.NewStyle().Foreground(lipgloss.Color("#F6A000"))
+		return icon, lipgloss.NewStyle().Foreground(colorAccent)
 	case StepDisabled:
-		return "[-]", lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
+		return "[-]", lipgloss.NewStyle().Foreground(colorMuted)
 	default:
-		return "[ ]", lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+		return "[ ]", lipgloss.NewStyle().Foreground(colorMuted)
 	}
 }
 
@@ -1214,17 +1221,17 @@ func formatMessage(msg Message) string {
 	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#F5D76E"))
 	switch msg.Label {
 	case "SYS":
-		labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#7FB2FF"))
+		labelStyle = lipgloss.NewStyle().Foreground(colorPrimary)
 	case "PROGRESS":
-		labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F6A000"))
+		labelStyle = lipgloss.NewStyle().Foreground(colorAccent)
 	case "ERROR":
 		labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF6B6B"))
 	case "WARN", "WARNING":
 		labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FFD166"))
 	case "INFO":
-		labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#9BDCF9"))
+		labelStyle = lipgloss.NewStyle().Foreground(colorPrimary)
 	case "DEBUG":
-		labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#A0A0A0"))
+		labelStyle = lipgloss.NewStyle().Foreground(colorMuted)
 	}
 	return fmt.Sprintf("%s %s", labelStyle.Render(label), msg.Text)
 }
