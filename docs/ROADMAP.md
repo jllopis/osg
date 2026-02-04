@@ -41,5 +41,11 @@
 - [done] build incremental con cache de contenido
 - [done] search index opcional (via plugin)
 - [done] starter kit de theme (scaffold + docs)
-- [todo] SDK/CLI para plugins (plantillas + tests)
-- [todo] sample site + quickstart mejorado
+- [done] SDK/CLI para plugins (plantillas + comandos)
+- [done] tests del SDK/CLI de plugins
+- [done] sample site + quickstart mejorado
+
+## Next (recomendado)
+- [done] validacion de config (paths invalidos, taxonomias mal definidas, base_url vacia en prod)
+- [done] limpieza de public/ para evitar archivos stale en builds incrementales
+- [done] comando de estado/diagnostico (`osg doctor` o `osg status`)

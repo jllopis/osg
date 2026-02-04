@@ -26,6 +26,7 @@ type Config struct {
 	StaticDir        string           `koanf:"static_dir" yaml:"static_dir"`
 	ThemesDir        string           `koanf:"themes_dir" yaml:"themes_dir"`
 	PluginsDir       string           `koanf:"plugins_dir" yaml:"plugins_dir"`
+	PluginsEnabled   []string         `koanf:"plugins_enabled" yaml:"plugins_enabled"`
 	SassDir          string           `koanf:"sass_dir" yaml:"sass_dir"`
 	ContentLayout    string           `koanf:"content_layout" yaml:"content_layout"`
 	IncludeDrafts    bool             `koanf:"include_drafts" yaml:"include_drafts"`
@@ -37,6 +38,7 @@ type Config struct {
 	ServeDebounce    int              `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
 	BuildIncremental bool             `koanf:"build_incremental" yaml:"build_incremental"`
 	BuildCacheDir    string           `koanf:"build_cache_dir" yaml:"build_cache_dir"`
+	CleanPublic      bool             `koanf:"clean_public" yaml:"clean_public"`
 	Logging          LoggingConfig    `koanf:"logging" yaml:"logging"`
 	Taxonomies       []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
 }
@@ -59,6 +61,7 @@ func Default() Config {
 		StaticDir:        "static",
 		ThemesDir:        "themes",
 		PluginsDir:       "plugins",
+		PluginsEnabled:   []string{},
 		SassDir:          "sass",
 		ContentLayout:    "{date}/{slug}",
 		IncludeDrafts:    false,
@@ -70,6 +73,7 @@ func Default() Config {
 		ServeDebounce:    300,
 		BuildIncremental: true,
 		BuildCacheDir:    ".osg/cache",
+		CleanPublic:      true,
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
@@ -126,6 +130,7 @@ templates_dir: templates
 static_dir: static
 themes_dir: themes
 plugins_dir: plugins
+plugins_enabled: []
 sass_dir: sass
 content_layout: "{date}/{slug}"
 include_drafts: false
@@ -137,6 +142,7 @@ serve_live_reload: true
 serve_debounce_ms: 300
 build_incremental: true
 build_cache_dir: .osg/cache
+clean_public: true
 logging:
   level: info
   format: json

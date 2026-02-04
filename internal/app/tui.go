@@ -59,18 +59,28 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		Serve: func(actionCtx context.Context) error {
 			return RunServe(actionCtx, withLog())
 		},
+		PluginEnable: func(actionCtx context.Context, name string) error {
+			return RunPluginEnable(actionCtx, withLog(), name)
+		},
+		PluginDisable: func(actionCtx context.Context, name string) error {
+			return RunPluginDisable(actionCtx, withLog(), name)
+		},
+		PluginToggle: func(actionCtx context.Context, name string) error {
+			return RunPluginToggle(actionCtx, withLog(), name)
+		},
 	}
 
 	options := tui.Options{
-		ConfigPath: opts.ConfigPath,
-		VaultPath:  cfg.VaultPath,
-		ContentDir: cfg.ContentDir,
-		PublicDir:  cfg.PublicDir,
-		ServeAddr:  opts.ServeAddr,
-		LogPath:    historyPath(history),
-		PrefixKey:  cfg.TUIPrefix,
-		PrefixMs:   cfg.TUIPrefixMs,
-		Plugins:    listPlugins(cfg.PluginsDir),
+		ConfigPath:     opts.ConfigPath,
+		VaultPath:      cfg.VaultPath,
+		ContentDir:     cfg.ContentDir,
+		PublicDir:      cfg.PublicDir,
+		ServeAddr:      opts.ServeAddr,
+		LogPath:        historyPath(history),
+		PrefixKey:      cfg.TUIPrefix,
+		PrefixMs:       cfg.TUIPrefixMs,
+		Plugins:        listPlugins(cfg.PluginsDir),
+		EnabledPlugins: cfg.PluginsEnabled,
 	}
 
 	return tui.Run(ctx, actions, options, logSink, history)

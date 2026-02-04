@@ -6,11 +6,30 @@ Permitir ampliar OSG mediante plugins WASM seguros (Wazero), con hooks sobre el 
 ## Directorio
 - `plugins/`: colocar archivos `.wasm`
 
-## Activar / desactivar
-- Activo si existe un `.wasm` dentro de `plugins/`.
-- Desactivar: borrar o mover el `.wasm` fuera de `plugins/`.
-- Cambiar de plugin: reemplazar el archivo y ejecutar `osg build`.
+## Instalar vs activar
+- **Instalar**: copiar el `.wasm` en `plugins/` (o usar `osg plugin install <path>`).
+- **Activar**: añadir el nombre del plugin (sin `.wasm`) en `plugins_enabled` del config, o ejecutar `osg plugin enable <name>`.
+- **Desactivar**: `osg plugin disable <name>` o eliminarlo de `plugins_enabled`.
 - El orden de carga es alfabetico por nombre de archivo.
+- Si un plugin esta activado pero el `.wasm` no existe, se ignora y se registra un warning.
+
+### CLI
+```bash
+osg plugin install ./dist/my_plugin.wasm --name my-plugin
+osg plugin enable my-plugin
+osg plugin disable my-plugin
+osg plugin list
+osg plugin init my-plugin --dir plugins_src
+```
+
+### TUI
+En el prompt de la TUI:
+```
+plugin enable my-plugin
+plugin disable my-plugin
+plugin toggle my-plugin
+plugin list
+```
 
 ## ABI
 El plugin debe exportar:

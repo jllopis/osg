@@ -38,7 +38,7 @@ type Response struct {
 	Payload map[string]any `json:"payload"`
 }
 
-func Load(ctx context.Context, dir string, logger *slog.Logger) (*Manager, error) {
+func Load(ctx context.Context, dir string, enabled []string, logger *slog.Logger) (*Manager, error) {
 	if strings.TrimSpace(dir) == "" {
 		return &Manager{logger: logger}, nil
 	}
@@ -66,6 +66,19 @@ func Load(ctx context.Context, dir string, logger *slog.Logger) (*Manager, error
 		return nil, fmt.Errorf("read plugins dir: %w", err)
 	}
 
+	enabledSet := map[string]bool{}
+	for _, name := range enabled {
+		name = normalizePluginName(name)
+		if name == "" {
+			continue
+		}
+		enabledSet[name] = true
+	}
+	if len(enabledSet) == 0 {
+		return manager, nil
+	}
+
+	available := map[string]bool{}
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -75,6 +88,11 @@ func Load(ctx context.Context, dir string, logger *slog.Logger) (*Manager, error
 		}
 
 		path := filepath.Join(dir, entry.Name())
+		name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
+		available[name] = true
+		if !enabledSet[name] {
+			continue
+		}
 		plugin, err := loadPlugin(ctx, runtime, path)
 		if err != nil {
 			if logger != nil {
@@ -85,7 +103,26 @@ func Load(ctx context.Context, dir string, logger *slog.Logger) (*Manager, error
 		manager.plugins = append(manager.plugins, plugin)
 	}
 
+	if logger != nil {
+		for name := range enabledSet {
+			if !available[name] {
+				logger.Warn("plugin enabled but not installed", "plugin", name)
+			}
+		}
+	}
+
 	return manager, nil
+}
+
+func normalizePluginName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	if strings.HasSuffix(strings.ToLower(name), ".wasm") {
+		name = strings.TrimSuffix(name, filepath.Ext(name))
+	}
+	return strings.TrimSpace(name)
 }
 
 func (m *Manager) Close(ctx context.Context) error {

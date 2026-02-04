@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -47,14 +48,6 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 		return nil
 	}
 
-	if err := os.MkdirAll(cfg.PublicDir, 0o755); err != nil {
-		return fmt.Errorf("create public dir: %w", err)
-	}
-
-	if err := assets.Prepare(cfg, logger); err != nil {
-		return err
-	}
-
 	plan, cacheToSave := buildPlanFromCache(cfg, files, logger)
 	if plan.incremental {
 		if plan.full {
@@ -62,6 +55,28 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 		} else {
 			logger.Info("build incremental", "mode", "partial", "changed", len(plan.changedFiles), "removed", plan.removed)
 		}
+	}
+
+	if cfg.CleanPublic && (plan.full || plan.removed > 0) {
+		if plan.full {
+			if err := os.RemoveAll(cfg.PublicDir); err != nil && !os.IsNotExist(err) {
+				return fmt.Errorf("clean public dir: %w", err)
+			}
+			logger.Info("public cleaned", "dir", cfg.PublicDir)
+		} else if plan.removed > 0 {
+			removedCount := cleanupRemovedOutputs(cfg.PublicDir, plan.removedFiles, plan.prevOutputs, logger)
+			if removedCount > 0 {
+				logger.Info("public cleaned (partial)", "removed", removedCount)
+			}
+		}
+	}
+
+	if err := os.MkdirAll(cfg.PublicDir, 0o755); err != nil {
+		return fmt.Errorf("create public dir: %w", err)
+	}
+
+	if err := assets.Prepare(cfg, logger); err != nil {
+		return err
 	}
 
 	siteIndex := site.New()
@@ -93,7 +108,7 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 	siteView := siteIndex.View()
 	baseCtx := baseContext(cfg, siteView, indices)
 
-	plugins, err := plugin.Load(ctx, cfg.PluginsDir, logger)
+	plugins, err := plugin.Load(ctx, cfg.PluginsDir, cfg.PluginsEnabled, logger)
 	if err != nil {
 		logger.Warn("plugins disabled", "error", err)
 		plugins = nil
@@ -192,12 +207,71 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 	}
 
 	if cacheToSave != nil && stats.Errors == 0 {
+		cacheToSave.Outputs = buildOutputsIndex(siteIndex, cfg.PublicDir)
 		if err := saveBuildCache(buildCachePath(cfg), cacheToSave); err != nil {
 			logger.Warn("cache write failed", "error", err)
 		}
 	}
 
 	return nil
+}
+
+func buildOutputsIndex(siteIndex *site.Site, publicDir string) map[string]string {
+	if siteIndex == nil {
+		return nil
+	}
+	outputs := map[string]string{}
+	for _, page := range siteIndex.Pages {
+		if page.SourcePath == "" {
+			continue
+		}
+		outputs[page.SourcePath] = outputHTMLPath(publicDir, page.Path)
+	}
+	for _, section := range siteIndex.Sections {
+		if section == nil || section.SourcePath == "" {
+			continue
+		}
+		outputs[section.SourcePath] = outputHTMLPath(publicDir, section.Path)
+	}
+	return outputs
+}
+
+func cleanupRemovedOutputs(publicDir string, removed []string, outputs map[string]string, logger *slog.Logger) int {
+	if len(removed) == 0 || len(outputs) == 0 {
+		return 0
+	}
+	count := 0
+	for _, source := range removed {
+		output, ok := outputs[source]
+		if !ok || output == "" {
+			continue
+		}
+		if !strings.HasPrefix(filepath.Clean(output), filepath.Clean(publicDir)) {
+			if logger != nil {
+				logger.Warn("skip output cleanup outside public dir", "output", output)
+			}
+			continue
+		}
+		if err := os.Remove(output); err == nil {
+			count++
+			removeEmptyParents(publicDir, output)
+		}
+	}
+	return count
+}
+
+func removeEmptyParents(root string, leaf string) {
+	root = filepath.Clean(root)
+	dir := filepath.Dir(leaf)
+	for {
+		if filepath.Clean(dir) == root || dir == "." || dir == string(filepath.Separator) {
+			return
+		}
+		if err := os.Remove(dir); err != nil {
+			return
+		}
+		dir = filepath.Dir(dir)
+	}
 }
 
 func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
@@ -308,6 +382,7 @@ func configView(cfg config.Config) map[string]any {
 		"static_dir":        cfg.StaticDir,
 		"themes_dir":        cfg.ThemesDir,
 		"plugins_dir":       cfg.PluginsDir,
+		"plugins_enabled":   cfg.PluginsEnabled,
 		"sass_dir":          cfg.SassDir,
 		"content_layout":    cfg.ContentLayout,
 		"include_drafts":    cfg.IncludeDrafts,

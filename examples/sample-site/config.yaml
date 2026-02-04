@@ -4,8 +4,8 @@ theme: default
 content_dir: content
 public_dir: public
 templates_dir: templates
-static_dir: static
-themes_dir: themes
+static_dir: ../../static
+themes_dir: ../../themes
 plugins_dir: plugins
 plugins_enabled: []
 sass_dir: sass

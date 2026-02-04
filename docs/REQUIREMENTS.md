@@ -11,7 +11,7 @@ In-scope (actual):
 - Normalizacion de frontmatter de salida
 - Copia a `content/{YYYY/MM/DD}/{slug}/index.md`
 - Build HTML con templates y theme
-- Taxonomias, paginacion, feeds, sitemap, robots y 404
+- Taxonomias, paginacion, feeds por taxonomia, sitemap, robots y 404
 - Assets: static copy + sass (opcional)
 - Plugins WASM (hooks en render)
 - TUI para ejecutar comandos y ver logs
@@ -56,12 +56,14 @@ US06 - TUI operativa
 - Write a `content/{YYYY/MM/DD}/{slug}/index.md`.
 - Build HTML con templates y theme (prioridad: user > theme > builtins).
 - Render taxonomias + paginacion.
-- Generar feeds (atom/rss), sitemap, robots, 404 si hay templates.
+- Generar feeds de taxonomia (atom/rss), sitemap, robots, 404 si hay templates.
 - Copiar static y assets del theme.
 - Compilar sass si `compile_sass=true` y `sass` disponible.
+- `clean_public` permite limpiar `public/` en rebuilds completos o cuando se eliminan contenidos.
 - `osg serve` sirve `public/`.
 - TUI: acciones rapidas + prompt + logs.
-- Plugins WASM opcionales con hooks definidos.
+- Plugins WASM opcionales con hooks definidos (activados via `plugins_enabled`).
+- `osg doctor` valida configuracion y entorno.
 
 ## Non-functional requirements
 - Go 1.25.x.

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -23,22 +24,26 @@ const maxMessages = 200
 const defaultPrefixTimeout = 600 * time.Millisecond
 
 type Actions struct {
-	Init   func(context.Context) error
-	Update func(context.Context) error
-	Build  func(context.Context) error
-	Serve  func(context.Context) error
+	Init          func(context.Context) error
+	Update        func(context.Context) error
+	Build         func(context.Context) error
+	Serve         func(context.Context) error
+	PluginEnable  func(context.Context, string) error
+	PluginDisable func(context.Context, string) error
+	PluginToggle  func(context.Context, string) error
 }
 
 type Options struct {
-	ConfigPath string
-	VaultPath  string
-	ContentDir string
-	PublicDir  string
-	ServeAddr  string
-	LogPath    string
-	PrefixKey  string
-	PrefixMs   int
-	Plugins    []string
+	ConfigPath     string
+	VaultPath      string
+	ContentDir     string
+	PublicDir      string
+	ServeAddr      string
+	LogPath        string
+	PrefixKey      string
+	PrefixMs       int
+	Plugins        []string
+	EnabledPlugins []string
 }
 
 type LogSink struct {
@@ -128,6 +133,13 @@ type taskFinishedMsg struct {
 	err  error
 }
 
+type pluginActionFinishedMsg struct {
+	action  string
+	name    string
+	enabled bool
+	err     error
+}
+
 type logLineMsg struct {
 	line string
 }
@@ -139,27 +151,28 @@ type prefixTimeoutMsg struct {
 }
 
 type Model struct {
-	width        int
-	height       int
-	showHeader   bool
-	showRight    bool
-	serveRunning bool
-	serveCancel  context.CancelFunc
-	lastAction   string
-	steps        []Step
-	messages     []Message
-	input        textinput.Model
-	spinner      spinner.Model
-	statusSpin   spinner.Model
-	progress     progress.Model
-	actions      Actions
-	options      Options
-	logCh        <-chan string
-	history      *History
-	prefixKey    string
-	prefixArmed  bool
-	prefixToken  int
-	prefixDelay  time.Duration
+	width          int
+	height         int
+	showHeader     bool
+	showRight      bool
+	serveRunning   bool
+	serveCancel    context.CancelFunc
+	lastAction     string
+	steps          []Step
+	messages       []Message
+	input          textinput.Model
+	spinner        spinner.Model
+	statusSpin     spinner.Model
+	progress       progress.Model
+	actions        Actions
+	options        Options
+	logCh          <-chan string
+	history        *History
+	prefixKey      string
+	prefixArmed    bool
+	prefixToken    int
+	prefixDelay    time.Duration
+	enabledPlugins map[string]bool
 }
 
 func New(actions Actions, options Options, sink *LogSink, history *History) Model {
@@ -171,7 +184,7 @@ func New(actions Actions, options Options, sink *LogSink, history *History) Mode
 
 	input := textinput.New()
 	input.Prompt = "> "
-	input.Placeholder = "init | update | build | serve | stop | help"
+	input.Placeholder = "init | update | build | serve | stop | plugin ... | help"
 	input.Focus()
 
 	spin := spinner.New()
@@ -200,16 +213,17 @@ func New(actions Actions, options Options, sink *LogSink, history *History) Mode
 			{Label: "SYS", Text: "OSG Builder ready", Time: now},
 			{Label: "INFO", Text: fmt.Sprintf("Use %s + I/A/B/S to run actions", prefixText), Time: now},
 		},
-		input:       input,
-		spinner:     spin,
-		statusSpin:  statusSpin,
-		progress:    bar,
-		actions:     actions,
-		options:     options,
-		logCh:       logCh,
-		history:     history,
-		prefixKey:   prefixKey,
-		prefixDelay: prefixDelay,
+		input:          input,
+		spinner:        spin,
+		statusSpin:     statusSpin,
+		progress:       bar,
+		actions:        actions,
+		options:        options,
+		logCh:          logCh,
+		history:        history,
+		prefixKey:      prefixKey,
+		prefixDelay:    prefixDelay,
+		enabledPlugins: normalizePluginSet(options.EnabledPlugins),
 	}
 }
 
@@ -276,6 +290,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case taskFinishedMsg:
 		return m.finishTask(msg)
+	case pluginActionFinishedMsg:
+		return m.finishPluginAction(msg)
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
@@ -348,7 +364,7 @@ func (m Model) View() string {
 	center := renderCenterPanel(m.messages, centerWidth, panelHeight, m.input.View())
 	var body string
 	if m.showRight {
-		right := renderRightPanel(rightWidth, panelHeight, m.options, m.serveRunning)
+		right := renderRightPanel(rightWidth, panelHeight, m.options, m.serveRunning, m.enabledPlugins)
 		body = lipgloss.JoinHorizontal(lipgloss.Top, left, center, right)
 	} else {
 		body = lipgloss.JoinHorizontal(lipgloss.Top, left, center)
@@ -454,6 +470,26 @@ func (m Model) finishTask(msg taskFinishedMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) finishPluginAction(msg pluginActionFinishedMsg) (tea.Model, tea.Cmd) {
+	if msg.err != nil {
+		m.appendMessage("ERROR", fmt.Sprintf("Plugin %s %s failed: %v", msg.name, msg.action, msg.err))
+		m.lastAction = fmt.Sprintf("Plugin %s error", msg.action)
+		return m, nil
+	}
+
+	if msg.enabled {
+		m.enabledPlugins[msg.name] = true
+		m.appendMessage("INFO", fmt.Sprintf("Plugin %s enabled", msg.name))
+		m.lastAction = fmt.Sprintf("Plugin %s enabled", msg.name)
+	} else {
+		delete(m.enabledPlugins, msg.name)
+		m.appendMessage("INFO", fmt.Sprintf("Plugin %s disabled", msg.name))
+		m.lastAction = fmt.Sprintf("Plugin %s disabled", msg.name)
+	}
+
+	return m, nil
+}
+
 func (m Model) handlePrefixKey(key string) (tea.Model, tea.Cmd, bool) {
 	switch strings.ToLower(key) {
 	case "i":
@@ -490,8 +526,13 @@ func (m Model) handleCommand() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	cmd := strings.ToLower(strings.TrimPrefix(raw, "/"))
-	m.appendHistory("CMD", cmd)
+	normalized := strings.TrimPrefix(raw, "/")
+	fields := strings.Fields(normalized)
+	if len(fields) == 0 {
+		return m, nil
+	}
+	cmd := strings.ToLower(fields[0])
+	m.appendHistory("CMD", strings.ToLower(normalized))
 
 	switch cmd {
 	case "init", "i":
@@ -509,8 +550,10 @@ func (m Model) handleCommand() (tea.Model, tea.Cmd) {
 		}
 		return m.toggleServe()
 	case "help", "h":
-		m.appendMessage("INFO", "Commands: init, update, build, serve, stop, help, quit")
+		m.appendMessage("INFO", "Commands: init, update, build, serve, stop, plugin enable/disable/toggle/list <name>, help, quit")
 		return m, nil
+	case "plugin":
+		return m.handlePluginCommand(normalized)
 	case "quit", "exit":
 		m.appendHistory("EXIT", "User quit via command")
 		return m, tea.Quit
@@ -518,6 +561,98 @@ func (m Model) handleCommand() (tea.Model, tea.Cmd) {
 		m.appendMessage("ERROR", fmt.Sprintf("Unknown command: %s", raw))
 		return m, nil
 	}
+}
+
+func (m Model) handlePluginCommand(raw string) (tea.Model, tea.Cmd) {
+	fields := strings.Fields(raw)
+	if len(fields) < 2 {
+		m.appendMessage("ERROR", "Usage: plugin <enable|disable|toggle|list> [name]")
+		return m, nil
+	}
+
+	sub := strings.ToLower(fields[1])
+	switch sub {
+	case "list":
+		return m.renderPluginList()
+	case "enable", "disable", "toggle":
+		if len(fields) < 3 {
+			m.appendMessage("ERROR", fmt.Sprintf("Usage: plugin %s <name>", sub))
+			return m, nil
+		}
+		name := normalizePluginName(fields[2])
+		if name == "" {
+			m.appendMessage("ERROR", "Plugin name is empty")
+			return m, nil
+		}
+		return m.runPluginAction(sub, name)
+	default:
+		m.appendMessage("ERROR", "Usage: plugin <enable|disable|toggle|list> [name]")
+		return m, nil
+	}
+}
+
+func (m Model) runPluginAction(action string, name string) (tea.Model, tea.Cmd) {
+	switch action {
+	case "enable":
+		if m.actions.PluginEnable == nil {
+			m.appendMessage("ERROR", "Plugin enable not available")
+			return m, nil
+		}
+		m.appendMessage("PROGRESS", fmt.Sprintf("Enabling plugin %s...", name))
+		m.lastAction = fmt.Sprintf("Plugin enable %s", name)
+		return m, runPluginActionCmd(context.Background(), action, name, true, m.actions.PluginEnable)
+	case "disable":
+		if m.actions.PluginDisable == nil {
+			m.appendMessage("ERROR", "Plugin disable not available")
+			return m, nil
+		}
+		m.appendMessage("PROGRESS", fmt.Sprintf("Disabling plugin %s...", name))
+		m.lastAction = fmt.Sprintf("Plugin disable %s", name)
+		return m, runPluginActionCmd(context.Background(), action, name, false, m.actions.PluginDisable)
+	case "toggle":
+		if m.actions.PluginToggle == nil {
+			m.appendMessage("ERROR", "Plugin toggle not available")
+			return m, nil
+		}
+		enabled := m.enabledPlugins[name]
+		next := !enabled
+		verb := "Enabling"
+		if enabled {
+			verb = "Disabling"
+		}
+		m.appendMessage("PROGRESS", fmt.Sprintf("%s plugin %s...", verb, name))
+		m.lastAction = fmt.Sprintf("Plugin toggle %s", name)
+		return m, runPluginActionCmd(context.Background(), action, name, next, m.actions.PluginToggle)
+	default:
+		m.appendMessage("ERROR", "Unknown plugin action")
+		return m, nil
+	}
+}
+
+func (m Model) renderPluginList() (tea.Model, tea.Cmd) {
+	if len(m.options.Plugins) == 0 && len(m.enabledPlugins) == 0 {
+		m.appendMessage("INFO", "No plugins installed")
+		return m, nil
+	}
+
+	installed := map[string]bool{}
+	for _, plugin := range m.options.Plugins {
+		installed[plugin] = true
+		state := "off"
+		if m.enabledPlugins[plugin] {
+			state = "on"
+		}
+		m.appendMessage("INFO", fmt.Sprintf("Plugin %s: %s", plugin, state))
+	}
+
+	for name := range m.enabledPlugins {
+		if installed[name] {
+			continue
+		}
+		m.appendMessage("WARN", fmt.Sprintf("Plugin %s: missing (enabled but not installed)", name))
+	}
+
+	return m, nil
 }
 
 func (m Model) updateProgress(_ progressTickMsg) (tea.Model, tea.Cmd) {
@@ -668,6 +803,16 @@ func runTaskCmd(ctx context.Context, action func(context.Context) error, kind ta
 	}
 }
 
+func runPluginActionCmd(ctx context.Context, action string, name string, enabled bool, handler func(context.Context, string) error) tea.Cmd {
+	return func() tea.Msg {
+		if handler == nil {
+			return pluginActionFinishedMsg{action: action, name: name, enabled: enabled, err: fmt.Errorf("action not available")}
+		}
+		err := handler(ctx, name)
+		return pluginActionFinishedMsg{action: action, name: name, enabled: enabled, err: err}
+	}
+}
+
 func actionForTask(actions Actions, kind taskKind) func(context.Context) error {
 	switch kind {
 	case taskInit:
@@ -775,7 +920,7 @@ func renderCenterPanel(messages []Message, width int, height int, input string) 
 	return panelStyle.Render(strings.Join(lines, "\n"))
 }
 
-func renderRightPanel(width int, height int, options Options, serveRunning bool) string {
+func renderRightPanel(width int, height int, options Options, serveRunning bool, enabledPlugins map[string]bool) string {
 	panelStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true).
 		Padding(1, 1).
@@ -794,16 +939,26 @@ func renderRightPanel(width int, height int, options Options, serveRunning bool)
 		fmt.Sprintf("Status: %s", serveStatus(serveRunning)),
 	}
 
-	if len(options.Plugins) > 0 {
-		lines = append(lines, "")
-		lines = append(lines, panelTitle("Plugins"))
-		for _, plugin := range options.Plugins {
-			lines = append(lines, "- "+plugin)
-		}
-	} else {
-		lines = append(lines, "")
-		lines = append(lines, panelTitle("Plugins"))
+	lines = append(lines, "")
+	lines = append(lines, panelTitle("Plugins"))
+	if len(options.Plugins) == 0 && len(enabledPlugins) == 0 {
 		lines = append(lines, "none")
+	} else {
+		installed := map[string]bool{}
+		for _, plugin := range options.Plugins {
+			installed[plugin] = true
+			state := "[off]"
+			if enabledPlugins[plugin] {
+				state = "[on]"
+			}
+			lines = append(lines, fmt.Sprintf("%s %s", state, plugin))
+		}
+		for plugin := range enabledPlugins {
+			if installed[plugin] {
+				continue
+			}
+			lines = append(lines, fmt.Sprintf("[missing] %s", plugin))
+		}
 	}
 
 	if strings.TrimSpace(options.LogPath) != "" {
@@ -940,6 +1095,29 @@ func trimLine(line string, width int) string {
 		return line
 	}
 	return line[:width]
+}
+
+func normalizePluginSet(input []string) map[string]bool {
+	set := map[string]bool{}
+	for _, name := range input {
+		name = normalizePluginName(name)
+		if name == "" {
+			continue
+		}
+		set[name] = true
+	}
+	return set
+}
+
+func normalizePluginName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	if strings.HasSuffix(strings.ToLower(name), ".wasm") {
+		name = strings.TrimSuffix(name, filepath.Ext(name))
+	}
+	return strings.TrimSpace(name)
 }
 
 func normalizePrefix(prefix string) string {

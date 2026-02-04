@@ -14,6 +14,8 @@ type buildPlan struct {
 	contentChanged bool
 	changedFiles   map[string]bool
 	removed        int
+	removedFiles   []string
+	prevOutputs    map[string]string
 	reason         string
 }
 
@@ -113,8 +115,10 @@ func buildPlanFromCache(cfg config.Config, files []string, logger *slog.Logger) 
 
 	changed, removed := diffContent(prev.Content, current.Content)
 	plan.changedFiles = changed
-	plan.removed = removed
-	plan.contentChanged = len(changed) > 0 || removed > 0
+	plan.removedFiles = removed
+	plan.removed = len(removed)
+	plan.contentChanged = len(changed) > 0 || len(removed) > 0
+	plan.prevOutputs = prev.Outputs
 
 	return plan, current
 }

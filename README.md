@@ -66,6 +66,12 @@ TUI:
 osg tui
 ```
 
+Doctor (validacion de config y entorno):
+
+```bash
+osg doctor
+```
+
 ## Makefile
 Comandos habituales:
 
@@ -110,13 +116,17 @@ Build:
 - `build_incremental`: cache incremental del build (por defecto `true`).
 - `build_cache_dir`: directorio para el cache (por defecto `.osg/cache`).
   - guarda `build.json` con stamps de contenido/templates/assets/plugins.
+- `clean_public`: limpia `public/` en rebuilds completos o si se eliminan contenidos (por defecto `true`).
 
 Plugins WASM:
-- Coloca `.wasm` en `plugins/`.
-- Ver `docs/PLUGINS.md` para ABI y eventos.
+- Instala el `.wasm` en `plugins/` o usa `osg plugin install <path>`.
+- Activa con `plugins_enabled` en config o `osg plugin enable <name>`.
+- Desactiva con `osg plugin disable <name>`.
+- Ver `docs/PLUGINS.md` para ABI, eventos y lifecycle.
 - Ejemplo: `examples/plugins/feed`.
 - Search: `examples/plugins/search` genera `search.json` + `search/index.html`.
 
 ## Notas
 - `update-content` es el comando por defecto.
 - `build` genera HTML en `public/`.
+- Ver `docs/QUICKSTART.md` y `examples/sample-site/` para empezar rapido.

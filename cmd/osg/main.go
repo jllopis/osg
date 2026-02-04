@@ -20,13 +20,15 @@ type CLI struct {
 	OsgContentDir string `help:"Content directory override"`
 	PublicDir     string `help:"Public directory override"`
 
-	Init          struct{} `cmd:"" help:"Initialize project structure"`
-	UpdateContent struct{} `cmd:"" help:"Sync content from vault"`
-	Build         struct{} `cmd:"" help:"Build static site (HTML)"`
-	Serve         ServeCmd `cmd:"" help:"Serve public directory"`
-	TUI           struct{} `cmd:"" help:"Launch TUI"`
-	Theme         ThemeCmd `cmd:"" help:"Theme tools"`
-	Version       struct{} `cmd:"" help:"Show version information"`
+	Init          struct{}  `cmd:"" help:"Initialize project structure"`
+	UpdateContent struct{}  `cmd:"" help:"Sync content from vault"`
+	Build         struct{}  `cmd:"" help:"Build static site (HTML)"`
+	Serve         ServeCmd  `cmd:"" help:"Serve public directory"`
+	TUI           struct{}  `cmd:"" help:"Launch TUI"`
+	Theme         ThemeCmd  `cmd:"" help:"Theme tools"`
+	Plugin        PluginCmd `cmd:"" help:"Plugin tools"`
+	Doctor        struct{}  `cmd:"" help:"Validate configuration and environment"`
+	Version       struct{}  `cmd:"" help:"Show version information"`
 }
 
 type ServeCmd struct {
@@ -42,6 +44,28 @@ type ThemeCmd struct {
 
 type ThemeInitCmd struct {
 	Name string `arg:"" help:"Theme name"`
+}
+
+type PluginCmd struct {
+	Install PluginInstallCmd `cmd:"" help:"Install a WASM plugin"`
+	Enable  PluginToggleCmd  `cmd:"" help:"Enable a plugin"`
+	Disable PluginToggleCmd  `cmd:"" help:"Disable a plugin"`
+	List    struct{}         `cmd:"" help:"List plugins"`
+	Init    PluginInitCmd    `cmd:"" help:"Scaffold a plugin project"`
+}
+
+type PluginInstallCmd struct {
+	Path string `arg:"" help:"Path to .wasm file"`
+	Name string `help:"Optional plugin name (without extension)"`
+}
+
+type PluginToggleCmd struct {
+	Name string `arg:"" help:"Plugin name"`
+}
+
+type PluginInitCmd struct {
+	Name string `arg:"" help:"Plugin name"`
+	Dir  string `help:"Base directory for plugin sources" default:"plugins_src"`
 }
 
 func main() {
@@ -94,8 +118,20 @@ func main() {
 		runErr = app.RunServe(context.Background(), opts)
 	case command == "tui":
 		runErr = app.RunTUI(context.Background(), opts)
+	case command == "doctor":
+		runErr = app.RunDoctor(context.Background(), opts)
 	case strings.HasPrefix(command, "theme init"):
 		runErr = app.RunThemeInit(context.Background(), opts, cli.Theme.Init.Name)
+	case strings.HasPrefix(command, "plugin install"):
+		runErr = app.RunPluginInstall(context.Background(), opts, cli.Plugin.Install.Path, cli.Plugin.Install.Name)
+	case strings.HasPrefix(command, "plugin enable"):
+		runErr = app.RunPluginEnable(context.Background(), opts, cli.Plugin.Enable.Name)
+	case strings.HasPrefix(command, "plugin disable"):
+		runErr = app.RunPluginDisable(context.Background(), opts, cli.Plugin.Disable.Name)
+	case command == "plugin list":
+		runErr = app.RunPluginList(context.Background(), opts, os.Stdout)
+	case strings.HasPrefix(command, "plugin init"):
+		runErr = app.RunPluginInit(context.Background(), opts, cli.Plugin.Init.Name, cli.Plugin.Init.Dir)
 	case command == "version":
 		printVersion()
 	default:

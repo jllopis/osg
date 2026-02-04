@@ -17,7 +17,7 @@ import (
 	"osg/internal/render"
 )
 
-const buildCacheVersion = 1
+const buildCacheVersion = 2
 
 type buildCache struct {
 	Version       int                  `json:"version"`
@@ -26,6 +26,7 @@ type buildCache struct {
 	AssetsHash    string               `json:"assets_hash"`
 	PluginsHash   string               `json:"plugins_hash"`
 	Content       map[string]fileStamp `json:"content"`
+	Outputs       map[string]string    `json:"outputs"`
 	GeneratedAt   string               `json:"generated_at"`
 }
 
@@ -35,18 +36,20 @@ type fileStamp struct {
 }
 
 type buildConfigSignature struct {
-	BaseURL       string                  `json:"base_url"`
-	Theme         string                  `json:"theme"`
-	ContentDir    string                  `json:"content_dir"`
-	PublicDir     string                  `json:"public_dir"`
-	TemplatesDir  string                  `json:"templates_dir"`
-	StaticDir     string                  `json:"static_dir"`
-	ThemesDir     string                  `json:"themes_dir"`
-	PluginsDir    string                  `json:"plugins_dir"`
-	SassDir       string                  `json:"sass_dir"`
-	IncludeDrafts bool                    `json:"include_drafts"`
-	CompileSass   bool                    `json:"compile_sass"`
-	Taxonomies    []config.TaxonomyConfig `json:"taxonomies"`
+	BaseURL        string                  `json:"base_url"`
+	Theme          string                  `json:"theme"`
+	ContentDir     string                  `json:"content_dir"`
+	PublicDir      string                  `json:"public_dir"`
+	TemplatesDir   string                  `json:"templates_dir"`
+	StaticDir      string                  `json:"static_dir"`
+	ThemesDir      string                  `json:"themes_dir"`
+	PluginsDir     string                  `json:"plugins_dir"`
+	PluginsEnabled []string                `json:"plugins_enabled"`
+	SassDir        string                  `json:"sass_dir"`
+	IncludeDrafts  bool                    `json:"include_drafts"`
+	CompileSass    bool                    `json:"compile_sass"`
+	CleanPublic    bool                    `json:"clean_public"`
+	Taxonomies     []config.TaxonomyConfig `json:"taxonomies"`
 }
 
 func buildCacheFrom(cfg config.Config, files []string) (*buildCache, error) {
@@ -123,16 +126,16 @@ func saveBuildCache(path string, cache *buildCache) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
-func diffContent(prev map[string]fileStamp, current map[string]fileStamp) (map[string]bool, int) {
+func diffContent(prev map[string]fileStamp, current map[string]fileStamp) (map[string]bool, []string) {
 	changed := map[string]bool{}
 	if prev == nil {
 		for path := range current {
 			changed[path] = true
 		}
-		return changed, 0
+		return changed, nil
 	}
 
-	removed := 0
+	removed := []string{}
 	for path, stamp := range current {
 		if prevStamp, ok := prev[path]; !ok || prevStamp != stamp {
 			changed[path] = true
@@ -140,7 +143,7 @@ func diffContent(prev map[string]fileStamp, current map[string]fileStamp) (map[s
 	}
 	for path := range prev {
 		if _, ok := current[path]; !ok {
-			removed++
+			removed = append(removed, path)
 		}
 	}
 	return changed, removed
@@ -148,18 +151,20 @@ func diffContent(prev map[string]fileStamp, current map[string]fileStamp) (map[s
 
 func hashConfig(cfg config.Config) (string, error) {
 	signature := buildConfigSignature{
-		BaseURL:       cfg.BaseURL,
-		Theme:         cfg.Theme,
-		ContentDir:    cfg.ContentDir,
-		PublicDir:     cfg.PublicDir,
-		TemplatesDir:  cfg.TemplatesDir,
-		StaticDir:     cfg.StaticDir,
-		ThemesDir:     cfg.ThemesDir,
-		PluginsDir:    cfg.PluginsDir,
-		SassDir:       cfg.SassDir,
-		IncludeDrafts: cfg.IncludeDrafts,
-		CompileSass:   cfg.CompileSass,
-		Taxonomies:    cfg.Taxonomies,
+		BaseURL:        cfg.BaseURL,
+		Theme:          cfg.Theme,
+		ContentDir:     cfg.ContentDir,
+		PublicDir:      cfg.PublicDir,
+		TemplatesDir:   cfg.TemplatesDir,
+		StaticDir:      cfg.StaticDir,
+		ThemesDir:      cfg.ThemesDir,
+		PluginsDir:     cfg.PluginsDir,
+		PluginsEnabled: cfg.PluginsEnabled,
+		SassDir:        cfg.SassDir,
+		IncludeDrafts:  cfg.IncludeDrafts,
+		CompileSass:    cfg.CompileSass,
+		CleanPublic:    cfg.CleanPublic,
+		Taxonomies:     cfg.Taxonomies,
 	}
 	data, err := json.Marshal(signature)
 	if err != nil {

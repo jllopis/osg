@@ -1,7 +1,7 @@
 # DESIGN - OSG (Obsidian Site Generator)
 
 ## Overview
-OSG es un generador de contenido estatico a partir de un vault de Obsidian. El core en Go 1.25 sincroniza Markdown con frontmatter YAML hacia `content/`, y luego renderiza HTML en `public/` con templates, taxonomias, feeds, sitemap y assets.
+OSG es un generador de contenido estatico a partir de un vault de Obsidian. El core en Go 1.25 sincroniza Markdown con frontmatter YAML hacia `content/`, y luego renderiza HTML en `public/` con templates, taxonomias (feeds atom/rss opcionales), sitemap y assets.
 
 El sistema soporta themes, plugins WASM para extender el pipeline y un modo TUI para orquestar tareas y ver logs.
 
@@ -18,7 +18,7 @@ Componentes principales:
 - internal/content: writer a `content/`
 - internal/build: pipeline de render y generacion
 - internal/render: templates, helpers, builtins y overrides
-- internal/taxonomy: indices, paginacion y feeds
+- internal/taxonomy: indices, paginacion y feeds por taxonomia
 - internal/assets: static + sass
 - internal/plugin: host WASM y hooks
 - internal/tui: UI con Bubble Tea
@@ -29,7 +29,7 @@ Componentes principales:
 2) update-content: discover vault -> parse frontmatter -> filter -> normalize -> write a `content/`
 3) build: parse `content/` -> index site -> build taxonomies -> render templates -> public/
 4) assets: copy static/theme static + compile sass si aplica
-5) plugins: hooks en build.started/build.finished y render de pages/sections/taxonomies
+5) plugins: hooks en build.started/build.finished y render de pages/sections/taxonomies (solo si estan activados en config)
 6) build incremental: cache de inputs para saltar renders cuando no hay cambios
 7) serve/tui: previsualizacion y control del flujo
 
@@ -40,6 +40,9 @@ CLI:
 - osg build
 - osg serve
 - osg tui
+- osg doctor
+- osg theme init <name>
+- osg plugin install/enable/disable/list/init
 - osg version
 
 Flags (core):
@@ -53,9 +56,10 @@ Flags (core):
 
 Config schema (resumen):
 - base_url, theme, vault_path
-- content_dir, public_dir, templates_dir, static_dir, themes_dir, plugins_dir, sass_dir
+- content_dir, public_dir, templates_dir, static_dir, themes_dir, plugins_dir, plugins_enabled, sass_dir
 - content_layout, include_drafts, compile_sass
 - tui_prefix, tui_prefix_ms
+- clean_public
 - logging (level, format)
 - taxonomies (name, paginate_by, paginate_path, feed, render)
 

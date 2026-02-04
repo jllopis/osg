@@ -34,5 +34,10 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 6) Build incremental con cache
 [done] (Phase 6) Search index opcional (via plugin)
 [done] (Phase 6) Starter kit de theme (scaffold + docs)
-[todo] (Phase 6) SDK/CLI para plugins (plantillas + tests)
-[todo] (Phase 6) Sample site + quickstart
+[done] (Phase 6) SDK/CLI para plugins (plantillas + comandos)
+[done] (Phase 6) Tests del SDK/CLI de plugins (scaffold + comandos)
+[done] (Phase 6) Sample site + quickstart
+
+[done] (Next) Validacion de config (paths invalidos, taxonomias mal definidas, base_url vacia en prod)
+[done] (Next) Limpieza de public/ para evitar archivos stale en builds incrementales
+[done] (Next) Estado/diagnostico (`osg doctor` o `osg status`)
