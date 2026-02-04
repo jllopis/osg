@@ -27,6 +27,8 @@ var (
 	colorPrimary = lipgloss.Color("#8ECDF2")
 	colorAccent  = lipgloss.Color("#F6A000")
 	colorMuted   = lipgloss.Color("#7A7A7A")
+	colorSuccess = lipgloss.Color("#7CFC90")
+	colorDanger  = lipgloss.Color("#FF6B6B")
 )
 
 type Actions struct {
@@ -379,7 +381,7 @@ func (m Model) View() string {
 		spin = m.spinner.View()
 	}
 
-	left := renderLeftPanel(m.steps, leftWidth, panelHeight, spin, time.Now(), prefixLabel(m.prefixKey))
+	left := renderLeftPanel(m.steps, leftWidth, panelHeight, spin, time.Now(), prefixLabel(m.prefixKey), m.serveRunning)
 	center := renderCenterPanel(m.messages, centerWidth, panelHeight, m.input.View())
 	var body string
 	if m.showRight {
@@ -1048,7 +1050,7 @@ func renderHeader(width int) string {
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
 
-func renderLeftPanel(steps []Step, width int, height int, spin string, now time.Time, prefixText string) string {
+func renderLeftPanel(steps []Step, width int, height int, spin string, now time.Time, prefixText string, serveRunning bool) string {
 	panelStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true).
 		Padding(1, 1).
@@ -1066,7 +1068,11 @@ func renderLeftPanel(steps []Step, width int, height int, spin string, now time.
 	lines = append(lines, fmt.Sprintf("%s + I Init", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + A Update", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + B Build", prefixText))
-	lines = append(lines, fmt.Sprintf("%s + S Serve", prefixText))
+	serveLabel := "Serve"
+	if serveRunning {
+		serveLabel = "Stop serve"
+	}
+	lines = append(lines, fmt.Sprintf("%s + S %s", prefixText, serveLabel))
 	lines = append(lines, fmt.Sprintf("%s + D Doctor", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + L Plugin list", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + V Version", prefixText))
@@ -1104,6 +1110,11 @@ func renderRightPanel(width int, height int, options Options, serveRunning bool,
 		Width(width).
 		Height(height)
 
+	serverBadge := badge("STOPPED", colorMuted)
+	if serveRunning {
+		serverBadge = badge("RUNNING", colorSuccess)
+	}
+
 	lines := []string{
 		panelTitle("Project"),
 		fmt.Sprintf("Config: %s", defaultConfig(options.ConfigPath)),
@@ -1113,7 +1124,7 @@ func renderRightPanel(width int, height int, options Options, serveRunning bool,
 		"",
 		panelTitle("Preview Server"),
 		fmt.Sprintf("Addr: %s", defaultAddr(options.ServeAddr)),
-		fmt.Sprintf("Status: %s", serveStatus(serveRunning)),
+		fmt.Sprintf("Status: %s", serverBadge),
 	}
 
 	lines = append(lines, "")
@@ -1157,9 +1168,13 @@ func renderStatusBar(width int, lastAction string, serveRunning bool, progressVi
 	if lastAction != "" {
 		status = lastAction
 	}
-	text := fmt.Sprintf("status: %s | server: %s", status, serveStatus(serveRunning))
+	serverBadge := badge("STOPPED", colorMuted)
+	if serveRunning {
+		serverBadge = badge("RUNNING", colorSuccess)
+	}
+	text := fmt.Sprintf("status: %s | server: %s", status, serverBadge)
 	if progressView != "" {
-		text = fmt.Sprintf("status: %s | %s | server: %s", status, progressView, serveStatus(serveRunning))
+		text = fmt.Sprintf("status: %s | %s | server: %s", status, progressView, serverBadge)
 	}
 	if activity != "" {
 		text = fmt.Sprintf("%s | %s", text, activity)
@@ -1172,6 +1187,15 @@ func panelTitle(title string) string {
 		Foreground(colorPrimary).
 		Bold(true).
 		Render(title)
+}
+
+func badge(text string, color lipgloss.Color) string {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#111111")).
+		Background(color).
+		Padding(0, 1).
+		Bold(true).
+		Render(text)
 }
 
 func formatStep(step Step, spin string, now time.Time) string {
