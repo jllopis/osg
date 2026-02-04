@@ -222,7 +222,7 @@ func New(actions Actions, options Options, sink *LogSink, history *History) Mode
 		},
 		messages: []Message{
 			{Label: "SYS", Text: "OSG Builder ready", Time: now},
-			{Label: "INFO", Text: fmt.Sprintf("Use %s + I/A/B/S to run actions", prefixText), Time: now},
+			{Label: "INFO", Text: fmt.Sprintf("Use %s + I/A/B/S/D/L/V. Prompt for theme/plugin commands.", prefixText), Time: now},
 		},
 		input:          input,
 		spinner:        spin,
@@ -527,6 +527,19 @@ func (m Model) handlePrefixKey(key string) (tea.Model, tea.Cmd, bool) {
 		return model, cmd, true
 	case "s":
 		model, cmd := m.toggleServe()
+		return model, cmd, true
+	case "d":
+		model, cmd := m.runSimpleAction("Doctor", m.actions.Doctor)
+		return model, cmd, true
+	case "l":
+		if m.actions.PluginList != nil {
+			model, cmd := m.runSimpleAction("Plugin list", m.actions.PluginList)
+			return model, cmd, true
+		}
+		model, cmd := m.renderPluginList()
+		return model, cmd, true
+	case "v":
+		model, cmd := m.handleVersionCommand()
 		return model, cmd, true
 	case "h":
 		m.showHeader = !m.showHeader
@@ -1041,12 +1054,17 @@ func renderLeftPanel(steps []Step, width int, height int, spin string, now time.
 		lines = append(lines, formatStep(step, spin, now))
 	}
 	lines = append(lines, "")
-	lines = append(lines, panelTitle("Keys"))
+	lines = append(lines, panelTitle("Actions"))
 	lines = append(lines, fmt.Sprintf("Prefix: %s", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + I Init", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + A Update", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + B Build", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + S Serve", prefixText))
+	lines = append(lines, fmt.Sprintf("%s + D Doctor", prefixText))
+	lines = append(lines, fmt.Sprintf("%s + L Plugin list", prefixText))
+	lines = append(lines, fmt.Sprintf("%s + V Version", prefixText))
+	lines = append(lines, "")
+	lines = append(lines, panelTitle("UI"))
 	lines = append(lines, fmt.Sprintf("%s + H Toggle header", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + P Toggle panel", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + Q Quit", prefixText))
@@ -1066,7 +1084,7 @@ func renderCenterPanel(messages []Message, width int, height int, input string) 
 		lines = append(lines, formatMessage(msg))
 	}
 	lines = append(lines, "")
-	lines = append(lines, "Prompt:")
+	lines = append(lines, "Prompt (type help):")
 	lines = append(lines, input)
 
 	return panelStyle.Render(strings.Join(lines, "\n"))
