@@ -387,6 +387,10 @@ func (m Model) View() string {
 	if m.showRight {
 		right := renderRightPanel(rightWidth, panelHeight, m.options, m.serveRunning, m.enabledPlugins)
 		body = lipgloss.JoinHorizontal(lipgloss.Top, left, center, right)
+		if slack := m.width - lipgloss.Width(body); slack > 0 {
+			right = renderRightPanel(rightWidth+slack, panelHeight, m.options, m.serveRunning, m.enabledPlugins)
+			body = lipgloss.JoinHorizontal(lipgloss.Top, left, center, right)
+		}
 	} else {
 		body = lipgloss.JoinHorizontal(lipgloss.Top, left, center)
 	}
@@ -1054,7 +1058,7 @@ func renderLeftPanel(steps []Step, width int, height int, spin string, now time.
 	panelStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true).
 		Padding(1, 1).
-		Width(width).
+		Width(panelContentWidth(width)).
 		Height(height)
 
 	hint := lipgloss.NewStyle().Foreground(colorMuted).Render("Use prefix for quick actions.")
@@ -1089,7 +1093,7 @@ func renderCenterPanel(messages []Message, width int, height int, input string) 
 	panelStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true).
 		Padding(1, 1).
-		Width(width).
+		Width(panelContentWidth(width)).
 		Height(height)
 
 	lines := []string{panelTitle("Output")}
@@ -1107,7 +1111,7 @@ func renderRightPanel(width int, height int, options Options, serveRunning bool,
 	panelStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true).
 		Padding(1, 1).
-		Width(width).
+		Width(panelContentWidth(width)).
 		Height(height)
 
 	serverBadge := badge("STOPPED", colorMuted)
@@ -1196,6 +1200,14 @@ func badge(text string, color lipgloss.Color) string {
 		Padding(0, 1).
 		Bold(true).
 		Render(text)
+}
+
+func panelContentWidth(total int) int {
+	width := total - 4 // 2 borders + 2 padding (1 each side)
+	if width < 1 {
+		return 1
+	}
+	return width
 }
 
 func formatStep(step Step, spin string, now time.Time) string {
@@ -1398,12 +1410,57 @@ func (m *Model) adjustInputWidth() {
 func (m Model) layoutWidths() (int, int, int) {
 	leftWidth := 32
 	rightWidth := 34
-	centerWidth := m.width - leftWidth
-	if m.showRight {
-		centerWidth -= rightWidth
+	minCenter := 20
+	minSide := 20
+
+	if !m.showRight {
+		rightWidth = 0
 	}
-	if centerWidth < 20 {
-		centerWidth = 20
+
+	available := m.width
+	if available <= 0 {
+		return leftWidth, minCenter, rightWidth
+	}
+
+	required := leftWidth + rightWidth + minCenter
+	if available < required {
+		deficit := required - available
+		reduceRight := minInt(deficit, maxInt(0, rightWidth-minSide))
+		rightWidth -= reduceRight
+		deficit -= reduceRight
+
+		reduceLeft := minInt(deficit, maxInt(0, leftWidth-minSide))
+		leftWidth -= reduceLeft
+		deficit -= reduceLeft
+
+		if deficit > 0 {
+			minCenter = maxInt(10, minCenter-deficit)
+		}
+	}
+
+	centerWidth := available - leftWidth - rightWidth
+	if centerWidth < minCenter {
+		centerWidth = minCenter
+	}
+	if m.showRight {
+		extra := available - (leftWidth + centerWidth + rightWidth)
+		if extra > 0 {
+			rightWidth += extra
+		}
 	}
 	return leftWidth, centerWidth, rightWidth
+}
+
+func minInt(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxInt(a int, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
