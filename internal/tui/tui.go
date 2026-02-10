@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -59,6 +58,7 @@ type Options struct {
 	PrefixMs       int
 	Plugins        []string
 	EnabledPlugins []string
+	HasContent     bool
 }
 
 type LogSink struct {
@@ -129,9 +129,10 @@ type Step struct {
 }
 
 type Message struct {
-	Label string
-	Text  string
-	Time  time.Time
+	Label  string
+	Text   string
+	Time   time.Time
+	Fields map[string]any
 }
 
 type BuildSummary struct {
@@ -207,6 +208,7 @@ type Model struct {
 	prefixDelay    time.Duration
 	enabledPlugins map[string]bool
 	guideEnabled   bool
+	hasInit        bool
 	lastBuild      *BuildSummary
 	lastDoctor     *DoctorSummary
 }
@@ -261,6 +263,7 @@ func New(actions Actions, options Options, sink *LogSink, history *History) Mode
 		prefixDelay:    prefixDelay,
 		enabledPlugins: normalizePluginSet(options.EnabledPlugins),
 		guideEnabled:   true,
+		hasInit:        options.HasContent,
 	}
 }
 
@@ -510,6 +513,9 @@ func (m Model) finishTask(msg taskFinishedMsg) (tea.Model, tea.Cmd) {
 	m.appendMessage("INFO", fmt.Sprintf("%s completed", label))
 	m.appendHistory("ACTION", fmt.Sprintf("%s completed", label))
 	m.lastAction = label + " completed"
+	if msg.kind == taskInit {
+		m.hasInit = true
+	}
 	return m, nil
 }
 
@@ -952,19 +958,15 @@ func parseLogLine(line string) Message {
 		}
 	}
 
-	extras := make([]string, 0, len(entry))
+	fields := map[string]any{}
 	for key, value := range entry {
 		if key == "time" || key == "level" || key == "msg" {
 			continue
 		}
-		extras = append(extras, fmt.Sprintf("%s=%v", key, value))
-	}
-	sort.Strings(extras)
-	if len(extras) > 0 {
-		text = text + " | " + strings.Join(extras, " ")
+		fields[key] = value
 	}
 
-	return Message{Label: label, Text: text, Time: timestamp}
+	return Message{Label: label, Text: text, Time: timestamp, Fields: fields}
 }
 
 func (m *Model) captureSummaries(line string) {
@@ -1182,7 +1184,7 @@ func renderCenterPanel(m Model, width int, height int, input string) string {
 	lines = append(lines, "")
 	lines = append(lines, panelTitle("Recent output"))
 	for _, msg := range m.recentMessages(8) {
-		lines = append(lines, formatMessage(msg))
+		lines = append(lines, formatEvent(msg)...)
 	}
 	lines = append(lines, "")
 	lines = append(lines, lipgloss.NewStyle().Foreground(colorMuted).Render("Prompt (type help):"))
@@ -1373,6 +1375,9 @@ func (m Model) runningStepLabel() string {
 }
 
 func (m Model) nextActionLabel() string {
+	if !m.hasInit {
+		return "Init"
+	}
 	for i, step := range m.steps {
 		if step.Status == StepPending {
 			if i == stepIndexForTask(taskServe) {
@@ -1426,6 +1431,87 @@ func formatMessage(msg Message) string {
 		labelStyle = lipgloss.NewStyle().Foreground(colorMuted)
 	}
 	return fmt.Sprintf("%s %s", labelStyle.Render(label), msg.Text)
+}
+
+func formatEvent(msg Message) []string {
+	label := msg.Label
+	if label == "" {
+		label = "LOG"
+	}
+
+	title := msg.Text
+	detail := ""
+
+	switch msg.Text {
+	case "exported":
+		dest := asString(msg.Fields["dest"])
+		source := pathBase(asString(msg.Fields["source"]))
+		if dest != "" {
+			title = "Exported → " + dest
+		}
+		if source != "" {
+			detail = "from " + source
+		}
+	case "update-content summary":
+		title = fmt.Sprintf("Update content: exported %d, skipped %d, drafts %d, errors %d",
+			asInt(msg.Fields["exported"]),
+			asInt(msg.Fields["skipped"]),
+			asInt(msg.Fields["drafts"]),
+			asInt(msg.Fields["errors"]),
+		)
+	case "build incremental":
+		mode := asString(msg.Fields["mode"])
+		changed := asInt(msg.Fields["changed"])
+		removed := asInt(msg.Fields["removed"])
+		title = fmt.Sprintf("Build incremental: %s (changed %d, removed %d)", fallback(mode, "partial"), changed, removed)
+	case "build summary":
+		title = fmt.Sprintf("Build: rendered %d, cached %d, errors %d",
+			asInt(msg.Fields["rendered"]),
+			asInt(msg.Fields["cached"]),
+			asInt(msg.Fields["errors"]),
+		)
+	case "initial build complete":
+		title = "Initial build complete"
+	case "watch enabled":
+		title = fmt.Sprintf("Watch enabled (debounce %d ms, live reload %s)",
+			asInt(msg.Fields["debounce_ms"]),
+			asString(msg.Fields["live_reload"]),
+		)
+	}
+
+	line := fmt.Sprintf("%s %s", badge(label, colorPrimary), title)
+	if detail == "" {
+		return []string{line}
+	}
+	return []string{line, lipgloss.NewStyle().Foreground(colorMuted).Render(detail)}
+}
+
+func asString(value any) string {
+	switch v := value.(type) {
+	case string:
+		return strings.TrimSpace(v)
+	case fmt.Stringer:
+		return strings.TrimSpace(v.String())
+	case bool:
+		if v {
+			return "true"
+		}
+		return "false"
+	case int:
+		return strconv.Itoa(v)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	}
+	return ""
+}
+
+func pathBase(value string) string {
+	if value == "" {
+		return ""
+	}
+	return filepath.Base(value)
 }
 
 func defaultValue(value string) string {

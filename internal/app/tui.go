@@ -99,6 +99,7 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		PrefixMs:       cfg.TUIPrefixMs,
 		Plugins:        listPlugins(cfg.PluginsDir),
 		EnabledPlugins: cfg.PluginsEnabled,
+		HasContent:     pathExists(cfg.ContentDir),
 	}
 
 	return tui.Run(ctx, actions, options, logSink, history)
