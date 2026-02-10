@@ -41,3 +41,6 @@ Formato: [todo|doing|done] Tarea
 [done] (Next) Validacion de config (paths invalidos, taxonomias mal definidas, base_url vacia en prod)
 [done] (Next) Limpieza de public/ para evitar archivos stale en builds incrementales
 [done] (Next) Estado/diagnostico (`osg doctor` o `osg status`)
+[todo] (Next) TUI: vista guiada con progreso y estado (no solo logs)
+[todo] (Next) `doctor` con perfiles dev/prod + recomendaciones accionables
+[todo] (Next) Refinar theme base (layout + assets + estilos)

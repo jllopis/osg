@@ -49,3 +49,6 @@
 - [done] validacion de config (paths invalidos, taxonomias mal definidas, base_url vacia en prod)
 - [done] limpieza de public/ para evitar archivos stale en builds incrementales
 - [done] comando de estado/diagnostico (`osg doctor` o `osg status`)
+- [todo] TUI: vista de progreso guiada (wizard) y panel de estado no basado en logs
+- [todo] `doctor` con perfiles (dev/prod) y warnings mas accionables
+- [todo] refinado del theme base (layout, assets y estilos)
