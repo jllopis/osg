@@ -20,3 +20,10 @@
 ### Bajo el Capó
 - **`osg doctor`:** Validación de config y entorno con warnings útiles.
 - **Limpieza de `public/`:** Evita archivos stale cuando se eliminan contenidos.
+
+## v0.2.1 - 2026-02-10
+
+### Ajustes y Mejoras
+- **TUI guiada:** Panel de estado más claro (next action, serve badge, resumen de build/doctor) y salida reciente separada de logs.
+- **Perfiles en `doctor`:** `dev|prod` con severidad ajustada y feedback más accionable.
+- **Theme base refinado:** Estadísticas en hero y mejoras visuales en cards.
