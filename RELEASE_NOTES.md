@@ -27,3 +27,8 @@
 - **TUI guiada:** Panel de estado más claro (next action, serve badge, resumen de build/doctor) y salida reciente separada de logs.
 - **Perfiles en `doctor`:** `dev|prod` con severidad ajustada y feedback más accionable.
 - **Theme base refinado:** Estadísticas en hero y mejoras visuales en cards.
+
+## v0.2.2 - 2026-02-10
+
+### Ajustes y Mejoras
+- **Eventos TUI estructurados:** La salida ya no muestra logs crudos, sino eventos legibles y un panel de estado guiado.
