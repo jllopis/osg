@@ -86,6 +86,35 @@ a {
   font-size: 1.1rem;
 }
 
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.08);
+  border: 1px solid rgba(15, 118, 110, 0.15);
+  font-family: "IBM Plex Mono", "SFMono-Regular", "SF Mono", "Menlo", monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-2);
+}
+
+.stat .value {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
 .prose {
   max-width: 70ch;
 }
@@ -106,6 +135,12 @@ a {
   border-radius: 16px;
   padding: 16px;
   box-shadow: 0 8px 24px var(--shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px var(--shadow);
 }
 
 .card h3 {

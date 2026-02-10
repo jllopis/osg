@@ -24,6 +24,12 @@
         <section class="hero">
           <h1>{{ .term.name }}</h1>
           <p class="lead">{{ .taxonomy.name }} term</p>
+          <div class="stats">
+            <div class="stat">
+              <span class="label">Pages</span>
+              <span class="value">{{ .term.page_count }}</span>
+            </div>
+          </div>
         </section>
 
         {{ if .paginator }}

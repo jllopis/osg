@@ -20,6 +20,7 @@ serve_debounce_ms: 300
 build_incremental: true
 build_cache_dir: .osg/cache
 clean_public: true
+doctor_profile: dev
 logging:
   level: info
   format: json

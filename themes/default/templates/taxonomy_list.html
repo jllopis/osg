@@ -24,6 +24,12 @@
         <section class="hero">
           <h1>{{ .taxonomy.name }}</h1>
           <p class="lead">Browse all terms.</p>
+          <div class="stats">
+            <div class="stat">
+              <span class="label">Terms</span>
+              <span class="value">{{ len .terms }}</span>
+            </div>
+          </div>
         </section>
 
         {{ if .terms }}

@@ -39,6 +39,7 @@ type Config struct {
 	BuildIncremental bool             `koanf:"build_incremental" yaml:"build_incremental"`
 	BuildCacheDir    string           `koanf:"build_cache_dir" yaml:"build_cache_dir"`
 	CleanPublic      bool             `koanf:"clean_public" yaml:"clean_public"`
+	DoctorProfile    string           `koanf:"doctor_profile" yaml:"doctor_profile"`
 	Logging          LoggingConfig    `koanf:"logging" yaml:"logging"`
 	Taxonomies       []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
 }
@@ -74,6 +75,7 @@ func Default() Config {
 		BuildIncremental: true,
 		BuildCacheDir:    ".osg/cache",
 		CleanPublic:      true,
+		DoctorProfile:    "dev",
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
@@ -143,6 +145,7 @@ serve_debounce_ms: 300
 build_incremental: true
 build_cache_dir: .osg/cache
 clean_public: true
+doctor_profile: dev
 logging:
   level: info
   format: json

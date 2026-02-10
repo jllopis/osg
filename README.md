@@ -124,6 +124,9 @@ Build:
   - guarda `build.json` con stamps de contenido/templates/assets/plugins.
 - `clean_public`: limpia `public/` en rebuilds completos o si se eliminan contenidos (por defecto `true`).
 
+Doctor:
+- `doctor_profile`: `dev` o `prod` (por defecto `dev`).
+
 Plugins WASM:
 - Instala el `.wasm` en `plugins/` o usa `osg plugin install <path>`.
 - Activa con `plugins_enabled` en config o `osg plugin enable <name>`.

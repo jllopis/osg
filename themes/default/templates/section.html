@@ -26,6 +26,16 @@
           {{ if .section.content }}
           <div class="prose">{{ .section.content }}</div>
           {{ end }}
+          <div class="stats">
+            <div class="stat">
+              <span class="label">Pages</span>
+              <span class="value">{{ len .section.pages }}</span>
+            </div>
+            <div class="stat">
+              <span class="label">Subsections</span>
+              <span class="value">{{ len .section.subsections }}</span>
+            </div>
+          </div>
         </section>
 
         {{ if .section.pages }}

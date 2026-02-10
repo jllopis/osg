@@ -38,26 +38,39 @@ func RunDoctor(ctx context.Context, opts CLIOptions) error {
 	logger := logging.NewWithWriter(cfg.Logging, opts.Verbose, opts.LogWriter)
 	counts := doctorCounters{}
 
-	checkInfo(logger, "doctor starting")
+	profile := normalizeProfile(cfg.DoctorProfile)
+	checkInfo(logger, "doctor starting", "profile", profile)
 
 	if strings.TrimSpace(cfg.BaseURL) == "" {
-		checkWarn(logger, &counts, "base_url is empty")
+		if profile == "prod" {
+			checkError(logger, &counts, "base_url is empty")
+		} else {
+			checkWarn(logger, &counts, "base_url is empty")
+		}
 	}
 
-	checkPath(logger, &counts, "vault_path", cfg.VaultPath, true)
-	checkPath(logger, &counts, "content_dir", cfg.ContentDir, false)
-	checkPath(logger, &counts, "public_dir", cfg.PublicDir, false)
-	checkPath(logger, &counts, "templates_dir", cfg.TemplatesDir, false)
-	checkPath(logger, &counts, "static_dir", cfg.StaticDir, false)
-	checkPath(logger, &counts, "themes_dir", cfg.ThemesDir, false)
+	checkPath(logger, &counts, "vault_path", cfg.VaultPath, profile == "prod")
+	checkPath(logger, &counts, "content_dir", cfg.ContentDir, profile == "prod")
+	checkPath(logger, &counts, "public_dir", cfg.PublicDir, profile == "prod")
+	checkPath(logger, &counts, "templates_dir", cfg.TemplatesDir, profile == "prod")
+	checkPath(logger, &counts, "static_dir", cfg.StaticDir, profile == "prod")
+	checkPath(logger, &counts, "themes_dir", cfg.ThemesDir, profile == "prod")
 	checkPath(logger, &counts, "plugins_dir", cfg.PluginsDir, false)
-	checkPath(logger, &counts, "sass_dir", cfg.SassDir, false)
+	checkPath(logger, &counts, "sass_dir", cfg.SassDir, cfg.CompileSass && profile == "prod")
 
 	themePath := filepath.Join(cfg.ThemesDir, cfg.Theme)
 	if strings.TrimSpace(cfg.Theme) == "" {
-		checkWarn(logger, &counts, "theme is empty")
+		if profile == "prod" {
+			checkError(logger, &counts, "theme is empty")
+		} else {
+			checkWarn(logger, &counts, "theme is empty")
+		}
 	} else if !pathExists(themePath) {
-		checkWarn(logger, &counts, "theme not found", "theme", cfg.Theme, "path", themePath)
+		if profile == "prod" {
+			checkError(logger, &counts, "theme not found", "theme", cfg.Theme, "path", themePath)
+		} else {
+			checkWarn(logger, &counts, "theme not found", "theme", cfg.Theme, "path", themePath)
+		}
 	}
 
 	checkTaxonomies(logger, &counts, cfg.Taxonomies)
@@ -70,9 +83,9 @@ func RunDoctor(ctx context.Context, opts CLIOptions) error {
 	return nil
 }
 
-func checkInfo(logger *slog.Logger, msg string) {
+func checkInfo(logger *slog.Logger, msg string, args ...any) {
 	if logger != nil {
-		logger.Info(msg)
+		logger.Info(msg, args...)
 	}
 }
 
@@ -173,4 +186,15 @@ func pathExists(path string) bool {
 	}
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+func normalizeProfile(profile string) string {
+	profile = strings.ToLower(strings.TrimSpace(profile))
+	if profile == "" {
+		return "dev"
+	}
+	if profile != "dev" && profile != "prod" {
+		return "dev"
+	}
+	return profile
 }

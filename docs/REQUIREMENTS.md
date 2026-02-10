@@ -64,6 +64,7 @@ US06 - TUI operativa
 - TUI: acciones rapidas + prompt + logs.
 - Plugins WASM opcionales con hooks definidos (activados via `plugins_enabled`).
 - `osg doctor` valida configuracion y entorno.
+- `doctor_profile` define severidad `dev|prod`.
 
 ## Non-functional requirements
 - Go 1.25.x.

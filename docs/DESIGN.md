@@ -61,6 +61,7 @@ Config schema (resumen):
 - content_layout, include_drafts, compile_sass
 - tui_prefix, tui_prefix_ms
 - clean_public
+- doctor_profile
 - logging (level, format)
 - taxonomies (name, paginate_by, paginate_path, feed, render)
 

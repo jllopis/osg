@@ -28,6 +28,16 @@
           {{ else }}
           <p class="lead">A static site generated from your Obsidian vault.</p>
           {{ end }}
+          <div class="stats">
+            <div class="stat">
+              <span class="label">Pages</span>
+              <span class="value">{{ len .site.pages }}</span>
+            </div>
+            <div class="stat">
+              <span class="label">Sections</span>
+              <span class="value">{{ len .site.root.subsections }}</span>
+            </div>
+          </div>
         </section>
 
         {{ if .section.pages }}

@@ -394,6 +394,7 @@ func configView(cfg config.Config) map[string]any {
 		"serve_debounce_ms": cfg.ServeDebounce,
 		"build_incremental": cfg.BuildIncremental,
 		"build_cache_dir":   cfg.BuildCacheDir,
+		"doctor_profile":    cfg.DoctorProfile,
 		"logging": map[string]any{
 			"level":  cfg.Logging.Level,
 			"format": cfg.Logging.Format,

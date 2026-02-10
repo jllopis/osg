@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -133,6 +134,19 @@ type Message struct {
 	Time  time.Time
 }
 
+type BuildSummary struct {
+	Total    int
+	Rendered int
+	Skipped  int
+	Cached   int
+	Errors   int
+}
+
+type DoctorSummary struct {
+	Warnings int
+	Errors   int
+}
+
 type taskKind int
 
 const (
@@ -192,6 +206,9 @@ type Model struct {
 	prefixToken    int
 	prefixDelay    time.Duration
 	enabledPlugins map[string]bool
+	guideEnabled   bool
+	lastBuild      *BuildSummary
+	lastDoctor     *DoctorSummary
 }
 
 func New(actions Actions, options Options, sink *LogSink, history *History) Model {
@@ -243,6 +260,7 @@ func New(actions Actions, options Options, sink *LogSink, history *History) Mode
 		prefixKey:      prefixKey,
 		prefixDelay:    prefixDelay,
 		enabledPlugins: normalizePluginSet(options.EnabledPlugins),
+		guideEnabled:   true,
 	}
 }
 
@@ -381,8 +399,8 @@ func (m Model) View() string {
 		spin = m.spinner.View()
 	}
 
-	left := renderLeftPanel(m.steps, leftWidth, panelHeight, spin, time.Now(), prefixLabel(m.prefixKey), m.serveRunning)
-	center := renderCenterPanel(m.messages, centerWidth, panelHeight, m.input.View())
+	left := renderLeftPanel(m.steps, leftWidth, panelHeight, spin, time.Now(), prefixLabel(m.prefixKey), m.serveRunning, m.guideEnabled)
+	center := renderCenterPanel(m, centerWidth, panelHeight, m.input.View())
 	var body string
 	if m.showRight {
 		right := renderRightPanel(rightWidth, panelHeight, m.options, m.serveRunning, m.enabledPlugins)
@@ -553,6 +571,14 @@ func (m Model) handlePrefixKey(key string) (tea.Model, tea.Cmd, bool) {
 	case "v":
 		model, cmd := m.handleVersionCommand()
 		return model, cmd, true
+	case "g":
+		m.guideEnabled = !m.guideEnabled
+		state := "enabled"
+		if !m.guideEnabled {
+			state = "disabled"
+		}
+		m.appendMessage("INFO", fmt.Sprintf("Guide %s", state))
+		return m, nil, true
 	case "h":
 		m.showHeader = !m.showHeader
 		return m, nil, true
@@ -599,10 +625,12 @@ func (m Model) handleCommand() (tea.Model, tea.Cmd) {
 		}
 		return m.toggleServe()
 	case "help", "h":
-		m.appendMessage("INFO", "Commands: init, update, build, serve, stop, doctor, theme init <name>, plugin enable/disable/toggle/list/install/init, version, help, quit")
+		m.appendMessage("INFO", "Commands: init, update, build, serve, stop, doctor, guide [on|off|toggle], theme init <name>, plugin enable/disable/toggle/list/install/init, version, help, quit")
 		return m, nil
 	case "doctor":
 		return m.runSimpleAction("Doctor", m.actions.Doctor)
+	case "guide":
+		return m.handleGuideCommand(fields)
 	case "theme":
 		return m.handleThemeCommand(fields)
 	case "plugin":
@@ -792,6 +820,30 @@ func (m Model) handleVersionCommand() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) handleGuideCommand(fields []string) (tea.Model, tea.Cmd) {
+	if len(fields) == 1 {
+		m.guideEnabled = !m.guideEnabled
+	} else {
+		switch strings.ToLower(fields[1]) {
+		case "on", "enable", "enabled":
+			m.guideEnabled = true
+		case "off", "disable", "disabled":
+			m.guideEnabled = false
+		case "toggle":
+			m.guideEnabled = !m.guideEnabled
+		default:
+			m.appendMessage("ERROR", "Usage: guide [on|off|toggle]")
+			return m, nil
+		}
+	}
+	state := "enabled"
+	if !m.guideEnabled {
+		state = "disabled"
+	}
+	m.appendMessage("INFO", fmt.Sprintf("Guide %s", state))
+	return m, nil
+}
+
 func (m Model) updateProgress(_ progressTickMsg) (tea.Model, tea.Cmd) {
 	if !m.hasRunningNonServe() {
 		return m, progressTickCmd()
@@ -853,6 +905,7 @@ func (m *Model) appendHistory(label string, text string) {
 }
 
 func (m *Model) appendParsedLog(line string) {
+	m.captureSummaries(line)
 	msg := parseLogLine(line)
 	m.messages = append(m.messages, msg)
 	m.trimMessages()
@@ -912,6 +965,29 @@ func parseLogLine(line string) Message {
 	}
 
 	return Message{Label: label, Text: text, Time: timestamp}
+}
+
+func (m *Model) captureSummaries(line string) {
+	entry := map[string]any{}
+	if err := json.Unmarshal([]byte(line), &entry); err != nil {
+		return
+	}
+	msg, _ := entry["msg"].(string)
+	switch msg {
+	case "build summary":
+		m.lastBuild = &BuildSummary{
+			Total:    asInt(entry["total"]),
+			Rendered: asInt(entry["rendered"]),
+			Skipped:  asInt(entry["skipped"]),
+			Cached:   asInt(entry["cached"]),
+			Errors:   asInt(entry["errors"]),
+		}
+	case "doctor summary":
+		m.lastDoctor = &DoctorSummary{
+			Warnings: asInt(entry["warnings"]),
+			Errors:   asInt(entry["errors"]),
+		}
+	}
 }
 
 func spinnerTickCmd() tea.Cmd {
@@ -1054,14 +1130,18 @@ func renderHeader(width int) string {
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
 
-func renderLeftPanel(steps []Step, width int, height int, spin string, now time.Time, prefixText string, serveRunning bool) string {
+func renderLeftPanel(steps []Step, width int, height int, spin string, now time.Time, prefixText string, serveRunning bool, guideEnabled bool) string {
 	panelStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true).
 		Padding(1, 1).
 		Width(panelContentWidth(width)).
 		Height(height)
 
-	hint := lipgloss.NewStyle().Foreground(colorMuted).Render("Use prefix for quick actions.")
+	guideLabel := "Guide: on"
+	if !guideEnabled {
+		guideLabel = "Guide: off"
+	}
+	hint := lipgloss.NewStyle().Foreground(colorMuted).Render("Use prefix for quick actions. " + guideLabel)
 	lines := []string{panelTitle("Workflow"), hint}
 	for _, step := range steps {
 		lines = append(lines, formatStep(step, spin, now))
@@ -1080,6 +1160,7 @@ func renderLeftPanel(steps []Step, width int, height int, spin string, now time.
 	lines = append(lines, fmt.Sprintf("%s + D Doctor", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + L Plugin list", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + V Version", prefixText))
+	lines = append(lines, fmt.Sprintf("%s + G Toggle guide", prefixText))
 	lines = append(lines, "")
 	lines = append(lines, panelTitle("UI"))
 	lines = append(lines, fmt.Sprintf("%s + H Toggle header", prefixText))
@@ -1089,15 +1170,18 @@ func renderLeftPanel(steps []Step, width int, height int, spin string, now time.
 	return panelStyle.Render(strings.Join(lines, "\n"))
 }
 
-func renderCenterPanel(messages []Message, width int, height int, input string) string {
+func renderCenterPanel(m Model, width int, height int, input string) string {
 	panelStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true).
 		Padding(1, 1).
 		Width(panelContentWidth(width)).
 		Height(height)
 
-	lines := []string{panelTitle("Output")}
-	for _, msg := range messages {
+	lines := []string{panelTitle("Status")}
+	lines = append(lines, m.statusLines()...)
+	lines = append(lines, "")
+	lines = append(lines, panelTitle("Recent output"))
+	for _, msg := range m.recentMessages(8) {
 		lines = append(lines, formatMessage(msg))
 	}
 	lines = append(lines, "")
@@ -1251,6 +1335,78 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%02d:%02d", minutes, seconds)
 }
 
+func (m Model) statusLines() []string {
+	lines := []string{}
+	if m.guideEnabled {
+		lines = append(lines, fmt.Sprintf("Next: %s", m.nextActionLabel()))
+	}
+
+	lines = append(lines, fmt.Sprintf("Last: %s", fallback(m.lastAction, "idle")))
+
+	serverBadge := badge("STOPPED", colorMuted)
+	if m.serveRunning {
+		serverBadge = badge("RUNNING", colorSuccess)
+	}
+	lines = append(lines, fmt.Sprintf("Serve: %s", serverBadge))
+
+	if running := m.runningStepLabel(); running != "" {
+		lines = append(lines, fmt.Sprintf("Running: %s", running))
+	}
+
+	if m.lastBuild != nil {
+		lines = append(lines, fmt.Sprintf("Build: total %d • rendered %d • cached %d • errors %d", m.lastBuild.Total, m.lastBuild.Rendered, m.lastBuild.Cached, m.lastBuild.Errors))
+	}
+	if m.lastDoctor != nil {
+		lines = append(lines, fmt.Sprintf("Doctor: warnings %d • errors %d", m.lastDoctor.Warnings, m.lastDoctor.Errors))
+	}
+
+	return lines
+}
+
+func (m Model) runningStepLabel() string {
+	for _, step := range m.steps {
+		if step.Status == StepRunning {
+			return step.Name
+		}
+	}
+	return ""
+}
+
+func (m Model) nextActionLabel() string {
+	for i, step := range m.steps {
+		if step.Status == StepPending {
+			if i == stepIndexForTask(taskServe) {
+				if m.serveRunning {
+					return "Stop serve"
+				}
+				return "Serve preview"
+			}
+			return step.Name
+		}
+	}
+	if m.serveRunning {
+		return "Stop serve"
+	}
+	return "Serve preview"
+}
+
+func (m Model) recentMessages(limit int) []Message {
+	if limit <= 0 || len(m.messages) == 0 {
+		return nil
+	}
+	if len(m.messages) <= limit {
+		return m.messages
+	}
+	return m.messages[len(m.messages)-limit:]
+}
+
+func fallback(value string, alt string) string {
+	if strings.TrimSpace(value) == "" {
+		return alt
+	}
+	return value
+}
+
 func formatMessage(msg Message) string {
 	stamp := msg.Time.Format("15:04:05")
 	label := fmt.Sprintf("[%s %s]", msg.Label, stamp)
@@ -1331,6 +1487,24 @@ func normalizePluginName(name string) string {
 		name = strings.TrimSuffix(name, filepath.Ext(name))
 	}
 	return strings.TrimSpace(name)
+}
+
+func asInt(value any) int {
+	switch v := value.(type) {
+	case int:
+		return v
+	case int64:
+		return int(v)
+	case float64:
+		return int(v)
+	case float32:
+		return int(v)
+	case string:
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+			return n
+		}
+	}
+	return 0
 }
 
 func normalizePrefix(prefix string) string {
