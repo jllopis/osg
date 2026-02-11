@@ -32,3 +32,9 @@
 
 ### Ajustes y Mejoras
 - **Eventos TUI estructurados:** La salida ya no muestra logs crudos, sino eventos legibles y un panel de estado guiado.
+
+## v0.2.3 - 2026-02-10
+
+### Ajustes y Mejoras
+- **Wizard en TUI:** comando `next` y control `wizard on/off` para seguir el flujo init → update → build → serve.
+- **Doctor más estricto:** validación de `base_url`, checks de watch/live‑reload, sass y templates de theme.
