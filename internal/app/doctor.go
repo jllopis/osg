@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -47,6 +49,12 @@ func RunDoctor(ctx context.Context, opts CLIOptions) error {
 		} else {
 			checkWarn(logger, &counts, "base_url is empty")
 		}
+	} else if err := validateBaseURL(cfg.BaseURL); err != nil {
+		if profile == "prod" {
+			checkError(logger, &counts, "base_url invalid", "error", err.Error())
+		} else {
+			checkWarn(logger, &counts, "base_url invalid", "error", err.Error())
+		}
 	}
 
 	checkPath(logger, &counts, "vault_path", cfg.VaultPath, profile == "prod")
@@ -75,6 +83,9 @@ func RunDoctor(ctx context.Context, opts CLIOptions) error {
 
 	checkTaxonomies(logger, &counts, cfg.Taxonomies)
 	checkPlugins(logger, &counts, cfg.PluginsDir, cfg.PluginsEnabled)
+	checkServeConfig(logger, &counts, cfg)
+	checkSass(logger, &counts, cfg, profile)
+	checkThemeTemplates(logger, &counts, cfg, profile)
 
 	logger.Info("doctor summary", "warnings", counts.warn, "errors", counts.error)
 	if counts.error > 0 {
@@ -180,6 +191,20 @@ func checkPlugins(logger *slog.Logger, counts *doctorCounters, dir string, enabl
 	}
 }
 
+func checkThemeTemplates(logger *slog.Logger, counts *doctorCounters, cfg config.Config, profile string) {
+	if strings.TrimSpace(cfg.Theme) == "" {
+		return
+	}
+	templatesDir := filepath.Join(cfg.ThemesDir, cfg.Theme, "templates")
+	if !pathExists(templatesDir) {
+		if profile == "prod" {
+			checkError(logger, counts, "theme templates not found", "path", templatesDir)
+		} else {
+			checkWarn(logger, counts, "theme templates not found", "path", templatesDir)
+		}
+	}
+}
+
 func pathExists(path string) bool {
 	if strings.TrimSpace(path) == "" {
 		return false
@@ -197,4 +222,37 @@ func normalizeProfile(profile string) string {
 		return "dev"
 	}
 	return profile
+}
+
+func validateBaseURL(value string) error {
+	parsed, err := url.Parse(strings.TrimSpace(value))
+	if err != nil {
+		return err
+	}
+	if parsed.Scheme == "" || parsed.Host == "" {
+		return fmt.Errorf("base_url should include scheme and host")
+	}
+	return nil
+}
+
+func checkServeConfig(logger *slog.Logger, counts *doctorCounters, cfg config.Config) {
+	if cfg.ServeReload && !cfg.ServeWatch {
+		checkWarn(logger, counts, "serve_live_reload enabled but serve_watch is false")
+	}
+	if cfg.ServeWatch && cfg.ServeDebounce <= 0 {
+		checkWarn(logger, counts, "serve_debounce_ms should be > 0")
+	}
+}
+
+func checkSass(logger *slog.Logger, counts *doctorCounters, cfg config.Config, profile string) {
+	if !cfg.CompileSass {
+		return
+	}
+	if _, err := exec.LookPath("sass"); err != nil {
+		if profile == "prod" {
+			checkError(logger, counts, "sass binary not found in PATH")
+		} else {
+			checkWarn(logger, counts, "sass binary not found in PATH")
+		}
+	}
 }

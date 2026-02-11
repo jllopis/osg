@@ -65,6 +65,7 @@ US06 - TUI operativa
 - Plugins WASM opcionales con hooks definidos (activados via `plugins_enabled`).
 - `osg doctor` valida configuracion y entorno.
 - `doctor_profile` define severidad `dev|prod`.
+- TUI: modo guiado para flujo init → update → build → serve.
 
 ## Non-functional requirements
 - Go 1.25.x.

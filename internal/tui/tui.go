@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -208,6 +209,7 @@ type Model struct {
 	prefixDelay    time.Duration
 	enabledPlugins map[string]bool
 	guideEnabled   bool
+	wizardEnabled  bool
 	hasInit        bool
 	lastBuild      *BuildSummary
 	lastDoctor     *DoctorSummary
@@ -263,6 +265,7 @@ func New(actions Actions, options Options, sink *LogSink, history *History) Mode
 		prefixDelay:    prefixDelay,
 		enabledPlugins: normalizePluginSet(options.EnabledPlugins),
 		guideEnabled:   true,
+		wizardEnabled:  true,
 		hasInit:        options.HasContent,
 	}
 }
@@ -515,6 +518,10 @@ func (m Model) finishTask(msg taskFinishedMsg) (tea.Model, tea.Cmd) {
 	m.lastAction = label + " completed"
 	if msg.kind == taskInit {
 		m.hasInit = true
+	} else if msg.kind == taskUpdate {
+		if pathExists(m.options.ContentDir) {
+			m.hasInit = true
+		}
 	}
 	return m, nil
 }
@@ -577,6 +584,13 @@ func (m Model) handlePrefixKey(key string) (tea.Model, tea.Cmd, bool) {
 	case "v":
 		model, cmd := m.handleVersionCommand()
 		return model, cmd, true
+	case "n":
+		model, cmd := m.handleNextCommand()
+		return model, cmd, true
+	case "w":
+		m.wizardEnabled = !m.wizardEnabled
+		m.appendMessage("INFO", fmt.Sprintf("Wizard %s", onOff(m.wizardEnabled)))
+		return m, nil, true
 	case "g":
 		m.guideEnabled = !m.guideEnabled
 		state := "enabled"
@@ -631,12 +645,16 @@ func (m Model) handleCommand() (tea.Model, tea.Cmd) {
 		}
 		return m.toggleServe()
 	case "help", "h":
-		m.appendMessage("INFO", "Commands: init, update, build, serve, stop, doctor, guide [on|off|toggle], theme init <name>, plugin enable/disable/toggle/list/install/init, version, help, quit")
+		m.appendMessage("INFO", "Commands: init, update, build, serve, stop, next, wizard [on|off|toggle], doctor, guide [on|off|toggle], theme init <name>, plugin enable/disable/toggle/list/install/init, version, help, quit")
 		return m, nil
 	case "doctor":
 		return m.runSimpleAction("Doctor", m.actions.Doctor)
 	case "guide":
 		return m.handleGuideCommand(fields)
+	case "wizard":
+		return m.handleWizardCommand(fields)
+	case "next":
+		return m.handleNextCommand()
 	case "theme":
 		return m.handleThemeCommand(fields)
 	case "plugin":
@@ -848,6 +866,43 @@ func (m Model) handleGuideCommand(fields []string) (tea.Model, tea.Cmd) {
 	}
 	m.appendMessage("INFO", fmt.Sprintf("Guide %s", state))
 	return m, nil
+}
+
+func (m Model) handleWizardCommand(fields []string) (tea.Model, tea.Cmd) {
+	if len(fields) == 1 {
+		m.wizardEnabled = !m.wizardEnabled
+	} else {
+		switch strings.ToLower(fields[1]) {
+		case "on", "enable", "enabled":
+			m.wizardEnabled = true
+		case "off", "disable", "disabled":
+			m.wizardEnabled = false
+		case "toggle":
+			m.wizardEnabled = !m.wizardEnabled
+		default:
+			m.appendMessage("ERROR", "Usage: wizard [on|off|toggle]")
+			return m, nil
+		}
+	}
+	m.appendMessage("INFO", fmt.Sprintf("Wizard %s", onOff(m.wizardEnabled)))
+	return m, nil
+}
+
+func (m Model) handleNextCommand() (tea.Model, tea.Cmd) {
+	next := m.nextActionKind()
+	switch next {
+	case taskInit:
+		return m.startTask(taskInit)
+	case taskUpdate:
+		return m.startTask(taskUpdate)
+	case taskBuild:
+		return m.startTask(taskBuild)
+	case taskServe:
+		return m.toggleServe()
+	default:
+		m.appendMessage("INFO", "No next action")
+		return m, nil
+	}
 }
 
 func (m Model) updateProgress(_ progressTickMsg) (tea.Model, tea.Cmd) {
@@ -1163,6 +1218,8 @@ func renderLeftPanel(steps []Step, width int, height int, spin string, now time.
 	lines = append(lines, fmt.Sprintf("%s + L Plugin list", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + V Version", prefixText))
 	lines = append(lines, fmt.Sprintf("%s + G Toggle guide", prefixText))
+	lines = append(lines, fmt.Sprintf("%s + W Toggle wizard", prefixText))
+	lines = append(lines, fmt.Sprintf("%s + N Next step", prefixText))
 	lines = append(lines, "")
 	lines = append(lines, panelTitle("UI"))
 	lines = append(lines, fmt.Sprintf("%s + H Toggle header", prefixText))
@@ -1342,6 +1399,7 @@ func (m Model) statusLines() []string {
 	if m.guideEnabled {
 		lines = append(lines, fmt.Sprintf("Next: %s", m.nextActionLabel()))
 	}
+	lines = append(lines, fmt.Sprintf("Wizard: %s", onOff(m.wizardEnabled)))
 
 	lines = append(lines, fmt.Sprintf("Last: %s", fallback(m.lastAction, "idle")))
 
@@ -1393,6 +1451,28 @@ func (m Model) nextActionLabel() string {
 		return "Stop serve"
 	}
 	return "Serve preview"
+}
+
+func (m Model) nextActionKind() taskKind {
+	if !m.hasInit {
+		return taskInit
+	}
+	for i, step := range m.steps {
+		if step.Status == StepPending {
+			if i == stepIndexForTask(taskServe) {
+				return taskServe
+			}
+			return taskKind(i)
+		}
+	}
+	return taskServe
+}
+
+func onOff(value bool) string {
+	if value {
+		return "on"
+	}
+	return "off"
 }
 
 func (m Model) recentMessages(limit int) []Message {
@@ -1512,6 +1592,17 @@ func pathBase(value string) string {
 		return ""
 	}
 	return filepath.Base(value)
+}
+
+func pathExists(path string) bool {
+	if strings.TrimSpace(path) == "" {
+		return false
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return info.IsDir()
 }
 
 func defaultValue(value string) string {

@@ -72,6 +72,13 @@ TUI:
 osg tui
 ```
 
+Wizard en TUI (pasos guiados):
+
+```
+wizard on
+next
+```
+
 Doctor (validacion de config y entorno):
 
 ```bash
