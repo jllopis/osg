@@ -38,3 +38,10 @@
 ### Ajustes y Mejoras
 - **Wizard en TUI:** comando `next` y control `wizard on/off` para seguir el flujo init → update → build → serve.
 - **Doctor más estricto:** validación de `base_url`, checks de watch/live‑reload, sass y templates de theme.
+
+## v0.2.4 - 2026-02-10
+
+### Ajustes y Mejoras
+- **TUI mejorada:** panel de flujo y alertas, wizard con `next` y atajos `W/N`.
+- **Doctor tests:** cobertura para perfiles `dev/prod`.
+- **Theme base:** chips de tags y pills enlazadas.
