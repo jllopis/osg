@@ -38,7 +38,7 @@
             <div class="taxo">
               <span class="label">{{ $kind }}</span>
               {{ range $terms }}
-              <span class="pill">{{ . }}</span>
+              <a class="pill" href="{{ get_taxonomy_url $kind . }}">{{ . }}</a>
               {{ end }}
             </div>
             {{ end }}

@@ -119,6 +119,34 @@ a {
   max-width: 70ch;
 }
 
+.chips {
+  margin-top: 32px;
+}
+
+.chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(180, 83, 9, 0.08);
+  border: 1px solid rgba(180, 83, 9, 0.2);
+  color: var(--accent);
+  font-family: "IBM Plex Mono", "SFMono-Regular", "SF Mono", "Menlo", monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chip:hover {
+  background: rgba(180, 83, 9, 0.16);
+}
+
 .list h2 {
   margin: 12px 0 16px;
 }

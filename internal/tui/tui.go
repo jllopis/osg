@@ -1239,6 +1239,12 @@ func renderCenterPanel(m Model, width int, height int, input string) string {
 	lines := []string{panelTitle("Status")}
 	lines = append(lines, m.statusLines()...)
 	lines = append(lines, "")
+	lines = append(lines, panelTitle("Flow"))
+	lines = append(lines, m.flowLines()...)
+	lines = append(lines, "")
+	lines = append(lines, panelTitle("Alerts"))
+	lines = append(lines, m.alertLines(3)...)
+	lines = append(lines, "")
 	lines = append(lines, panelTitle("Recent output"))
 	for _, msg := range m.recentMessages(8) {
 		lines = append(lines, formatEvent(msg)...)
@@ -1420,6 +1426,31 @@ func (m Model) statusLines() []string {
 		lines = append(lines, fmt.Sprintf("Doctor: warnings %d • errors %d", m.lastDoctor.Warnings, m.lastDoctor.Errors))
 	}
 
+	return lines
+}
+
+func (m Model) flowLines() []string {
+	lines := []string{}
+	now := time.Now()
+	for _, step := range m.steps {
+		lines = append(lines, formatStep(step, "", now))
+	}
+	return lines
+}
+
+func (m Model) alertLines(limit int) []string {
+	lines := []string{}
+	count := 0
+	for i := len(m.messages) - 1; i >= 0 && count < limit; i-- {
+		msg := m.messages[i]
+		if msg.Label == "ERROR" || msg.Label == "WARN" || msg.Label == "WARNING" {
+			lines = append(lines, formatEvent(msg)...)
+			count++
+		}
+	}
+	if count == 0 {
+		return []string{lipgloss.NewStyle().Foreground(colorMuted).Render("No alerts")}
+	}
 	return lines
 }
 

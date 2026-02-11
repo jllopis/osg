@@ -54,6 +54,20 @@
           </div>
         </section>
         {{ end }}
+
+        {{ $tags := index .taxonomies "tags" }}
+        {{ if $tags }}
+        <section class="chips">
+          <h2>Tags</h2>
+          <div class="chip-grid">
+            {{ range $i, $term := $tags.terms }}
+            {{ if lt $i 10 }}
+            <a class="chip" href="{{ $term.permalink }}">{{ $term.name }}</a>
+            {{ end }}
+            {{ end }}
+          </div>
+        </section>
+        {{ end }}
       </main>
 
       <footer class="site-footer container">
