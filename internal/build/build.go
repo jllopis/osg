@@ -46,6 +46,9 @@ type BuildOptions struct {
 	// ForceAISummaries bypasses the AI summary cache and regenerates all
 	// summaries even when cached results exist.
 	ForceAISummaries bool
+	// Progress is an optional user-facing progress indicator (spinner).
+	// When non-nil, long operations like AI summary generation update it.
+	Progress logging.Progress
 }
 
 func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool, logWriter io.Writer) error {
@@ -1125,7 +1128,7 @@ func fillSummaries(ctx context.Context, cfg config.Config, opts BuildOptions, si
 		cache.provider = cfg.AI.Provider
 		cache.model = cfg.AI.Model
 
-		affected := fillWithAI(ctx, siteIndex, kp, timeout, concurrency, cache, opts.ForceAISummaries, logger)
+		affected := fillWithAI(ctx, siteIndex, kp, timeout, concurrency, cache, opts.ForceAISummaries, logger, opts.Progress)
 
 		// Save updated cache.
 		if err := saveAICache(cachePath, cache, logger); err != nil {
@@ -1174,7 +1177,7 @@ func fillWithProvider(ctx context.Context, siteIndex *site.Site, provider summar
 // the LLM and stores new results back into the cache.
 // It returns the source paths of pages whose Summary was set (from cache
 // or from the LLM).
-func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Provider, timeout time.Duration, concurrency int, cache *AICache, force bool, logger *slog.Logger) []string {
+func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Provider, timeout time.Duration, concurrency int, cache *AICache, force bool, logger *slog.Logger, progress logging.Progress) []string {
 	// Collect pages that need summaries.
 	type pageJob struct {
 		page        *site.Page
@@ -1213,6 +1216,11 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 	}
 	logger.Info("generating AI summaries", "pages", len(jobs), "concurrency", concurrency)
 
+	// Start a user-visible spinner if a progress indicator is available.
+	if progress != nil {
+		progress.Start(fmt.Sprintf("Generating AI summaries (0/%d)…", len(jobs)))
+	}
+
 	// Bounded parallelism via a semaphore channel.
 	sem := make(chan struct{}, concurrency)
 	type result struct {
@@ -1238,21 +1246,28 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 	// Collect results.
 	filled := 0
 	errors := 0
+	processed := 0
 	for range len(jobs) {
 		r := <-results
 		job := jobs[r.idx]
+		processed++
 		if r.err != nil {
 			logger.Warn("AI summary failed", "title", job.page.Title, "path", job.page.Path, "error", r.err)
 			errors++
-			continue
-		}
-		if r.summary != "" {
+		} else if r.summary != "" {
 			job.page.Summary = r.summary
 			cache.Store(job.contentHash, r.summary)
 			logger.Info("AI summary generated", "title", job.page.Title)
 			affected = append(affected, job.page.SourcePath)
 			filled++
 		}
+		if progress != nil {
+			progress.Update(fmt.Sprintf("Generating AI summaries (%d/%d)…", processed, len(jobs)))
+		}
+	}
+
+	if progress != nil {
+		progress.Stop()
 	}
 
 	logger.Info("AI summaries complete", "filled", filled, "errors", errors)

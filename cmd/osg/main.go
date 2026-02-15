@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	"github.com/alecthomas/kong"
 
 	"osg/internal/app"
+	"osg/internal/logging"
 )
 
 type CLI struct {
@@ -103,6 +105,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// When stdout is an interactive terminal, create a CLI spinner for
+	// progress feedback and wrap the log writer so slog output doesn't
+	// collide with the spinner line.
+	var progress *logging.CLIProgress
+	var logWriter io.Writer
+	if logging.IsTTY(os.Stdout) {
+		progress = logging.NewCLIProgress(os.Stdout)
+		logWriter = logging.NewProgressWriter(os.Stdout, progress)
+	}
+
 	opts := app.CLIOptions{
 		ConfigPath:       cli.Config,
 		Verbose:          cli.Verbose,
@@ -116,6 +128,8 @@ func main() {
 		ServeReload:      cli.Serve.LiveReload,
 		ServeDebounce:    cli.Serve.DebounceMs,
 		ForceAISummaries: cli.Build.ForceAISummaries,
+		LogWriter:        logWriter,
+		Progress:         progress,
 	}
 
 	var runErr error

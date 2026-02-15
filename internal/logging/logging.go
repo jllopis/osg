@@ -26,6 +26,15 @@ func NewWithWriter(cfg config.LoggingConfig, verbose bool, writer io.Writer) *sl
 	opts := &slog.HandlerOptions{Level: level}
 
 	format := strings.ToLower(strings.TrimSpace(cfg.Format))
+
+	// Auto-detect: when format is "json" (the default) but the writer
+	// is connected to an interactive terminal, switch to the more
+	// human-friendly text format.  Users can still force JSON via
+	// logging.format: "json" + piping to a file.
+	if format != "text" && IsTTY(writer) {
+		format = "text"
+	}
+
 	if format == "text" {
 		return slog.New(slog.NewTextHandler(writer, opts))
 	}

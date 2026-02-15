@@ -1,6 +1,10 @@
 package app
 
-import "io"
+import (
+	"io"
+
+	"osg/internal/logging"
+)
 
 type CLIOptions struct {
 	ConfigPath       string
@@ -18,4 +22,5 @@ type CLIOptions struct {
 	LogWriter        io.Writer
 	ForceAISummaries bool
 	SkipAI           bool
+	Progress         logging.Progress
 }

@@ -68,7 +68,7 @@ var sectionTitleStyle = lipgloss.NewStyle().
 
 // Sidebar key-value label (left).
 var sidebarLabelStyle = lipgloss.NewStyle().
-	Foreground(nordBg3)
+	Foreground(nordFrost2)
 
 // Sidebar key-value value (right).
 var sidebarValueStyle = lipgloss.NewStyle().
@@ -92,7 +92,7 @@ var hintKeyStyle = lipgloss.NewStyle().
 
 // Hint descriptions.
 var hintDescStyle = lipgloss.NewStyle().
-	Foreground(nordBg3)
+	Foreground(nordFrost2)
 
 // Log labels.
 var (

@@ -25,7 +25,7 @@ func (m Model) renderHintBar() string {
 	if m.lastAction != "" {
 		status = m.lastAction
 	}
-	statusText := lipgloss.NewStyle().Foreground(nordBg3).Render(status)
+	statusText := lipgloss.NewStyle().Foreground(nordFrost2).Render(status)
 
 	left := ""
 	for i, p := range parts {

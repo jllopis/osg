@@ -605,7 +605,7 @@ func TestFillWithAI_ReturnsAffectedFromCacheAndLLM(t *testing.T) {
 		// "Fail" intentionally missing -> provider returns error
 	}}
 
-	affected := fillWithAI(context.Background(), siteIndex, provider, 10*time.Second, 2, cache, false, logger)
+	affected := fillWithAI(context.Background(), siteIndex, provider, 10*time.Second, 2, cache, false, logger, nil)
 
 	// "Cached" -> cache hit, should be affected.
 	// "New"    -> LLM success, should be affected.

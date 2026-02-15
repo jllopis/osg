@@ -17,6 +17,7 @@ require (
 	github.com/knadh/koanf/providers/env v1.1.0
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/v2 v2.3.2
+	github.com/mattn/go-isatty v0.0.20
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/tetratelabs/wazero v1.11.0
 	github.com/yuin/goldmark v1.7.16
@@ -53,7 +54,6 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
