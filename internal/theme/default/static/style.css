@@ -599,6 +599,7 @@ picture {
 .article-header .lead {
   margin-top: var(--sp-5);
   font-size: var(--text-xl);
+  font-style: italic;
   color: var(--ink-secondary);
   line-height: var(--lh-relaxed);
   max-width: 60ch;

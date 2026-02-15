@@ -359,11 +359,10 @@ func TestNewKairosProvider_ProviderCaseInsensitive(t *testing.T) {
 func TestBuildDefaultPrompt_NoLanguage(t *testing.T) {
 	prompt := buildDefaultPrompt("")
 	// Without a language, the prompt should not contain "in Spanish", "in English", etc.
-	// The base prompt naturally contains "in 2-3" so we check for language names specifically.
 	if strings.Contains(prompt, "in Spanish") || strings.Contains(prompt, "in English") {
 		t.Errorf("expected no language clause, got %q", prompt)
 	}
-	if !strings.Contains(prompt, "2-3 concise sentences") {
+	if !strings.Contains(prompt, "1-2 short sentences") {
 		t.Errorf("expected base prompt text, got %q", prompt)
 	}
 	// Verify the language-neutral prompt matches the template with empty string.

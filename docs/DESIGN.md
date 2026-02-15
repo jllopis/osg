@@ -337,7 +337,7 @@ Se expone como `data-color-scheme` en el atributo del `<html>` de todas las plan
 - `model`: modelo LLM. Si vacio, usa el default del provider (gemini: "gemini-3-flash-preview", anthropic: "claude-haiku-4-20250514", openai: "gpt-5-mini", qwen: "qwen-turbo")
 - `api_key`: API key. Si vacio, el provider usa su env var por defecto (GOOGLE_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY). Qwen requiere key explicita
 - `base_url`: override del endpoint. Util para ollama ("http://localhost:11434") o proxies
-- `system_prompt`: instruccion de sistema custom. Si vacio, usa prompt por defecto con idioma inyectado segun `default_language`. Default: "Summarize the following blog post in 2-3 concise sentences for use as a preview excerpt. Write the summary in {Language}."
+- `system_prompt`: instruccion de sistema custom. Si vacio, usa prompt por defecto con idioma inyectado segun `default_language`. Default: "Summarize the following blog post in 1-2 short sentences (max 120 characters) in {Language} for use as a preview excerpt. Return only the summary text, no labels or prefixes."
 - `timeout` (default: 30): timeout per-request en segundos. Valores <= 0 se normalizan a 30
 - `concurrency` (default: 3): max goroutines paralelas para requests LLM. Valores <= 0 se normalizan a 3
 - Provider invalido produce error: `invalid ai.provider "X": must be gemini, anthropic, openai, qwen, or ollama`

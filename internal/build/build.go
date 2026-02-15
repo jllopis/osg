@@ -1142,7 +1142,7 @@ func fillWithProvider(ctx context.Context, siteIndex *site.Site, provider summar
 		}
 		text, err := provider.Summarize(ctx, page.Title, page.RawContent)
 		if err != nil {
-			logger.Warn("summary generation failed", "page", page.Path, "error", err)
+			logger.Warn("summary generation failed", "title", page.Title, "path", page.Path, "error", err)
 			continue
 		}
 		if text != "" {
@@ -1191,6 +1191,10 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 		return
 	}
 
+	// Log the pages that will be sent to the LLM so the user knows what's happening.
+	for _, job := range jobs {
+		logger.Info("queued for AI summary", "title", job.page.Title, "path", job.page.Path)
+	}
 	logger.Info("generating AI summaries", "pages", len(jobs), "concurrency", concurrency)
 
 	// Bounded parallelism via a semaphore channel.
@@ -1220,14 +1224,16 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 	errors := 0
 	for range len(jobs) {
 		r := <-results
+		job := jobs[r.idx]
 		if r.err != nil {
-			logger.Warn("AI summary failed", "page", jobs[r.idx].page.Path, "error", r.err)
+			logger.Warn("AI summary failed", "title", job.page.Title, "path", job.page.Path, "error", r.err)
 			errors++
 			continue
 		}
 		if r.summary != "" {
-			jobs[r.idx].page.Summary = r.summary
-			cache.Store(jobs[r.idx].contentHash, r.summary)
+			job.page.Summary = r.summary
+			cache.Store(job.contentHash, r.summary)
+			logger.Info("AI summary generated", "title", job.page.Title)
 			filled++
 		}
 	}

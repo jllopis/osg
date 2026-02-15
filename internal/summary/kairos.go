@@ -15,7 +15,7 @@ import (
 // DefaultSystemPromptTemplate is the default system instruction for AI summary
 // generation when no custom prompt is configured.  The %s placeholder is
 // replaced with a language clause (e.g. "in Spanish") when a language is set.
-const DefaultSystemPromptTemplate = "Summarize the following blog post in 2-3 concise sentences%s for use as a preview excerpt. Return only the summary text, no labels or prefixes."
+const DefaultSystemPromptTemplate = "Summarize the following blog post in 1-2 short sentences (max 120 characters)%s for use as a preview excerpt. Return only the summary text, no labels or prefixes."
 
 // buildDefaultPrompt returns the default system prompt, optionally injecting
 // a language instruction.  When lang is empty the prompt is language-neutral.
