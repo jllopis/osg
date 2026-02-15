@@ -1063,8 +1063,42 @@ func sectionUpdated(section *site.Section) time.Time {
 // fillSummaries populates Page.Summary for any page that lacks one,
 // using the configured summary strategy (auto/manual/ai).
 func fillSummaries(ctx context.Context, cfg config.Config, siteIndex *site.Site, logger *slog.Logger) {
-	provider := summary.NewProvider(cfg.SummaryStrategy)
+	strategy := cfg.SummaryStrategy
 
+	// For "ai", create a KairosProvider with the configured LLM backend.
+	if strings.EqualFold(strategy, "ai") {
+		aiCfg := summary.AIConfig{
+			Provider:     cfg.AI.Provider,
+			Model:        cfg.AI.Model,
+			APIKey:       cfg.AI.APIKey,
+			BaseURL:      cfg.AI.BaseURL,
+			SystemPrompt: cfg.AI.SystemPrompt,
+		}
+		kp, err := summary.NewKairosProvider(ctx, aiCfg)
+		if err != nil {
+			logger.Warn("failed to create AI summary provider, falling back to auto", "error", err)
+			fillWithProvider(ctx, siteIndex, summary.ExtractProvider{}, cfg.SummaryStrategy, logger)
+			return
+		}
+
+		timeout := time.Duration(cfg.AI.Timeout) * time.Second
+		concurrency := cfg.AI.Concurrency
+		if concurrency <= 0 {
+			concurrency = 3
+		}
+
+		fillWithAI(ctx, siteIndex, kp, timeout, concurrency, logger)
+		return
+	}
+
+	// Non-AI strategies: manual or auto.
+	provider := summary.NewProvider(strategy)
+	fillWithProvider(ctx, siteIndex, provider, strategy, logger)
+}
+
+// fillWithProvider runs the simple sequential summary fill used by
+// auto and manual strategies.
+func fillWithProvider(ctx context.Context, siteIndex *site.Site, provider summary.Provider, strategy string, logger *slog.Logger) {
 	// NoopProvider means "manual" — nothing to do.
 	if _, noop := provider.(summary.NoopProvider); noop {
 		return
@@ -1086,8 +1120,68 @@ func fillSummaries(ctx context.Context, cfg config.Config, siteIndex *site.Site,
 		}
 	}
 	if filled > 0 {
-		logger.Info("summaries generated", "count", filled, "strategy", cfg.SummaryStrategy)
+		logger.Info("summaries generated", "count", filled, "strategy", strategy)
 	}
+}
+
+// fillWithAI runs concurrent LLM-based summary generation with bounded
+// parallelism and per-request timeouts.
+func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Provider, timeout time.Duration, concurrency int, logger *slog.Logger) {
+	// Collect pages that need summaries.
+	type pageJob struct {
+		page *site.Page
+	}
+	var jobs []pageJob
+	for _, page := range siteIndex.Pages {
+		if page.Summary == "" {
+			jobs = append(jobs, pageJob{page: page})
+		}
+	}
+	if len(jobs) == 0 {
+		return
+	}
+
+	logger.Info("generating AI summaries", "pages", len(jobs), "concurrency", concurrency)
+
+	// Bounded parallelism via a semaphore channel.
+	sem := make(chan struct{}, concurrency)
+	type result struct {
+		idx     int
+		summary string
+		err     error
+	}
+	results := make(chan result, len(jobs))
+
+	for i, job := range jobs {
+		sem <- struct{}{} // acquire
+		go func(idx int, p *site.Page) {
+			defer func() { <-sem }() // release
+
+			reqCtx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+
+			text, err := provider.Summarize(reqCtx, p.Title, p.RawContent)
+			results <- result{idx: idx, summary: text, err: err}
+		}(i, job.page)
+	}
+
+	// Collect results.
+	filled := 0
+	errors := 0
+	for range len(jobs) {
+		r := <-results
+		if r.err != nil {
+			logger.Warn("AI summary failed", "page", jobs[r.idx].page.Path, "error", r.err)
+			errors++
+			continue
+		}
+		if r.summary != "" {
+			jobs[r.idx].page.Summary = r.summary
+			filled++
+		}
+	}
+
+	logger.Info("AI summaries complete", "filled", filled, "errors", errors)
 }
 
 // generatePlaceholders writes a deterministic SVG placeholder image for

@@ -5,8 +5,9 @@
 //   - "manual"  — only frontmatter summaries are used (NoopProvider).
 //   - "auto"    — first sentences are extracted from the markdown body
 //     when no frontmatter summary exists (ExtractProvider).
-//   - "ai"      — reserved for future LLM-based generation via Kairos
-//     (see https://github.com/jllopis/kairos).
+//   - "ai"      — LLM-based generation via Kairos
+//     (see https://github.com/jllopis/kairos).  Supports gemini,
+//     anthropic, openai, qwen, and ollama providers.
 //
 // The build pipeline calls [ForPages] after parsing all content and
 // building the site hierarchy to fill in any empty Page.Summary fields.
@@ -77,45 +78,21 @@ func (p ExtractProvider) Summarize(_ context.Context, _ string, rawMarkdown stri
 }
 
 // ---------------------------------------------------------------------------
-// Placeholder for future Kairos AI provider.
-// ---------------------------------------------------------------------------
-//
-// When Kairos is ready, implement Provider with something like:
-//
-//   type KairosProvider struct {
-//       Client *kairos.Client   // or agent handle
-//       Model  string           // e.g. "gpt-4o-mini"
-//       Prompt string           // system prompt template
-//   }
-//
-//   func (k *KairosProvider) Summarize(ctx context.Context, title, raw string) (string, error) {
-//       resp, err := k.Client.Complete(ctx, kairos.Request{
-//           Model:  k.Model,
-//           System: k.Prompt,
-//           Messages: []kairos.Message{
-//               {Role: "user", Content: fmt.Sprintf("Title: %s\n\n%s", title, raw)},
-//           },
-//       })
-//       if err != nil { return "", err }
-//       return strings.TrimSpace(resp.Text), nil
-//   }
-//
-// Then register it in NewProvider() when strategy == "ai".
-
-// ---------------------------------------------------------------------------
 // NewProvider returns the appropriate Provider for the given strategy.
 // ---------------------------------------------------------------------------
 
 // NewProvider creates a Provider for the named strategy.
 // Recognised values: "auto" (default), "manual", "ai".
-// "ai" currently falls back to "auto" until Kairos integration is wired.
+// For "ai", use NewAIProvider instead — this function returns ExtractProvider
+// as a safe fallback when called without AI configuration.
 func NewProvider(strategy string) Provider {
 	switch strings.ToLower(strings.TrimSpace(strategy)) {
 	case "manual":
 		return NoopProvider{}
 	case "ai":
-		// TODO: when Kairos is integrated, return KairosProvider here.
-		// For now fall through to auto so pages still get summaries.
+		// AI requires explicit configuration via NewAIProvider.
+		// Fall back to auto so pages still get summaries if the caller
+		// uses NewProvider directly (e.g. in tests).
 		return ExtractProvider{}
 	default: // "auto" or empty
 		return ExtractProvider{}

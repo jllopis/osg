@@ -109,7 +109,10 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
 - **Standalone pages**: `osg.path` overrides the date-based content layout;
   `osg.menu: true` adds the page to nav and excludes it from post listings
 - **Summary strategies**: `summary_strategy` in config (auto/manual/ai);
-  auto extracts first sentences, ai is a placeholder for Kairos
+  auto extracts first sentences, ai uses Kairos LLM with bounded concurrency
+- **AI summaries (Kairos)**: `internal/summary/kairos.go` wraps Kairos `llm.Provider`;
+  supports gemini/anthropic/openai/qwen/ollama; config via `ai` section;
+  bounded parallelism with semaphore channel and per-request timeouts
 - **Theme**: Nord color palette, dark mode (auto/light/dark via `color_scheme`),
   Inter + JetBrains Mono fonts, responsive CSS
 - **Plugins**: WASM via wazero, hook-based (transform_content, etc.)
@@ -117,16 +120,16 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
 
 ## Current State (as of last session)
 
-All phases 1-10 complete. Standalone Pages feature complete. `osg new` command complete. i18n in templates complete.
+All phases 1-10 complete. Standalone Pages feature complete. `osg new` command complete. i18n in templates complete. Kairos AI summaries complete.
 
 ### Recently completed
-- i18n in templates: `internal/i18n/` package with `Bundle`, `Trans()`, `DateFormat()`.
-  Translation YAML files (en.yaml, es.yaml) with ~31 keys. `default_language` config field
-  (default "es"). All 10 theme templates and 2 builtins updated with `{{ trans }}` and
-  `{{ date_format }}`. 14 unit tests.
+- Kairos AI summaries: `internal/summary/kairos.go` with `KairosProvider`,
+  `NewKairosProvider()` factory for 5 LLM providers. `AIConfig` in config with
+  provider/model/api_key/base_url/system_prompt/timeout/concurrency. Bounded
+  concurrency in `fillWithAI()` with semaphore channel and per-request timeouts.
+  Graceful fallback to auto strategy on provider creation failure. 20 unit tests.
 
 ### Backlog (deferred, not started)
-- Kairos AI summaries (requires API key + rate limiting)
 - Image gallery / lightbox
 
 ## Key Dependencies
@@ -140,3 +143,4 @@ All phases 1-10 complete. Standalone Pages feature complete. `osg new` command c
 - `github.com/tetratelabs/wazero` - WASM runtime
 - `github.com/fsnotify/fsnotify` - file watching
 - `github.com/tdewolff/minify` - HTML/CSS/JS minification
+- `github.com/jllopis/kairos` - AI/LLM framework (multi-provider: gemini, anthropic, openai, qwen, ollama)

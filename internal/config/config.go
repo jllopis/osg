@@ -16,6 +16,30 @@ type LoggingConfig struct {
 	Format string `koanf:"format" yaml:"format"`
 }
 
+// AIConfig holds settings for LLM-based summary generation via Kairos.
+type AIConfig struct {
+	// Provider is the LLM provider name: "gemini" (default), "anthropic",
+	// "openai", "qwen", or "ollama".
+	Provider string `koanf:"provider" yaml:"provider"`
+	// Model is the model identifier (e.g. "gemini-3-flash-preview").
+	// If empty, the provider's default model is used.
+	Model string `koanf:"model" yaml:"model"`
+	// APIKey is the API key for the provider. If empty, the provider's
+	// default environment variable is used (e.g. GOOGLE_API_KEY for gemini).
+	APIKey string `koanf:"api_key" yaml:"api_key"`
+	// BaseURL overrides the provider's default API endpoint.
+	// Mainly useful for ollama (e.g. "http://localhost:11434") or
+	// custom OpenAI-compatible endpoints.
+	BaseURL string `koanf:"base_url" yaml:"base_url"`
+	// SystemPrompt is the system instruction sent to the LLM.
+	// If empty a sensible default is used.
+	SystemPrompt string `koanf:"system_prompt" yaml:"system_prompt"`
+	// Timeout is the per-request timeout in seconds. Default: 30.
+	Timeout int `koanf:"timeout" yaml:"timeout"`
+	// Concurrency is the max number of parallel LLM requests. Default: 3.
+	Concurrency int `koanf:"concurrency" yaml:"concurrency"`
+}
+
 type Config struct {
 	BaseURL           string           `koanf:"base_url" yaml:"base_url"`
 	SiteTitle         string           `koanf:"site_title" yaml:"site_title"`
@@ -50,6 +74,7 @@ type Config struct {
 	ImageWidths       []int            `koanf:"image_widths" yaml:"image_widths"`
 	DefaultLanguage   string           `koanf:"default_language" yaml:"default_language"`
 	DoctorProfile     string           `koanf:"doctor_profile" yaml:"doctor_profile"`
+	AI                AIConfig         `koanf:"ai" yaml:"ai"`
 	Logging           LoggingConfig    `koanf:"logging" yaml:"logging"`
 	Taxonomies        []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
 }
@@ -96,6 +121,12 @@ func Default() Config {
 		ImageWidths:       []int{640, 1200},
 		DefaultLanguage:   "es",
 		DoctorProfile:     "dev",
+		AI: AIConfig{
+			Provider:    "gemini",
+			Model:       "gemini-3-flash-preview",
+			Timeout:     30,
+			Concurrency: 3,
+		},
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
@@ -158,6 +189,24 @@ func Load(path string) (Config, error) {
 	cfg.DefaultLanguage = strings.ToLower(strings.TrimSpace(cfg.DefaultLanguage))
 	if cfg.DefaultLanguage == "" {
 		cfg.DefaultLanguage = "es"
+	}
+
+	// Normalise and validate AI config.
+	cfg.AI.Provider = strings.ToLower(strings.TrimSpace(cfg.AI.Provider))
+	if cfg.AI.Provider == "" {
+		cfg.AI.Provider = "gemini"
+	}
+	switch cfg.AI.Provider {
+	case "gemini", "anthropic", "openai", "qwen", "ollama":
+		// valid
+	default:
+		return cfg, fmt.Errorf("invalid ai.provider %q: must be gemini, anthropic, openai, qwen, or ollama", cfg.AI.Provider)
+	}
+	if cfg.AI.Timeout <= 0 {
+		cfg.AI.Timeout = 30
+	}
+	if cfg.AI.Concurrency <= 0 {
+		cfg.AI.Concurrency = 3
 	}
 
 	return cfg, nil
@@ -233,9 +282,43 @@ clean_public: true
 #   "auto"   — auto-extract first sentences from markdown when frontmatter
 #              has no summary/description/excerpt field (default).
 #   "manual" — only use explicit frontmatter summaries.
-#   "ai"     — (future) generate via LLM using Kairos.
-#              Currently falls back to "auto".
+#   "ai"     — generate via LLM using Kairos (see ai section below).
 summary_strategy: auto
+
+# -----------------------------------------------------------------------------
+# AI summary generation (Kairos)
+# -----------------------------------------------------------------------------
+# Only used when summary_strategy is "ai".
+#
+# ai.provider: LLM provider to use. Supported: "gemini" (default),
+#              "anthropic", "openai", "qwen", "ollama".
+# ai.model: Model identifier. Defaults depend on the provider:
+#            gemini -> "gemini-3-flash-preview"
+#            anthropic -> "claude-haiku-4-20250514"
+#            openai -> "gpt-5-mini"
+#            qwen -> "qwen-turbo"
+#            ollama -> set explicitly (e.g. "llama3.2")
+# ai.api_key: API key. If empty the provider's default env var is used:
+#             gemini -> GOOGLE_API_KEY or GEMINI_API_KEY
+#             anthropic -> ANTHROPIC_API_KEY
+#             openai -> OPENAI_API_KEY
+#             qwen -> (required, no env var default)
+#             ollama -> not needed
+# ai.base_url: Override the API endpoint. Useful for ollama
+#              ("http://localhost:11434") or custom proxies.
+# ai.system_prompt: Custom system instruction for the LLM.
+#                   Default: "Summarize the following blog post in 2-3
+#                   concise sentences for use as a preview excerpt."
+# ai.timeout: Per-request timeout in seconds (default: 30).
+# ai.concurrency: Max parallel LLM requests (default: 3).
+ai:
+  provider: gemini
+  model: "gemini-3-flash-preview"
+  # api_key: ""
+  # base_url: ""
+  # system_prompt: ""
+  timeout: 30
+  concurrency: 3
 
 # -----------------------------------------------------------------------------
 # Site feed

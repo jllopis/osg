@@ -86,8 +86,8 @@
 - [done] `internal/summary/` package: Provider interface, ExtractProvider, NoopProvider
 - [done] PlainText() markdown stripper (6 regexes para bold/italic, RE2-safe)
 - [done] truncateSentence() con corte en oracion/palabra (max 160 chars)
-- [done] tres estrategias via `summary_strategy`: auto (default), manual, ai (fallback a auto)
-- [done] Kairos AI provider placeholder con bloque de documentacion
+- [done] tres estrategias via `summary_strategy`: auto (default), manual, ai (via Kairos LLM)
+- [done] Kairos AI provider con bounded concurrency y fallback a auto
 - [done] integracion en build.go: fillSummaries() despues de BuildHierarchy()
 - [done] 37 tests unitarios para summary package
 - [done] featured overlay CSS: gradiente transparente, texto blanco, label frosted glass
@@ -137,7 +137,21 @@
 - [done] dual-file sync: templates y YAML en internal/theme/default/ y themes/default/
 - [done] 14 tests unitarios para i18n package
 
+## Kairos AI summaries (done)
+- [done] `internal/summary/kairos.go`: KairosProvider wrapping Kairos llm.Provider
+- [done] Summarize() con PlainText() pre-processing, system+user messages, temperature 0.3
+- [done] NewKairosProvider() factory: soporta gemini, anthropic, openai, qwen, ollama
+- [done] AIConfig en config.go: provider, model, api_key, base_url, system_prompt, timeout, concurrency
+- [done] Defaults: gemini provider, gemini-3-flash-preview model, 30s timeout, 3 concurrency
+- [done] Validacion: provider name, positive timeout/concurrency
+- [done] DefaultConfigYAML() actualizado con seccion AI completa y documentacion de todos los providers
+- [done] fillSummaries() reescrito en build.go: AI path con bounded concurrency (semaphore channel)
+- [done] fillWithAI(): goroutines con per-request timeout, collect results, log errors
+- [done] Fallback graceful: si falla creacion de AI provider, cae a auto strategy con warning
+- [done] go.mod: 5 require + 5 replace directives para Kairos (local development)
+- [done] 20 tests unitarios en kairos_test.go (mock providers, factory, concurrency, context cancellation)
+- [done] Build y test end-to-end verificados
+
 ## Backlog (deferred)
-- [todo] Kairos AI summaries (requires API key + rate limiting)
 - [done] i18n en templates
 - [todo] galeria de imagenes / lightbox

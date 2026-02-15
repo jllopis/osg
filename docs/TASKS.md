@@ -91,3 +91,17 @@ Formato: [todo|doing|done] Tarea
 [done] (i18n) Dual-file sync: templates y YAML en internal/theme/default/ y themes/default/
 [done] (i18n) 14 tests unitarios para i18n package
 [done] (i18n) Documentacion: ROADMAP, TASKS, DESIGN, Funcional, AGENTS.md
+
+[done] (Kairos AI) KairosProvider en internal/summary/kairos.go wrapping Kairos llm.Provider
+[done] (Kairos AI) Summarize() con PlainText() strip, system+user messages, temperature 0.3
+[done] (Kairos AI) NewKairosProvider() factory: gemini, anthropic, openai, qwen, ollama
+[done] (Kairos AI) AIConfig en config.go: provider, model, api_key, base_url, system_prompt, timeout, concurrency
+[done] (Kairos AI) Defaults y validacion: gemini provider, 30s timeout, 3 concurrency
+[done] (Kairos AI) DefaultConfigYAML() con seccion AI completa y doc de todos los providers
+[done] (Kairos AI) fillSummaries() reescrito en build.go: AI path con bounded concurrency
+[done] (Kairos AI) fillWithAI(): goroutines, per-request timeout, semaphore channel
+[done] (Kairos AI) Fallback graceful: fallo de AI provider cae a auto con warning
+[done] (Kairos AI) go.mod: 5 require + 5 replace directives para Kairos local
+[done] (Kairos AI) 20 tests unitarios (mock providers, factory, concurrency, context cancellation)
+[done] (Kairos AI) Build y test end-to-end verificados
+[done] (Kairos AI) Documentacion: ROADMAP, TASKS, DESIGN, Funcional, AGENTS.md

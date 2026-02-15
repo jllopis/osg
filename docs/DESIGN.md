@@ -21,7 +21,7 @@ Componentes principales:
 - internal/taxonomy: indices, paginacion y feeds por taxonomia
 - internal/assets: static + sass
 - internal/placeholder: generacion determinista de imagenes SVG placeholder (Nord)
-- internal/summary: auto-generacion de summaries (Provider interface, PlainText, truncate)
+- internal/summary: auto-generacion de summaries (Provider interface, PlainText, truncate, Kairos AI)
 - internal/wikilink: deteccion y reescritura de wikilinks de imagen Obsidian
 - internal/plugin: host WASM y hooks
 - internal/tui: UI con Bubble Tea
@@ -137,7 +137,7 @@ La logica esta en `Section.View()` con el helper `isFeaturedPage()`.
 ### Estrategias (`summary_strategy` en config)
 - `auto` (default): usa ExtractProvider — strip markdown con PlainText(), trunca a 160 chars en limite de oracion/palabra
 - `manual`: usa NoopProvider — solo summaries puestos a mano en frontmatter
-- `ai`: placeholder para Kairos provider — cae a `auto` si no disponible
+- `ai`: usa KairosProvider con el LLM configurado en la seccion `ai` del config. Si falla la creacion del provider (e.g. API key no disponible), cae a `auto` con un warning en el log
 
 ### PlainText()
 Elimina formateo markdown: headings, bold/italic (6 regexes por incompatibilidad RE2 con backreferences), links, images, code blocks, inline code, blockquotes, HR, listas. Colapsa whitespace.
@@ -149,9 +149,44 @@ Corta en el ultimo `.`/`!`/`?` antes de maxLen. Si no hay puntuacion, corta en e
 ```
 Site.BuildHierarchy() -> fillSummaries() -> generatePlaceholders()
                          |
-                         Para cada page sin summary:
-                           provider.Summarize(page.RawContent, 160)
+                         strategy == "ai":
+                           NewKairosProvider(ctx, aiCfg)
+                           fillWithAI(): bounded concurrency (semaphore),
+                                        per-request timeout, goroutines
+                           si falla creacion: fallback a auto
+                         strategy == "auto":
+                           fillWithProvider() secuencial con ExtractProvider
+                         strategy == "manual":
+                           NoopProvider (nada que hacer)
 ```
+
+### KairosProvider (AI summaries)
+
+`internal/summary/kairos.go` implementa generacion de summaries via LLM usando Kairos como backend multi-provider.
+
+**Providers soportados**: gemini (default), anthropic, openai, qwen, ollama.
+
+**Arquitectura**:
+- `KairosProvider` struct wrapping `llm.Provider` de Kairos
+- `Summarize(ctx, title, rawMarkdown)`: strip markdown con PlainText(), envia system prompt + user content (titulo + texto plano), temperature 0.3
+- `NewKairosProvider(ctx, AIConfig)`: factory que crea el provider correcto segun configuracion
+
+**Flujo de un request AI**:
+```
+page.RawContent -> PlainText() -> "Title: {title}\n\n{plain text}"
+                                       |
+                                       v
+                              LLM.Chat(system prompt + user content)
+                                       |
+                                       v
+                              TrimSpace(response.Content) -> page.Summary
+```
+
+**Concurrency** (`fillWithAI` en build.go):
+- Semaphore channel de tamano `ai.concurrency` (default 3)
+- Cada goroutine adquiere slot, genera summary, libera slot
+- Per-request timeout via `context.WithTimeout` (default 30s)
+- Errores se logean como warnings, no interrumpen el batch
 
 ## Featured overlay (CSS)
 
@@ -216,6 +251,7 @@ El post destacado en homepage muestra la imagen con un overlay de texto:
 - `clean_public`
 - `doctor_profile`
 - `summary_strategy` (auto|manual|ai)
+- `ai` (provider, model, api_key, base_url, system_prompt, timeout, concurrency)
 - `default_language` (default: "es")
 - `logging` (level, format)
 - `taxonomies` (name, paginate_by, paginate_path, feed, render)
@@ -233,6 +269,16 @@ Se expone como `data-color-scheme` en el atributo del `<html>` de todas las plan
 - `manual`: solo usa summaries puestos a mano en frontmatter
 - `ai`: usa provider AI (Kairos) si disponible, sino cae a `auto`
 - Valores invalidos producen error en `Load()`: `invalid summary_strategy "X": must be auto, manual, or ai`
+
+### ai (AIConfig)
+- `provider` (default: "gemini"): LLM provider. Valores validos: gemini, anthropic, openai, qwen, ollama
+- `model`: modelo LLM. Si vacio, usa el default del provider (gemini: "gemini-3-flash-preview", anthropic: "claude-haiku-4-20250514", openai: "gpt-5-mini", qwen: "qwen-turbo")
+- `api_key`: API key. Si vacio, el provider usa su env var por defecto (GOOGLE_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY). Qwen requiere key explicita
+- `base_url`: override del endpoint. Util para ollama ("http://localhost:11434") o proxies
+- `system_prompt`: instruccion de sistema custom. Default: "Summarize the following blog post in 2-3 concise sentences for use as a preview excerpt."
+- `timeout` (default: 30): timeout per-request en segundos. Valores <= 0 se normalizan a 30
+- `concurrency` (default: 3): max goroutines paralelas para requests LLM. Valores <= 0 se normalizan a 3
+- Provider invalido produce error: `invalid ai.provider "X": must be gemini, anthropic, openai, qwen, or ollama`
 
 ### default_language
 - `es` (default): idioma por defecto para traducciones de plantillas
@@ -365,4 +411,3 @@ Planificado (Phase 10):
 
 ## Open questions
 - Soporte para galeria de imagenes o lightbox.
-- Kairos AI summaries: diseno de API key management y rate limiting.

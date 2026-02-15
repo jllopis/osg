@@ -266,6 +266,45 @@ Se ubican en `i18n/{lang}.yaml` (YAML plano clave-valor). El tema por defecto in
 <span>{{ .page.reading_time }} {{ trans "min_read" }}</span>
 ```
 
+### Generacion de summaries con IA (Kairos)
+
+OSG puede generar automaticamente summaries de posts usando LLMs via Kairos, un framework multi-provider de IA.
+
+**Configuracion:**
+
+```yaml
+summary_strategy: ai
+
+ai:
+  provider: gemini          # gemini, anthropic, openai, qwen, ollama
+  model: "gemini-3-flash-preview"
+  # api_key: ""             # si vacio, usa env var del provider
+  # base_url: ""            # override para ollama o proxies
+  # system_prompt: ""       # instruccion custom para el LLM
+  timeout: 30               # segundos por request
+  concurrency: 3            # requests paralelos
+```
+
+**Providers soportados:**
+
+| Provider | Env var API key | Modelo default |
+|----------|----------------|----------------|
+| gemini | GOOGLE_API_KEY o GEMINI_API_KEY | gemini-3-flash-preview |
+| anthropic | ANTHROPIC_API_KEY | claude-haiku-4-20250514 |
+| openai | OPENAI_API_KEY | gpt-5-mini |
+| qwen | (requiere api_key explicita) | qwen-turbo |
+| ollama | (no necesita) | (requiere model explicito) |
+
+**Comportamiento:**
+
+- Solo se usa cuando `summary_strategy: ai`
+- Las pages que ya tienen summary en frontmatter se saltan
+- Si falla la creacion del provider (e.g. sin API key), cae automaticamente a la estrategia `auto` con un warning en el log
+- Los requests se ejecutan en paralelo con concurrencia limitada (semaphore channel)
+- Cada request tiene su propio timeout independiente
+- Errores individuales se logean como warnings pero no interrumpen el batch
+- El contenido se pre-procesa con PlainText() (strip markdown) antes de enviarlo al LLM
+
 ### Generación de HTML a partir de los ficheros Markdown originales
 
 Los ficheros se encuentran en el directorio `content`. Hay que cambiar el nombre del parámetro `build` por `update-content`. Esto debe realizar las acciones actuales de obtener los ficheros, parsearlos y copiarlos a su ubicación final (dentro de `content`).
