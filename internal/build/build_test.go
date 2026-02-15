@@ -1,12 +1,17 @@
 package build
 
 import (
+	"context"
+	"fmt"
+	"io"
+	"log/slog"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"osg/internal/config"
 	"osg/internal/site"
+	"osg/internal/summary"
 )
 
 // ---------------------------------------------------------------------------
@@ -518,5 +523,169 @@ func TestThemeTemplatesDir(t *testing.T) {
 				t.Errorf("themeTemplatesDir(%+v) = %q; want %q", tc.cfg, got, tc.want)
 			}
 		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// fillWithProvider — returns affected source paths
+// ---------------------------------------------------------------------------
+
+func TestFillWithProvider_ReturnsAffectedPaths(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	t.Run("auto fills empty summaries and returns paths", func(t *testing.T) {
+		siteIndex := site.New()
+		siteIndex.AddPage(&site.Page{Title: "A", SourcePath: "a.md", RawContent: "Hello world. This is a test."})
+		siteIndex.AddPage(&site.Page{Title: "B", SourcePath: "b.md", Summary: "already set"})
+		siteIndex.AddPage(&site.Page{Title: "C", SourcePath: "c.md", RawContent: "Another page. More content here."})
+
+		affected := fillWithProvider(context.Background(), siteIndex, summary.ExtractProvider{}, "auto", logger)
+
+		if len(affected) != 2 {
+			t.Fatalf("expected 2 affected paths, got %d: %v", len(affected), affected)
+		}
+
+		// Page B already had a summary — should not appear.
+		for _, sp := range affected {
+			if sp == "b.md" {
+				t.Error("page B was already summarized; should not be in affected list")
+			}
+		}
+
+		// Verify summaries were set.
+		if siteIndex.Pages[0].Summary == "" {
+			t.Error("page A summary should have been set")
+		}
+		if siteIndex.Pages[2].Summary == "" {
+			t.Error("page C summary should have been set")
+		}
+	})
+
+	t.Run("noop returns nil", func(t *testing.T) {
+		siteIndex := site.New()
+		siteIndex.AddPage(&site.Page{Title: "A", SourcePath: "a.md", RawContent: "Some content."})
+
+		affected := fillWithProvider(context.Background(), siteIndex, summary.NoopProvider{}, "manual", logger)
+		if affected != nil {
+			t.Errorf("expected nil for noop, got %v", affected)
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// fillWithAI — returns affected source paths for cache hits and LLM results
+// ---------------------------------------------------------------------------
+
+// fakeProvider is a test double for summary.Provider.
+type fakeProvider struct {
+	results map[string]string // title -> summary
+}
+
+func (f fakeProvider) Summarize(_ context.Context, title string, _ string) (string, error) {
+	if s, ok := f.results[title]; ok {
+		return s, nil
+	}
+	return "", fmt.Errorf("quota exhausted")
+}
+
+func TestFillWithAI_ReturnsAffectedFromCacheAndLLM(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	siteIndex := site.New()
+	siteIndex.AddPage(&site.Page{Title: "Cached", SourcePath: "cached.md", RawContent: "cached body"})
+	siteIndex.AddPage(&site.Page{Title: "New", SourcePath: "new.md", RawContent: "new body"})
+	siteIndex.AddPage(&site.Page{Title: "Fail", SourcePath: "fail.md", RawContent: "fail body"})
+
+	cache := newAICache("gemini", "test-model")
+	cachedHash := contentHash("cached body")
+	cache.Store(cachedHash, "cached summary")
+
+	provider := fakeProvider{results: map[string]string{
+		"New": "new summary",
+		// "Fail" intentionally missing -> provider returns error
+	}}
+
+	affected := fillWithAI(context.Background(), siteIndex, provider, 10*time.Second, 2, cache, false, logger)
+
+	// "Cached" -> cache hit, should be affected.
+	// "New"    -> LLM success, should be affected.
+	// "Fail"   -> LLM error, should NOT be affected.
+	if len(affected) != 2 {
+		t.Fatalf("expected 2 affected paths, got %d: %v", len(affected), affected)
+	}
+
+	has := map[string]bool{}
+	for _, sp := range affected {
+		has[sp] = true
+	}
+	if !has["cached.md"] {
+		t.Error("cached.md should be in affected list (cache hit)")
+	}
+	if !has["new.md"] {
+		t.Error("new.md should be in affected list (LLM result)")
+	}
+	if has["fail.md"] {
+		t.Error("fail.md should NOT be in affected list (LLM error)")
+	}
+
+	// Verify summaries were set.
+	if siteIndex.Pages[0].Summary != "cached summary" {
+		t.Errorf("Cached page summary = %q; want %q", siteIndex.Pages[0].Summary, "cached summary")
+	}
+	if siteIndex.Pages[1].Summary != "new summary" {
+		t.Errorf("New page summary = %q; want %q", siteIndex.Pages[1].Summary, "new summary")
+	}
+	if siteIndex.Pages[2].Summary != "" {
+		t.Errorf("Fail page summary = %q; want empty", siteIndex.Pages[2].Summary)
+	}
+}
+
+func TestFillWithAI_AffectedPagesMarkChangedInPlan(t *testing.T) {
+	// Simulate the integration: fillSummaries returns affected paths,
+	// and Run() adds them to plan.changedFiles.
+	plan := buildPlan{
+		incremental: true,
+		full:        false,
+		changedFiles: map[string]bool{
+			"already-changed.md": true,
+		},
+		contentChanged: false,
+	}
+
+	summaryChanged := []string{"page-a.md", "page-b.md"}
+
+	// This mirrors the logic in Run().
+	if len(summaryChanged) > 0 {
+		if plan.changedFiles == nil {
+			plan.changedFiles = make(map[string]bool)
+		}
+		for _, sp := range summaryChanged {
+			plan.changedFiles[sp] = true
+		}
+		plan.contentChanged = true
+	}
+
+	if !plan.changedFiles["page-a.md"] {
+		t.Error("page-a.md should be in changedFiles")
+	}
+	if !plan.changedFiles["page-b.md"] {
+		t.Error("page-b.md should be in changedFiles")
+	}
+	if !plan.changedFiles["already-changed.md"] {
+		t.Error("already-changed.md should still be in changedFiles")
+	}
+	if !plan.contentChanged {
+		t.Error("contentChanged should be true")
+	}
+
+	// Verify shouldRenderPage returns true for affected pages.
+	pageA := &site.Page{SourcePath: "page-a.md"}
+	if !plan.shouldRenderPage(pageA, "/some/existing/output.html") {
+		t.Error("shouldRenderPage should return true for page-a.md (in changedFiles)")
+	}
+
+	// An unaffected page should not be in changedFiles.
+	if plan.changedFiles["unchanged.md"] {
+		t.Error("unchanged.md should not be in changedFiles")
 	}
 }

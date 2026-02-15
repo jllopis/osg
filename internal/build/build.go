@@ -140,7 +140,19 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	siteIndex.BuildHierarchy()
 
 	// Fill empty Page.Summary fields using the configured strategy.
-	fillSummaries(ctx, cfg, opts, siteIndex, logger)
+	// Returns source paths of pages whose summary changed, so the
+	// incremental build plan can force re-rendering those pages (and
+	// their containing collections).
+	summaryChanged := fillSummaries(ctx, cfg, opts, siteIndex, logger)
+	if len(summaryChanged) > 0 {
+		if plan.changedFiles == nil {
+			plan.changedFiles = make(map[string]bool)
+		}
+		for _, sp := range summaryChanged {
+			plan.changedFiles[sp] = true
+		}
+		plan.contentChanged = true
+	}
 
 	// Generate placeholder SVGs for pages without an image.
 	if err := generatePlaceholders(siteIndex, cfg.PublicDir, logger); err != nil {
@@ -1074,7 +1086,9 @@ func sectionUpdated(section *site.Section) time.Time {
 
 // fillSummaries populates Page.Summary for any page that lacks one,
 // using the configured summary strategy (auto/manual/ai).
-func fillSummaries(ctx context.Context, cfg config.Config, opts BuildOptions, siteIndex *site.Site, logger *slog.Logger) {
+// It returns the source paths of pages whose Summary was set, so the
+// caller can mark them as changed for incremental rebuild.
+func fillSummaries(ctx context.Context, cfg config.Config, opts BuildOptions, siteIndex *site.Site, logger *slog.Logger) []string {
 	strategy := cfg.SummaryStrategy
 
 	// For "ai", create a KairosProvider with the configured LLM backend.
@@ -1082,8 +1096,7 @@ func fillSummaries(ctx context.Context, cfg config.Config, opts BuildOptions, si
 	if strings.EqualFold(strategy, "ai") {
 		if opts.SkipAI {
 			logger.Info("AI summaries skipped (serve mode), falling back to auto")
-			fillWithProvider(ctx, siteIndex, summary.ExtractProvider{}, "auto", logger)
-			return
+			return fillWithProvider(ctx, siteIndex, summary.ExtractProvider{}, "auto", logger)
 		}
 
 		aiCfg := summary.AIConfig{
@@ -1097,8 +1110,7 @@ func fillSummaries(ctx context.Context, cfg config.Config, opts BuildOptions, si
 		kp, err := summary.NewKairosProvider(ctx, aiCfg)
 		if err != nil {
 			logger.Warn("failed to create AI summary provider, falling back to auto", "error", err)
-			fillWithProvider(ctx, siteIndex, summary.ExtractProvider{}, cfg.SummaryStrategy, logger)
-			return
+			return fillWithProvider(ctx, siteIndex, summary.ExtractProvider{}, cfg.SummaryStrategy, logger)
 		}
 
 		timeout := time.Duration(cfg.AI.Timeout) * time.Second
@@ -1113,29 +1125,30 @@ func fillSummaries(ctx context.Context, cfg config.Config, opts BuildOptions, si
 		cache.provider = cfg.AI.Provider
 		cache.model = cfg.AI.Model
 
-		fillWithAI(ctx, siteIndex, kp, timeout, concurrency, cache, opts.ForceAISummaries, logger)
+		affected := fillWithAI(ctx, siteIndex, kp, timeout, concurrency, cache, opts.ForceAISummaries, logger)
 
 		// Save updated cache.
 		if err := saveAICache(cachePath, cache, logger); err != nil {
 			logger.Warn("failed to save AI summary cache", "error", err)
 		}
-		return
+		return affected
 	}
 
 	// Non-AI strategies: manual or auto.
 	provider := summary.NewProvider(strategy)
-	fillWithProvider(ctx, siteIndex, provider, strategy, logger)
+	return fillWithProvider(ctx, siteIndex, provider, strategy, logger)
 }
 
 // fillWithProvider runs the simple sequential summary fill used by
-// auto and manual strategies.
-func fillWithProvider(ctx context.Context, siteIndex *site.Site, provider summary.Provider, strategy string, logger *slog.Logger) {
+// auto and manual strategies.  It returns the source paths of pages
+// whose Summary was set.
+func fillWithProvider(ctx context.Context, siteIndex *site.Site, provider summary.Provider, strategy string, logger *slog.Logger) []string {
 	// NoopProvider means "manual" — nothing to do.
 	if _, noop := provider.(summary.NoopProvider); noop {
-		return
+		return nil
 	}
 
-	filled := 0
+	var affected []string
 	for _, page := range siteIndex.Pages {
 		if page.Summary != "" {
 			continue // already has a frontmatter summary
@@ -1147,25 +1160,28 @@ func fillWithProvider(ctx context.Context, siteIndex *site.Site, provider summar
 		}
 		if text != "" {
 			page.Summary = text
-			filled++
+			affected = append(affected, page.SourcePath)
 		}
 	}
-	if filled > 0 {
-		logger.Info("summaries generated", "count", filled, "strategy", strategy)
+	if len(affected) > 0 {
+		logger.Info("summaries generated", "count", len(affected), "strategy", strategy)
 	}
+	return affected
 }
 
 // fillWithAI runs concurrent LLM-based summary generation with bounded
 // parallelism and per-request timeouts.  It checks the cache before calling
 // the LLM and stores new results back into the cache.
-func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Provider, timeout time.Duration, concurrency int, cache *AICache, force bool, logger *slog.Logger) {
+// It returns the source paths of pages whose Summary was set (from cache
+// or from the LLM).
+func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Provider, timeout time.Duration, concurrency int, cache *AICache, force bool, logger *slog.Logger) []string {
 	// Collect pages that need summaries.
 	type pageJob struct {
 		page        *site.Page
 		contentHash string
 	}
 	var jobs []pageJob
-	cacheHits := 0
+	var affected []string
 	for _, page := range siteIndex.Pages {
 		if page.Summary != "" {
 			continue // already has a frontmatter summary
@@ -1176,7 +1192,7 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 		if !force {
 			if entry, ok := cache.Lookup(hash); ok {
 				page.Summary = entry.Summary
-				cacheHits++
+				affected = append(affected, page.SourcePath)
 				continue
 			}
 		}
@@ -1184,11 +1200,11 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 		jobs = append(jobs, pageJob{page: page, contentHash: hash})
 	}
 
-	if cacheHits > 0 {
-		logger.Info("AI summaries from cache", "count", cacheHits)
+	if len(affected) > 0 {
+		logger.Info("AI summaries from cache", "count", len(affected))
 	}
 	if len(jobs) == 0 {
-		return
+		return affected
 	}
 
 	// Log the pages that will be sent to the LLM so the user knows what's happening.
@@ -1234,11 +1250,13 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 			job.page.Summary = r.summary
 			cache.Store(job.contentHash, r.summary)
 			logger.Info("AI summary generated", "title", job.page.Title)
+			affected = append(affected, job.page.SourcePath)
 			filled++
 		}
 	}
 
 	logger.Info("AI summaries complete", "filled", filled, "errors", errors)
+	return affected
 }
 
 // generatePlaceholders writes a deterministic SVG placeholder image for
