@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,24 +14,29 @@ import (
 	"osg/internal/date"
 	"osg/internal/frontmatter"
 	"osg/internal/markdown"
+	"osg/internal/publish"
 )
 
 type Page struct {
-	Title      string
-	Slug       string
-	Path       string
-	Permalink  string
-	SourcePath string
-	Date       time.Time
-	Updated    time.Time
-	Draft      bool
-	Summary    string
-	Content    string
-	RawContent string
-	Template   string
-	Lang       string
-	Taxonomies map[string][]string
-	Extra      map[string]any
+	Title       string
+	Slug        string
+	Path        string
+	Permalink   string
+	SourcePath  string
+	Date        time.Time
+	Updated     time.Time
+	Draft       bool
+	Menu        bool
+	Image       string
+	Summary     string
+	Content     string
+	RawContent  string
+	Template    string
+	Lang        string
+	WordCount   int
+	ReadingTime int
+	Taxonomies  map[string][]string
+	Extra       map[string]any
 }
 
 type Section struct {
@@ -73,6 +79,18 @@ func (s *Site) AddPage(page *Page) {
 	s.Pages = append(s.Pages, page)
 }
 
+// MenuPages returns all pages marked with Menu: true, suitable for
+// navigation menu rendering in templates.
+func (s *Site) MenuPages() []*Page {
+	var out []*Page
+	for _, page := range s.Pages {
+		if page.Menu {
+			out = append(out, page)
+		}
+	}
+	return out
+}
+
 func (s *Site) AddSection(section *Section) {
 	if section == nil {
 		return
@@ -99,18 +117,59 @@ func (s *Site) AddSection(section *Section) {
 
 func (s *Site) BuildHierarchy() {
 	for _, page := range s.Pages {
+		if page.Menu {
+			continue // menu pages are standalone; don't add them to any section listing
+		}
 		sectionPath := parentPath(page.Path)
 		section := s.ensureSection(sectionPath)
 		section.Pages = append(section.Pages, page)
 	}
 
-	for path, section := range s.Sections {
-		if section.IsRoot {
-			continue
+	// Link subsections to their parents. Because intermediate sections
+	// (e.g. /2023/09/) may be created on the fly by ensureSection, we
+	// repeat until no new sections appear (a section is "linked" once
+	// it has been attached to its parent).
+	linked := make(map[string]bool)
+	linked["/"] = true // root has no parent to link to
+	for {
+		progress := false
+		for spath, section := range s.Sections {
+			if linked[spath] {
+				continue
+			}
+			pp := parentPath(spath)
+			parent := s.ensureSection(pp)
+			parent.Subsections = append(parent.Subsections, section)
+			linked[spath] = true
+			progress = true
 		}
-		parentPath := parentPath(path)
-		parent := s.ensureSection(parentPath)
-		parent.Subsections = append(parent.Subsections, section)
+		if !progress {
+			break
+		}
+	}
+
+	// Sort pages in every section by date descending (most recent first).
+	for _, section := range s.Sections {
+		sort.Slice(section.Pages, func(i, j int) bool {
+			return section.Pages[i].Date.After(section.Pages[j].Date)
+		})
+	}
+
+	// Sort site-level pages by date descending as well.
+	sort.Slice(s.Pages, func(i, j int) bool {
+		return s.Pages[i].Date.After(s.Pages[j].Date)
+	})
+
+	// If the root section has no direct pages (common with date-based
+	// content_layout like "{date}/{slug}"), populate it with all site pages
+	// so that the index.html template can list recent posts.
+	// Menu pages are excluded — they are standalone navigation items.
+	if root, ok := s.Sections["/"]; ok && len(root.Pages) == 0 && len(s.Pages) > 0 {
+		for _, p := range s.Pages {
+			if !p.Menu {
+				root.Pages = append(root.Pages, p)
+			}
+		}
 	}
 }
 
@@ -136,12 +195,14 @@ func (s *Site) ensureSection(sectionPath string) *Section {
 		return existing
 	}
 
+	slug := strings.Trim(path.Base(sectionPath), "/")
 	section := &Section{
-		Title:  "",
-		Slug:   strings.Trim(path.Base(sectionPath), "/"),
-		Path:   sectionPath,
-		Pages:  []*Page{},
-		IsRoot: sectionPath == "/",
+		Title:     slug,
+		Slug:      slug,
+		Path:      sectionPath,
+		Permalink: sectionPath,
+		Pages:     []*Page{},
+		IsRoot:    sectionPath == "/",
 	}
 
 	s.Sections[sectionPath] = section
@@ -199,6 +260,9 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		title = strings.Trim(slug, "-")
 	}
 
+	// Extract osg block for osg.image and osg.featured overrides
+	osg := publish.GetOSGBlock(fm)
+
 	if isSection {
 		section := &Section{
 			Title:      title,
@@ -214,6 +278,33 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		return nil, section, nil
 	}
 
+	// Resolve image: osg.image > top-level image/cover/banner > frontmatter "featured"
+	pageImage := ""
+	if osg != nil {
+		pageImage = pickString(osg, "image")
+	}
+	if pageImage == "" {
+		pageImage = pickString(fm, "image", "cover", "banner")
+	}
+
+	// Resolve featured flag: osg.featured > top-level featured > extra.featured
+	isFeatured := false
+	if osg != nil {
+		isFeatured = pickBool(osg, "featured")
+	}
+	if !isFeatured {
+		isFeatured = pickBool(fm, "featured")
+	}
+	if !isFeatured {
+		if extra, ok := fm["extra"].(map[string]any); ok {
+			if v, ok := extra["featured"]; ok {
+				if b, ok := v.(bool); ok {
+					isFeatured = b
+				}
+			}
+		}
+	}
+
 	page := &Page{
 		Title:      title,
 		Slug:       slug,
@@ -222,6 +313,8 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		SourcePath: filePath,
 		Date:       fileDate,
 		Draft:      pickBool(fm, "draft"),
+		Menu:       pickBool(fm, "menu"),
+		Image:      pageImage,
 		Summary:    pickString(fm, "summary", "description", "excerpt"),
 		Content:    contentHTML,
 		RawContent: string(body),
@@ -231,23 +324,41 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		Extra:      fm,
 	}
 
+	// Store featured in Extra so Section.View() can find it
+	if isFeatured {
+		if page.Extra == nil {
+			page.Extra = map[string]any{}
+		}
+		page.Extra["featured"] = true
+	}
+
+	page.WordCount = len(strings.Fields(string(body)))
+	page.ReadingTime = page.WordCount / 200
+	if page.ReadingTime < 1 {
+		page.ReadingTime = 1
+	}
+
 	return page, nil, nil
 }
 
 func (p *Page) View() map[string]any {
 	return map[string]any{
-		"title":       p.Title,
-		"slug":        p.Slug,
-		"path":        p.Path,
-		"permalink":   p.Permalink,
-		"date":        p.Date,
-		"updated":     p.Updated,
-		"draft":       p.Draft,
-		"summary":     p.Summary,
-		"content":     template.HTML(p.Content),
-		"raw_content": p.RawContent,
-		"taxonomies":  p.Taxonomies,
-		"extra":       p.Extra,
+		"title":        p.Title,
+		"slug":         p.Slug,
+		"path":         p.Path,
+		"permalink":    p.Permalink,
+		"date":         p.Date,
+		"updated":      p.Updated,
+		"draft":        p.Draft,
+		"menu":         p.Menu,
+		"image":        p.Image,
+		"summary":      p.Summary,
+		"content":      template.HTML(p.Content),
+		"raw_content":  p.RawContent,
+		"word_count":   p.WordCount,
+		"reading_time": p.ReadingTime,
+		"taxonomies":   p.Taxonomies,
+		"extra":        p.Extra,
 	}
 }
 
@@ -262,16 +373,67 @@ func (s *Section) View() map[string]any {
 		subsections = append(subsections, section.View())
 	}
 
-	return map[string]any{
-		"title":       s.Title,
-		"slug":        s.Slug,
-		"path":        s.Path,
-		"permalink":   s.Permalink,
-		"content":     template.HTML(s.Content),
-		"pages":       pages,
-		"subsections": subsections,
-		"extra":       s.Extra,
+	// Determine the featured page: the most-recent page with
+	// extra.featured == true becomes the hero; any other featured pages
+	// are promoted to the top of the list (before non-featured), keeping
+	// their relative date order.  If no page is explicitly featured the
+	// most-recent page is used as hero.
+	var featured map[string]any
+	var featuredIdx int = -1
+	for i, page := range s.Pages {
+		if val, ok := page.Extra["featured"]; ok {
+			if b, ok := val.(bool); ok && b {
+				featured = pages[i]
+				featuredIdx = i
+				break
+			}
+		}
 	}
+	if featured == nil && len(s.Pages) > 0 {
+		featured = pages[0]
+		featuredIdx = 0
+	}
+
+	// Reorder the page list: featured posts first (excluding the hero),
+	// then non-featured — both groups keep their original date order.
+	if featuredIdx >= 0 {
+		reordered := make([]map[string]any, 0, len(pages))
+		var rest []map[string]any
+		for i, pv := range pages {
+			if i == featuredIdx {
+				continue // skip the hero
+			}
+			if isFeaturedPage(s.Pages[i]) {
+				reordered = append(reordered, pv)
+			} else {
+				rest = append(rest, pv)
+			}
+		}
+		reordered = append(reordered, rest...)
+		pages = reordered
+	}
+
+	return map[string]any{
+		"title":         s.Title,
+		"slug":          s.Slug,
+		"path":          s.Path,
+		"permalink":     s.Permalink,
+		"content":       template.HTML(s.Content),
+		"pages":         pages,
+		"subsections":   subsections,
+		"extra":         s.Extra,
+		"featured_page": featured,
+		"has_source":    s.SourcePath != "",
+	}
+}
+
+func isFeaturedPage(p *Page) bool {
+	if val, ok := p.Extra["featured"]; ok {
+		if b, ok := val.(bool); ok {
+			return b
+		}
+	}
+	return false
 }
 
 func pathFromRel(rel string) string {

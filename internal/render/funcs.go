@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
 	"golang.org/x/text/language"
@@ -30,6 +31,9 @@ import (
 	"osg/internal/slug"
 	"osg/internal/taxonomy"
 
+	"osg/internal/i18n"
+	imgopt "osg/internal/image"
+
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -37,12 +41,15 @@ import (
 )
 
 type Context struct {
-	BaseURL    string
-	ContentDir string
-	StaticDir  string
-	PublicDir  string
-	Site       *site.Site
-	Taxonomies map[string]*taxonomy.Index
+	BaseURL         string
+	ContentDir      string
+	StaticDir       string
+	PublicDir       string
+	DefaultLanguage string
+	Site            *site.Site
+	Taxonomies      map[string]*taxonomy.Index
+	ImageResults    map[string]*imgopt.Result
+	I18n            *i18n.Bundle
 }
 
 func FuncMap(ctx Context) template.FuncMap {
@@ -71,7 +78,9 @@ func FuncMap(ctx Context) template.FuncMap {
 		"get_hash":           getHashFunc(ctx),
 		"get_image_metadata": getImageMetadataFunc(ctx),
 		"load_data":          loadDataFunc(ctx),
-		"trans":              transFunc,
+		"trans":              transFunc(ctx),
+		"date_format":        dateFormatFunc(ctx),
+		"picture":            pictureFunc(ctx),
 	}
 }
 
@@ -352,8 +361,61 @@ func loadDataFunc(ctx Context) func(string, ...any) (any, error) {
 	}
 }
 
-func transFunc(key string, _ ...string) string {
-	return key
+// transFunc returns a template function that translates keys using the i18n
+// bundle. It uses the page's language (from the template context) when
+// available, falling back to the site's default language.
+//
+// Usage in templates:
+//
+//	{{ trans "key" }}             — uses the current page/default language
+//	{{ trans "key" "en" }}        — explicit language override
+func transFunc(ctx Context) func(string, ...string) string {
+	return func(key string, lang ...string) string {
+		if ctx.I18n == nil {
+			return key
+		}
+		return ctx.I18n.Trans(key, lang...)
+	}
+}
+
+// dateFormatFunc returns a template function that formats dates with
+// locale-aware month names.
+//
+// Usage in templates:
+//
+//	{{ date_format .page.date "January 2, 2006" }}       — uses default language
+//	{{ date_format .page.date "January 2, 2006" "en" }}  — explicit language
+func dateFormatFunc(ctx Context) func(time.Time, string, ...string) string {
+	return func(t time.Time, layout string, lang ...string) string {
+		l := ctx.DefaultLanguage
+		if len(lang) > 0 && strings.TrimSpace(lang[0]) != "" {
+			l = lang[0]
+		}
+		return i18n.DateFormat(t, layout, l)
+	}
+}
+
+// pictureFunc returns a template function that generates <picture> elements
+// with responsive srcset when optimized image variants are available, or
+// a plain <img> tag otherwise.
+//
+// Usage in templates:
+//
+//	{{ picture .image .title "eager" }}
+//	{{ picture .image .title "lazy" }}
+//	{{ picture .image .title }}          {{/* defaults to lazy */}}
+func pictureFunc(ctx Context) func(string, ...string) template.HTML {
+	return func(src string, args ...string) template.HTML {
+		alt := ""
+		loading := "lazy"
+		if len(args) > 0 {
+			alt = args[0]
+		}
+		if len(args) > 1 && args[1] != "" {
+			loading = args[1]
+		}
+		return template.HTML(imgopt.PictureHTML(src, alt, loading, ctx.ImageResults))
+	}
 }
 
 func readInput(ctx Context, input string) ([]byte, error) {

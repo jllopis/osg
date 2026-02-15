@@ -15,11 +15,16 @@ import (
 
 	"osg/internal/assets"
 	"osg/internal/config"
+	"osg/internal/i18n"
+	imgopt "osg/internal/image"
 	"osg/internal/logging"
+	"osg/internal/placeholder"
 	"osg/internal/plugin"
 	"osg/internal/render"
 	"osg/internal/site"
+	"osg/internal/summary"
 	"osg/internal/taxonomy"
+	"osg/internal/theme"
 	"osg/internal/vault"
 )
 
@@ -75,6 +80,23 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 		return fmt.Errorf("create public dir: %w", err)
 	}
 
+	if err := theme.EnsureDefaultTheme(cfg.ThemesDir); err != nil {
+		return fmt.Errorf("ensure default theme: %w", err)
+	}
+
+	// Load i18n translations: theme dir first, then user dir (user overrides).
+	i18nBundle := i18n.New(cfg.DefaultLanguage)
+	themeI18nDir := themeI18nDir(cfg)
+	if themeI18nDir != "" {
+		if err := i18nBundle.LoadDir(themeI18nDir); err != nil {
+			return fmt.Errorf("load theme translations: %w", err)
+		}
+	}
+	userI18nDir := filepath.Join("i18n")
+	if err := i18nBundle.LoadDir(userI18nDir); err != nil {
+		return fmt.Errorf("load user translations: %w", err)
+	}
+
 	if err := assets.Prepare(cfg, logger); err != nil {
 		return err
 	}
@@ -104,9 +126,40 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 	}
 
 	siteIndex.BuildHierarchy()
+
+	// Fill empty Page.Summary fields using the configured strategy.
+	fillSummaries(ctx, cfg, siteIndex, logger)
+
+	// Generate placeholder SVGs for pages without an image.
+	if err := generatePlaceholders(siteIndex, cfg.PublicDir, logger); err != nil {
+		return fmt.Errorf("generate placeholders: %w", err)
+	}
+
+	// Optimize images: generate responsive variants (resized JPEG + WebP).
+	var imageResults map[string]*imgopt.Result
+	if cfg.ImageOptimization {
+		opts := imgopt.Options{
+			Quality: cfg.ImageQuality,
+			Widths:  cfg.ImageWidths,
+			WebP:    true,
+		}
+		if opts.Quality <= 0 || opts.Quality > 100 {
+			opts.Quality = 80
+		}
+		if len(opts.Widths) == 0 {
+			opts.Widths = []int{640, 1200}
+		}
+		var err error
+		imageResults, err = imgopt.Optimize(cfg.PublicDir, opts, logger)
+		if err != nil {
+			logger.Warn("image optimization failed", "error", err)
+			// Non-fatal: continue with no optimized variants.
+		}
+	}
+
 	indices := taxonomy.Build(cfg.Taxonomies, siteIndex.Pages, cfg.BaseURL)
 	siteView := siteIndex.View()
-	baseCtx := baseContext(cfg, siteView, indices)
+	baseCtx := baseContext(cfg, siteView, indices, siteIndex.MenuPages())
 
 	plugins, err := plugin.Load(ctx, cfg.PluginsDir, cfg.PluginsEnabled, logger)
 	if err != nil {
@@ -128,12 +181,15 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 	}
 
 	renderer, err := render.New(cfg.TemplatesDir, themeTemplatesDir(cfg), render.Context{
-		BaseURL:    cfg.BaseURL,
-		ContentDir: cfg.ContentDir,
-		StaticDir:  cfg.StaticDir,
-		PublicDir:  cfg.PublicDir,
-		Site:       siteIndex,
-		Taxonomies: indices,
+		BaseURL:         cfg.BaseURL,
+		ContentDir:      cfg.ContentDir,
+		StaticDir:       cfg.StaticDir,
+		PublicDir:       cfg.PublicDir,
+		DefaultLanguage: cfg.DefaultLanguage,
+		Site:            siteIndex,
+		Taxonomies:      indices,
+		ImageResults:    imageResults,
+		I18n:            i18nBundle,
 	})
 	if err != nil {
 		return err
@@ -162,6 +218,14 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 	}
 	stats.Rendered += taxonomyRendered
 	stats.Cached += taxonomyCached
+
+	siteFeedRendered, siteFeedCached, err := renderSiteFeed(renderer, cfg, baseCtx, siteIndex, plan)
+	if err != nil {
+		stats.Errors++
+		return err
+	}
+	stats.Rendered += siteFeedRendered
+	stats.Cached += siteFeedCached
 
 	sitemapEntries := collectSitemapEntries(cfg, siteIndex, indices)
 	sitemapRendered, sitemapCached, err := renderSitemap(renderer, cfg, baseCtx, sitemapEntries, plan)
@@ -343,6 +407,9 @@ func pageContext(baseCtx map[string]any, page *site.Page) map[string]any {
 	ctx["current_path"] = page.Path
 	ctx["current_url"] = page.Permalink
 	ctx["lang"] = page.Lang
+	if page.Lang == "" {
+		ctx["lang"] = defaultLangFromCtx(baseCtx)
+	}
 	return ctx
 }
 
@@ -351,17 +418,24 @@ func sectionContext(baseCtx map[string]any, section *site.Section) map[string]an
 	ctx["section"] = section.View()
 	ctx["current_path"] = section.Path
 	ctx["current_url"] = section.Permalink
-	ctx["lang"] = ""
+	ctx["lang"] = defaultLangFromCtx(baseCtx)
 	return ctx
 }
 
-func baseContext(cfg config.Config, siteView map[string]any, indices map[string]*taxonomy.Index) map[string]any {
+func baseContext(cfg config.Config, siteView map[string]any, indices map[string]*taxonomy.Index, menuPages []*site.Page) map[string]any {
 	ctx := map[string]any{
 		"config": configView(cfg),
 		"site":   siteView,
 	}
 	if len(indices) > 0 {
 		ctx["taxonomies"] = taxonomiesView(indices)
+	}
+	if len(menuPages) > 0 {
+		views := make([]map[string]any, 0, len(menuPages))
+		for _, p := range menuPages {
+			views = append(views, p.View())
+		}
+		ctx["menu_pages"] = views
 	}
 	return ctx
 }
@@ -373,28 +447,38 @@ func configView(cfg config.Config) map[string]any {
 	}
 
 	return map[string]any{
-		"base_url":          cfg.BaseURL,
-		"theme":             cfg.Theme,
-		"vault_path":        cfg.VaultPath,
-		"content_dir":       cfg.ContentDir,
-		"public_dir":        cfg.PublicDir,
-		"templates_dir":     cfg.TemplatesDir,
-		"static_dir":        cfg.StaticDir,
-		"themes_dir":        cfg.ThemesDir,
-		"plugins_dir":       cfg.PluginsDir,
-		"plugins_enabled":   cfg.PluginsEnabled,
-		"sass_dir":          cfg.SassDir,
-		"content_layout":    cfg.ContentLayout,
-		"include_drafts":    cfg.IncludeDrafts,
-		"compile_sass":      cfg.CompileSass,
-		"tui_prefix":        cfg.TUIPrefix,
-		"tui_prefix_ms":     cfg.TUIPrefixMs,
-		"serve_watch":       cfg.ServeWatch,
-		"serve_live_reload": cfg.ServeReload,
-		"serve_debounce_ms": cfg.ServeDebounce,
-		"build_incremental": cfg.BuildIncremental,
-		"build_cache_dir":   cfg.BuildCacheDir,
-		"doctor_profile":    cfg.DoctorProfile,
+		"base_url":           cfg.BaseURL,
+		"site_title":         cfg.SiteTitle,
+		"site_description":   cfg.SiteDescription,
+		"theme":              cfg.Theme,
+		"color_scheme":       cfg.ColorScheme,
+		"default_language":   cfg.DefaultLanguage,
+		"vault_path":         cfg.VaultPath,
+		"content_dir":        cfg.ContentDir,
+		"public_dir":         cfg.PublicDir,
+		"templates_dir":      cfg.TemplatesDir,
+		"static_dir":         cfg.StaticDir,
+		"themes_dir":         cfg.ThemesDir,
+		"plugins_dir":        cfg.PluginsDir,
+		"plugins_enabled":    cfg.PluginsEnabled,
+		"sass_dir":           cfg.SassDir,
+		"content_layout":     cfg.ContentLayout,
+		"include_drafts":     cfg.IncludeDrafts,
+		"compile_sass":       cfg.CompileSass,
+		"tui_prefix":         cfg.TUIPrefix,
+		"tui_prefix_ms":      cfg.TUIPrefixMs,
+		"serve_watch":        cfg.ServeWatch,
+		"serve_live_reload":  cfg.ServeReload,
+		"serve_debounce_ms":  cfg.ServeDebounce,
+		"build_incremental":  cfg.BuildIncremental,
+		"build_cache_dir":    cfg.BuildCacheDir,
+		"doctor_profile":     cfg.DoctorProfile,
+		"summary_strategy":   cfg.SummaryStrategy,
+		"site_feed":          cfg.SiteFeed,
+		"site_feed_limit":    cfg.SiteFeedLimit,
+		"image_optimization": cfg.ImageOptimization,
+		"image_quality":      cfg.ImageQuality,
+		"image_widths":       cfg.ImageWidths,
 		"logging": map[string]any{
 			"level":  cfg.Logging.Level,
 			"format": cfg.Logging.Format,
@@ -454,6 +538,30 @@ func themeTemplatesDir(cfg config.Config) string {
 		return ""
 	}
 	return path.Join(cfg.ThemesDir, cfg.Theme, "templates")
+}
+
+func themeI18nDir(cfg config.Config) string {
+	if strings.TrimSpace(cfg.ThemesDir) == "" {
+		return ""
+	}
+	if strings.TrimSpace(cfg.Theme) == "" {
+		return ""
+	}
+	return path.Join(cfg.ThemesDir, cfg.Theme, "i18n")
+}
+
+// defaultLangFromCtx extracts the default language from a base context.
+// It reads config.default_language, falling back to "es".
+func defaultLangFromCtx(baseCtx map[string]any) string {
+	cfgMap, ok := baseCtx["config"].(map[string]any)
+	if !ok {
+		return "es"
+	}
+	lang, ok := cfgMap["default_language"].(string)
+	if !ok || lang == "" {
+		return "es"
+	}
+	return lang
 }
 
 func renderTaxonomies(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, indices map[string]*taxonomy.Index, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
@@ -554,7 +662,7 @@ func taxonomyListContext(baseCtx map[string]any, cfg config.Config, taxCfg confi
 	ctx["terms"] = taxonomy.TermViews(terms)
 	ctx["current_path"] = currentPath
 	ctx["current_url"] = buildURL(cfg.BaseURL, currentPath)
-	ctx["lang"] = ""
+	ctx["lang"] = defaultLangFromCtx(baseCtx)
 	return ctx
 }
 
@@ -564,7 +672,7 @@ func taxonomyTermContext(baseCtx map[string]any, cfg config.Config, taxCfg confi
 	ctx["term"] = taxonomy.TermView(term)
 	ctx["current_path"] = currentPath
 	ctx["current_url"] = buildURL(cfg.BaseURL, currentPath)
-	ctx["lang"] = ""
+	ctx["lang"] = defaultLangFromCtx(baseCtx)
 	if paginator != nil {
 		ctx["paginator"] = taxonomy.PaginatorView(*paginator)
 	}
@@ -653,7 +761,7 @@ func feedContext(baseCtx map[string]any, cfg config.Config, taxCfg config.Taxono
 	ctx["pages"] = feedPages(term.Pages)
 	ctx["feed_url"] = feedURL
 	ctx["last_updated"] = lastUpdated.Format(time.RFC3339)
-	ctx["lang"] = ""
+	ctx["lang"] = defaultLangFromCtx(baseCtx)
 	return ctx
 }
 
@@ -666,10 +774,70 @@ func feedPages(pages []*site.Page) []map[string]any {
 			"date":      page.Date.Format(time.RFC3339),
 			"summary":   page.Summary,
 			"content":   page.Content,
+			"image":     page.Image,
 			"path":      page.Path,
 		})
 	}
 	return out
+}
+
+// renderSiteFeed generates site-wide atom.xml and rss.xml at the root of public/.
+func renderSiteFeed(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plan buildPlan) (int, int, error) {
+	if !cfg.SiteFeed {
+		return 0, 0, nil
+	}
+
+	feedTemplates := []string{}
+	if renderer.HasTemplate("atom.xml") {
+		feedTemplates = append(feedTemplates, "atom.xml")
+	}
+	if renderer.HasTemplate("rss.xml") {
+		feedTemplates = append(feedTemplates, "rss.xml")
+	}
+	if len(feedTemplates) == 0 {
+		return 0, 0, nil
+	}
+
+	// Pages are already sorted by date descending in BuildHierarchy().
+	pages := siteIndex.Pages
+	if cfg.SiteFeedLimit > 0 && len(pages) > cfg.SiteFeedLimit {
+		pages = pages[:cfg.SiteFeedLimit]
+	}
+
+	lastUpdated := latestUpdated(pages)
+	rendered := 0
+	cached := 0
+
+	for _, tmpl := range feedTemplates {
+		filename := tmpl
+		feedURL := buildURL(cfg.BaseURL, "/"+filename)
+		outputPath := outputFilePath(cfg.PublicDir, "", filename)
+		if !plan.shouldRenderCollection(outputPath) {
+			cached++
+			continue
+		}
+		ctx := siteFeedContext(baseCtx, cfg, pages, feedURL, lastUpdated)
+		if err := renderer.RenderToFile(tmpl, ctx, outputPath); err != nil {
+			return rendered, cached, err
+		}
+		rendered++
+	}
+
+	return rendered, cached, nil
+}
+
+// siteFeedContext builds the template context for the site-wide feed.
+// It uses feed_title and feed_description instead of taxonomy/term,
+// and the templates detect feed_title to pick the right title.
+func siteFeedContext(baseCtx map[string]any, cfg config.Config, pages []*site.Page, feedURL string, lastUpdated time.Time) map[string]any {
+	ctx := cloneMap(baseCtx)
+	ctx["feed_title"] = cfg.SiteTitle
+	ctx["feed_description"] = cfg.SiteDescription
+	ctx["pages"] = feedPages(pages)
+	ctx["feed_url"] = feedURL
+	ctx["last_updated"] = lastUpdated.Format(time.RFC3339)
+	ctx["lang"] = defaultLangFromCtx(baseCtx)
+	return ctx
 }
 
 func outputFilePath(publicDir string, sitePath string, filename string) string {
@@ -792,7 +960,7 @@ func renderNotFound(renderer *render.Renderer, cfg config.Config, baseCtx map[st
 		return 0, 0, nil
 	}
 	ctx := cloneMap(baseCtx)
-	ctx["lang"] = ""
+	ctx["lang"] = defaultLangFromCtx(baseCtx)
 	outputPath := filepath.Join(cfg.PublicDir, "404.html")
 	if !plan.shouldRenderCollection(outputPath) {
 		return 0, 1, nil
@@ -890,4 +1058,71 @@ func sectionUpdated(section *site.Section) time.Time {
 		return time.Now()
 	}
 	return latest
+}
+
+// fillSummaries populates Page.Summary for any page that lacks one,
+// using the configured summary strategy (auto/manual/ai).
+func fillSummaries(ctx context.Context, cfg config.Config, siteIndex *site.Site, logger *slog.Logger) {
+	provider := summary.NewProvider(cfg.SummaryStrategy)
+
+	// NoopProvider means "manual" — nothing to do.
+	if _, noop := provider.(summary.NoopProvider); noop {
+		return
+	}
+
+	filled := 0
+	for _, page := range siteIndex.Pages {
+		if page.Summary != "" {
+			continue // already has a frontmatter summary
+		}
+		text, err := provider.Summarize(ctx, page.Title, page.RawContent)
+		if err != nil {
+			logger.Warn("summary generation failed", "page", page.Path, "error", err)
+			continue
+		}
+		if text != "" {
+			page.Summary = text
+			filled++
+		}
+	}
+	if filled > 0 {
+		logger.Info("summaries generated", "count", filled, "strategy", cfg.SummaryStrategy)
+	}
+}
+
+// generatePlaceholders writes a deterministic SVG placeholder image for
+// every page that has no image set, and updates page.Image to point to
+// the generated file's public URL path.
+func generatePlaceholders(siteIndex *site.Site, publicDir string, logger *slog.Logger) error {
+	imgDir := filepath.Join(publicDir, "img")
+	if err := os.MkdirAll(imgDir, 0o755); err != nil {
+		return fmt.Errorf("create img dir: %w", err)
+	}
+
+	generated := 0
+	for _, page := range siteIndex.Pages {
+		if page.Image != "" {
+			continue
+		}
+		filename := placeholder.Filename(page.Title)
+		outPath := filepath.Join(imgDir, filename)
+
+		// Skip if already written (deterministic, won't change).
+		if _, err := os.Stat(outPath); err == nil {
+			page.Image = "/img/" + filename
+			continue
+		}
+
+		svg := placeholder.Generate(page.Title)
+		if err := os.WriteFile(outPath, []byte(svg), 0o644); err != nil {
+			return fmt.Errorf("write placeholder %s: %w", filename, err)
+		}
+		page.Image = "/img/" + filename
+		generated++
+	}
+
+	if generated > 0 {
+		logger.Info("placeholders generated", "count", generated)
+	}
+	return nil
 }

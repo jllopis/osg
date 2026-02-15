@@ -1,6 +1,7 @@
 # Build outputs
 /build/
 /bin/
+/osg
 /coverage/
 cover.out
 
@@ -14,6 +15,10 @@ cover.out
 # Editor
 .idea/
 .vscode/
+
+# Runtime / cache
+.osg/
+examples/sample-site/public/
 
 # Rust / WASM examples
 examples/plugins/**/target/

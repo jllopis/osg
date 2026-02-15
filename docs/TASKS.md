@@ -41,6 +41,53 @@ Formato: [todo|doing|done] Tarea
 [done] (Next) Validacion de config (paths invalidos, taxonomias mal definidas, base_url vacia en prod)
 [done] (Next) Limpieza de public/ para evitar archivos stale en builds incrementales
 [done] (Next) Estado/diagnostico (`osg doctor` o `osg status`)
-[todo] (Next) TUI: vista guiada con progreso y estado (no solo logs)
-[todo] (Next) `doctor` con perfiles dev/prod + recomendaciones accionables
-[todo] (Next) Refinar theme base (layout + assets + estilos)
+[done] (Next) TUI: vista guiada con progreso y estado (no solo logs) -> Phase 9
+
+[done] (Phase 9) Plan detallado en docs/PLAN_TUI_REDESIGN.md
+[done] (Phase 9) Rewrite TUI: god file -> 12 modulos enfocados
+[done] (Phase 9) Layout 2 paneles: viewport scrollable + sidebar colapsable
+[done] (Phase 9) Header compacto, slash commands, comandos bare, paleta Nord
+[done] (Phase 9) Sidebar colapsable, barra hints, fix version
+[done] (Phase 9) Eliminar prefix-key, ASCII banner, fake progress, codigo muerto
+
+[done] (Summary) Package internal/summary/: Provider interface, ExtractProvider, NoopProvider
+[done] (Summary) PlainText() markdown stripper (6 regexes RE2-safe)
+[done] (Summary) truncateSentence() con corte en oracion/palabra (max 160 chars)
+[done] (Summary) Tres estrategias via summary_strategy: auto, manual, ai
+[done] (Summary) Integracion en build.go: fillSummaries() despues de BuildHierarchy()
+[done] (Summary) 37 tests unitarios
+[done] (Summary) Featured overlay CSS: gradiente, texto blanco, frosted glass label
+
+[done] (Phase 10) Step 1: docs sync (ROADMAP, TASKS, DESIGN)
+[done] (Phase 10) Step 2: global site RSS/Atom feed
+[done] (Phase 10) Step 3: doctor improvements (diagnosticos accionables, mas checks)
+[done] (Phase 10) Step 4: theme polish (tipografia, spacing, responsive, dark mode)
+[done] (Phase 10) Step 5: TUI + build tests (cobertura internal/build/ e internal/tui/)
+[done] (Phase 10) Step 6: image optimization (WebP, srcset, <picture>)
+
+[done] (Standalone Pages) `osg.path` en frontmatter para override de content_layout
+[done] (Standalone Pages) `osg.menu` en frontmatter para marcar paginas de navegacion
+[done] (Standalone Pages) Exclusion de menu pages del listado de homepage/secciones
+[done] (Standalone Pages) `menu_pages` en contexto global de templates
+[done] (Standalone Pages) header.html: renderizar menu_pages junto a taxonomias
+[done] (Standalone Pages) Tests: publish (GetOSGString/GetOSGBool), content (menu), site (6 tests)
+[done] (Standalone Pages) Documentacion: DESIGN, TEMPLATES, THEMES, Funcional, TASKS, ROADMAP
+[done] (Standalone Pages) Ejemplo: about/index.md en sample-site
+
+[done] (osg new) RunNew() en internal/app/new.go: crea nota en vault con frontmatter Obsidian-native
+[done] (osg new) Opciones: --tags, --publish (default: draft), --dry-run, --vault-path override
+[done] (osg new) CLI: `osg new <title>` via Kong (cmd/osg/main.go)
+[done] (osg new) TUI: `/new <title>` slash command (commands.go, model.go, update.go, app/tui.go)
+[done] (osg new) 9 tests unitarios (new_test.go) + 2 tests TUI command parsing (commands_test.go)
+[done] (osg new) Documentacion: ROADMAP, TASKS, DESIGN, Funcional, AGENTS.md
+
+[done] (i18n) Package internal/i18n/: Bundle struct, New(), LoadDir(), Trans(), DateFormat()
+[done] (i18n) Ficheros de traduccion en.yaml y es.yaml (~31 claves cada uno)
+[done] (i18n) Config: default_language field (default "es"), validacion, normalizacion
+[done] (i18n) render/funcs.go: transFunc closure sobre Bundle, dateFormatFunc con meses localizados
+[done] (i18n) build.go: carga i18n (tema -> usuario), wiring a render.Context, lang en todos los contextos
+[done] (i18n) 10 plantillas del tema actualizadas con {{ trans }} y {{ date_format }}
+[done] (i18n) Builtins actualizados: 404.html (trans), rss.xml (trans)
+[done] (i18n) Dual-file sync: templates y YAML en internal/theme/default/ y themes/default/
+[done] (i18n) 14 tests unitarios para i18n package
+[done] (i18n) Documentacion: ROADMAP, TASKS, DESIGN, Funcional, AGENTS.md

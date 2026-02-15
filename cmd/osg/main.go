@@ -24,6 +24,7 @@ type CLI struct {
 	UpdateContent struct{}  `cmd:"" help:"Sync content from vault"`
 	Build         struct{}  `cmd:"" help:"Build static site (HTML)"`
 	Serve         ServeCmd  `cmd:"" help:"Serve public directory"`
+	New           NewCmd    `cmd:"" help:"Create a new post in the vault"`
 	TUI           struct{}  `cmd:"" help:"Launch TUI"`
 	Theme         ThemeCmd  `cmd:"" help:"Theme tools"`
 	Plugin        PluginCmd `cmd:"" help:"Plugin tools"`
@@ -36,6 +37,12 @@ type ServeCmd struct {
 	Watch      *bool  `help:"Watch files and rebuild"`
 	LiveReload *bool  `help:"Enable live reload (requires watch)"`
 	DebounceMs *int   `help:"Debounce watch events in ms"`
+}
+
+type NewCmd struct {
+	Title   string   `arg:"" help:"Post title"`
+	Tags    []string `help:"Comma-separated tags" short:"t" sep:","`
+	Publish bool     `help:"Mark as published (default: draft)"`
 }
 
 type ThemeCmd struct {
@@ -114,6 +121,13 @@ func main() {
 		runErr = app.RunUpdateContent(context.Background(), opts)
 	case command == "build":
 		runErr = app.RunBuild(context.Background(), opts)
+	case strings.HasPrefix(command, "new"):
+		postOpts := app.NewPostOptions{
+			Title:   cli.New.Title,
+			Tags:    cli.New.Tags,
+			Publish: cli.New.Publish,
+		}
+		runErr = app.RunNew(context.Background(), opts, postOpts)
 	case command == "serve":
 		runErr = app.RunServe(context.Background(), opts)
 	case command == "tui":

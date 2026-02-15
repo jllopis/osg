@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
   <channel>
-    <title>{{ .taxonomy.name }}: {{ .term.name }}</title>
+    <title>{{ if .feed_title }}{{ .feed_title }}{{ else }}{{ .taxonomy.name }}: {{ .term.name }}{{ end }}</title>
     <link>{{ .feed_url }}</link>
-    <description>{{ .taxonomy.name }} feed</description>
+    <description>{{ if .feed_description }}{{ .feed_description }}{{ else }}{{ .taxonomy.name }} {{ trans "feed_description_suffix" }}{{ end }}</description>
     <lastBuildDate>{{ .last_updated }}</lastBuildDate>
     {{ if .pages }}
     {{ range .pages }}

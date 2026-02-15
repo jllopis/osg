@@ -11,7 +11,19 @@ import (
 )
 
 func RunInit(_ context.Context, opts CLIOptions) error {
+	configPath := opts.ConfigPath
+	if configPath == "" {
+		configPath = "config.yaml"
+	}
+
 	cfg := config.Default()
+	if _, err := os.Stat(configPath); err == nil {
+		loaded, err := config.Load(configPath)
+		if err != nil {
+			return err
+		}
+		cfg = loaded
+	}
 
 	if opts.VaultPath != "" {
 		cfg.VaultPath = opts.VaultPath
@@ -23,6 +35,9 @@ func RunInit(_ context.Context, opts CLIOptions) error {
 
 	if opts.OsgContentDir != "" {
 		cfg.ContentDir = opts.OsgContentDir
+	}
+	if opts.PublicDir != "" {
+		cfg.PublicDir = opts.PublicDir
 	}
 
 	dirs := []string{
@@ -42,11 +57,6 @@ func RunInit(_ context.Context, opts CLIOptions) error {
 
 	if err := theme.EnsureDefaultTheme(cfg.ThemesDir); err != nil {
 		return fmt.Errorf("init theme: %w", err)
-	}
-
-	configPath := opts.ConfigPath
-	if configPath == "" {
-		configPath = "config.yaml"
 	}
 
 	if _, err := os.Stat(configPath); err == nil {

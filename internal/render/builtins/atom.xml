@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <title>{{ .taxonomy.name }}: {{ .term.name }}</title>
+  <title>{{ if .feed_title }}{{ .feed_title }}{{ else }}{{ .taxonomy.name }}: {{ .term.name }}{{ end }}</title>
   <id>{{ .feed_url }}</id>
   <link href="{{ .feed_url }}" rel="self" />
   <updated>{{ .last_updated }}</updated>
+  {{ if .feed_description }}<subtitle>{{ .feed_description }}</subtitle>{{ end }}
   {{ if .pages }}
   {{ range .pages }}
   <entry>

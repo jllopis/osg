@@ -195,6 +195,77 @@ El propósito del programa es construir la página web estática a partir de los
 
 Para continuar con el desarrollo, se deben implementar a continuación las siguientes tareas:
 
+### Paginas standalone y navegacion por menu
+
+El usuario puede marcar una nota de Obsidian como pagina standalone mediante el bloque `osg` en frontmatter:
+
+- `osg.path`: override de `content_layout`. La nota se escribe en `content/{path}/index.md` en lugar de la ruta por defecto basada en fecha/slug. Ejemplo: `osg.path: "about"` genera `/about/`.
+- `osg.menu`: si es `true`, la pagina se incluye como enlace en la navegacion del sitio (variable `menu_pages` en templates) y se excluye automaticamente del listado de posts en homepage y secciones.
+
+Esto permite crear paginas como "Sobre mi", "Contacto" o "Proyectos" que no son posts cronologicos sino paginas fijas del sitio.
+
+### Comando `osg new` para crear posts desde CLI
+
+El comando `osg new` permite crear una nueva nota Markdown directamente en el vault de Obsidian, con el frontmatter pre-configurado para OSG. Esto evita tener que abrir Obsidian y crear la nota manualmente.
+
+**Uso basico:**
+
+```bash
+osg new "Mi Nuevo Post"                           # crea como draft
+osg new "Mi Nuevo Post" --publish                 # crea como publicado
+osg new "Mi Nuevo Post" --tags filosofia,logica   # con tags
+osg new "Mi Nuevo Post" --dry-run                 # muestra que haria sin escribir
+```
+
+**Desde el TUI:**
+
+```
+/new Mi Nuevo Post
+```
+
+El comando genera un fichero `{Title}.md` en la raiz del vault (convencion Obsidian: ficheros planos con nombres legibles). El frontmatter generado sigue el formato nativo de Obsidian:
+
+```yaml
+---
+title: Mi Nuevo Post
+created: "2025-02-15 10:30"
+tags:
+  - filosofia
+  - logica
+osg:
+  publish: "draft"
+---
+```
+
+- `created` usa el formato de Obsidian (`YYYY-MM-DD HH:MM`), no `date`
+- `osg.publish` es `"draft"` por defecto; con `--publish` se establece a `true`
+- Si el fichero ya existe, el comando retorna error (no sobreescribe)
+
+### Internacionalizacion (i18n) de plantillas
+
+OSG soporta traduccion de cadenas de interfaz en las plantillas del tema. No es enrutamiento multi-idioma de contenido, sino traduccion de strings UI (etiquetas, botones, ARIA, formatos de fecha).
+
+**Configuracion:**
+
+- `default_language`: idioma por defecto (default: `"es"`). Se expone como `lang` en todas las plantillas.
+
+**Ficheros de traduccion:**
+
+Se ubican en `i18n/{lang}.yaml` (YAML plano clave-valor). El tema por defecto incluye `en.yaml` y `es.yaml` con ~31 claves. El usuario puede crear sus propios ficheros en `i18n/` para override o nuevos idiomas.
+
+**Funciones de plantilla:**
+
+- `{{ trans "key" }}` — busca la traduccion para la clave en el idioma por defecto. Fallback: idioma solicitado -> idioma por defecto -> clave cruda.
+- `{{ date_format .date (trans "date_format_short") }}` — formatea una fecha con layout de Go y reemplaza nombres de mes en ingles por equivalentes localizados (es/fr/de/pt/it/ca).
+
+**Ejemplo en plantilla:**
+
+```html
+<h2>{{ trans "recent_posts" }}</h2>
+<time>{{ date_format .page.date (trans "date_format_long") }}</time>
+<span>{{ .page.reading_time }} {{ trans "min_read" }}</span>
+```
+
 ### Generación de HTML a partir de los ficheros Markdown originales
 
 Los ficheros se encuentran en el directorio `content`. Hay que cambiar el nombre del parámetro `build` por `update-content`. Esto debe realizar las acciones actuales de obtener los ficheros, parsearlos y copiarlos a su ubicación final (dentro de `content`).

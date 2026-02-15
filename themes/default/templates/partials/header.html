@@ -1,0 +1,16 @@
+<a class="skip-link" href="#main-content">{{ trans "skip_to_content" }}</a>
+<header class="site-header" role="banner">
+  <div class="container">
+    <a class="brand" href="{{ get_url "/" true false }}">{{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}</a>
+    {{ if or .taxonomies .menu_pages }}
+    <nav class="nav" aria-label="{{ trans "aria_main_nav" }}">
+      {{ range $name, $data := .taxonomies }}
+      <a href="{{ get_url (printf "/%s/" $name) true false }}">{{ $name }}</a>
+      {{ end }}
+      {{ range .menu_pages }}
+      <a href="{{ .path }}">{{ .title }}</a>
+      {{ end }}
+    </nav>
+    {{ end }}
+  </div>
+</header>

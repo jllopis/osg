@@ -83,6 +83,10 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		PluginInit: func(actionCtx context.Context, name string, dir string) error {
 			return RunPluginInit(actionCtx, withLog(), name, dir)
 		},
+		NewPost: func(actionCtx context.Context, title string) error {
+			postOpts := NewPostOptions{Title: title}
+			return RunNew(actionCtx, withLog(), postOpts)
+		},
 		Version: func() string {
 			return VersionInfo()
 		},
@@ -95,6 +99,7 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		PublicDir:      cfg.PublicDir,
 		ServeAddr:      opts.ServeAddr,
 		LogPath:        historyPath(history),
+		SiteTitle:      cfg.SiteTitle,
 		PrefixKey:      cfg.TUIPrefix,
 		PrefixMs:       cfg.TUIPrefixMs,
 		Plugins:        listPlugins(cfg.PluginsDir),

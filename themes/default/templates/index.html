@@ -1,78 +1,89 @@
 <!doctype html>
-<html lang="{{ .lang }}">
+<html lang="{{ .lang }}" data-color-scheme="{{ .config.color_scheme }}">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{ if .section.title }}{{ .section.title }}{{ else }}OSG{{ end }}</title>
-    <link rel="stylesheet" href="{{ get_url "/style.css" true true }}" />
+    <title>{{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}</title>
+    {{ template "partials/head.html" . }}
   </head>
   <body>
     <div class="page">
-      <header class="site-header container">
-        <a class="brand" href="{{ get_url "/" true false }}">OSG</a>
-        <nav class="nav">
-          {{ $tags := index .taxonomies "tags" }}
-          {{ if $tags }}<a href="{{ get_url "/tags/" true false }}">Tags</a>{{ end }}
-          {{ $area := index .taxonomies "area" }}
-          {{ if $area }}<a href="{{ get_url "/area/" true false }}">Areas</a>{{ end }}
-          {{ $type := index .taxonomies "type" }}
-          {{ if $type }}<a href="{{ get_url "/type/" true false }}">Types</a>{{ end }}
-        </nav>
-      </header>
+      {{ template "partials/header.html" . }}
 
-      <main class="container">
-        <section class="hero">
-          <h1>{{ if .section.title }}{{ .section.title }}{{ else }}Home{{ end }}</h1>
-          {{ if .section.content }}
-          <div class="prose">{{ .section.content }}</div>
-          {{ else }}
-          <p class="lead">A static site generated from your Obsidian vault.</p>
-          {{ end }}
-          <div class="stats">
-            <div class="stat">
-              <span class="label">Pages</span>
-              <span class="value">{{ len .site.pages }}</span>
-            </div>
-            <div class="stat">
-              <span class="label">Sections</span>
-              <span class="value">{{ len .site.root.subsections }}</span>
-            </div>
-          </div>
-        </section>
+      <main id="main-content" class="container" role="main">
 
+        {{/* ---- Featured post ---- */}}
+        {{ with .section.featured_page }}
+        <article class="featured">
+          <a class="featured-link" href="{{ .permalink }}">
+            {{ if .image }}
+            <div class="featured-image-wrapper">
+              {{ picture .image .title "eager" }}
+            </div>
+            {{ end }}
+            <div class="featured-body">
+              <span class="featured-label">{{ trans "featured" }}</span>
+              <h2 class="featured-title">{{ .title }}</h2>
+              <div class="featured-meta">
+                <time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short") }}</time>
+                {{ if .reading_time }}<span class="reading-badge">{{ .reading_time }} {{ trans "min_read" }}</span>{{ end }}
+              </div>
+              {{ if .summary }}<p class="featured-summary">{{ .summary }}</p>{{ end }}
+            </div>
+          </a>
+        </article>
+        {{ end }}
+
+        {{/* ---- Section intro (from _index.md) ---- */}}
+        {{ if .section.content }}
+        <div class="prose home-intro">{{ .section.content }}</div>
+        {{ else if .config.site_description }}
+        <p class="home-description">{{ .config.site_description }}</p>
+        {{ end }}
+
+        {{/* ---- Recent posts ---- */}}
         {{ if .section.pages }}
-        <section class="list">
-          <h2>Latest</h2>
-          <div class="cards">
+        <section class="recent-posts" aria-label="{{ trans "aria_recent_posts" }}">
+          <h2 class="section-heading">{{ trans "recent_posts" }}</h2>
+          <div class="post-list">
             {{ range .section.pages }}
-            <article class="card">
-              <h3><a href="{{ .permalink }}">{{ .title }}</a></h3>
-              <div class="meta">{{ .date.Format "2006-01-02" }}</div>
-              {{ if .summary }}<p>{{ .summary }}</p>{{ end }}
+            <article class="post-item">
+              {{ if .image }}
+              <a class="post-item-thumb" href="{{ .permalink }}">
+                {{ picture .image .title "lazy" }}
+              </a>
+              {{ end }}
+              <div class="post-item-body">
+                <h3 class="post-item-title"><a href="{{ .permalink }}">{{ .title }}</a></h3>
+                <time class="post-item-date" datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short") }}</time>
+                {{ if .summary }}<p class="post-item-summary">{{ .summary }}</p>{{ end }}
+              </div>
             </article>
             {{ end }}
           </div>
         </section>
         {{ end }}
 
-        {{ $tags := index .taxonomies "tags" }}
-        {{ if $tags }}
-        <section class="chips">
-          <h2>Tags</h2>
-          <div class="chip-grid">
-            {{ range $i, $term := $tags.terms }}
-            {{ if lt $i 10 }}
-            <a class="chip" href="{{ $term.permalink }}">{{ $term.name }}</a>
-            {{ end }}
-            {{ end }}
+        {{/* ---- Subsections / topic areas ---- */}}
+        {{/* Only show subsections backed by _index.md (has_source), not
+             auto-generated date scaffolding sections. */}}
+        {{ $hasReal := false }}
+        {{ range .section.subsections }}{{ if .has_source }}{{ $hasReal = true }}{{ end }}{{ end }}
+        {{ if $hasReal }}
+        <section class="topic-areas" aria-label="{{ trans "aria_sections" }}">
+          <h2 class="section-heading">{{ trans "sections" }}</h2>
+          <div class="term-grid">
+            {{ range .section.subsections }}{{ if .has_source }}
+            <a class="term-card" href="{{ .permalink }}">
+              <span class="term-name">{{ .title }}</span>
+              {{ if .pages }}<span class="term-count">{{ len .pages }}</span>{{ end }}
+            </a>
+            {{ end }}{{ end }}
           </div>
         </section>
         {{ end }}
+
       </main>
 
-      <footer class="site-footer container">
-        <span>Generated by OSG</span>
-      </footer>
+      {{ template "partials/footer.html" . }}
     </div>
   </body>
 </html>

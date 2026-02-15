@@ -1,23 +1,22 @@
 <!doctype html>
-<html lang="{{ .lang }}">
+<html lang="{{ .lang }}" data-color-scheme="{{ .config.color_scheme }}">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Not Found</title>
-    <link rel="stylesheet" href="{{ get_url "/style.css" true true }}" />
+    <title>{{ trans "not_found_title" }} &mdash; {{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}</title>
+    {{ template "partials/head.html" . }}
   </head>
   <body>
     <div class="page">
-      <header class="site-header container">
-        <a class="brand" href="{{ get_url "/" true false }}">OSG</a>
-      </header>
-      <main class="container">
-        <section class="hero">
+      {{ template "partials/header.html" . }}
+
+      <main id="main-content" class="container" role="main">
+        <div class="not-found">
           <h1>404</h1>
-          <p class="lead">This page was not found.</p>
-          <a class="btn" href="{{ get_url "/" true false }}">Back to home</a>
-        </section>
+          <p>{{ trans "not_found_text" }}</p>
+          <a class="btn" href="{{ get_url "/" true false }}">&larr; {{ trans "back_to_home" }}</a>
+        </div>
       </main>
+
+      {{ template "partials/footer.html" . }}
     </div>
   </body>
 </html>

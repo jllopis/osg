@@ -1,0 +1,131 @@
+# =============================================================================
+# OSG — Obsidian Site Generator
+# Full configuration reference. Every key shown here can also be set via
+# environment variables with the OSG_ prefix (e.g. OSG_SITE_TITLE).
+#
+# Copy this file as config.yaml and adjust to your needs:
+#   cp config.yaml.example config.yaml
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Site identity
+# -----------------------------------------------------------------------------
+# site_title: Displayed in the header, browser tab, and meta tags.
+# site_description: Used in the HTML <meta name="description"> and OpenGraph.
+# base_url: Absolute URL of the deployed site (e.g. "https://blog.example.com").
+#           Leave empty for local/relative links.
+site_title: "OSG"
+site_description: ""
+base_url: ""
+
+# -----------------------------------------------------------------------------
+# Content
+# -----------------------------------------------------------------------------
+# vault_path: Path to the Obsidian vault to import from (used by "osg import").
+# content_dir: Directory where Markdown content lives.
+# content_layout: URL pattern for pages. Placeholders: {date}, {slug}, {title}.
+# include_drafts: Render pages with "draft: true" in front-matter.
+vault_path: ""
+content_dir: content
+content_layout: "{date}/{slug}"
+include_drafts: false
+
+# -----------------------------------------------------------------------------
+# Theme & appearance
+# -----------------------------------------------------------------------------
+# theme: Active theme name (must match a subdirectory of themes_dir).
+# themes_dir: Directory that contains installed themes.
+theme: default
+themes_dir: themes
+
+# -----------------------------------------------------------------------------
+# Output
+# -----------------------------------------------------------------------------
+# public_dir: Directory where the generated site is written.
+# clean_public: Remove public_dir before a full build.
+public_dir: public
+clean_public: true
+
+# -----------------------------------------------------------------------------
+# Templates & static assets
+# -----------------------------------------------------------------------------
+# templates_dir: User-level template overrides (merged on top of the theme).
+# static_dir: Extra static files copied as-is to public_dir.
+templates_dir: templates
+static_dir: static
+
+# -----------------------------------------------------------------------------
+# Plugins
+# -----------------------------------------------------------------------------
+# plugins_dir: Directory containing .wasm plugin files.
+# plugins_enabled: List of plugin names to activate (without .wasm extension).
+plugins_dir: plugins
+plugins_enabled: []
+
+# -----------------------------------------------------------------------------
+# Sass
+# -----------------------------------------------------------------------------
+# sass_dir: Directory with .scss files to compile.
+# compile_sass: Enable Sass compilation.
+sass_dir: sass
+compile_sass: false
+
+# -----------------------------------------------------------------------------
+# Build
+# -----------------------------------------------------------------------------
+# build_incremental: Only re-render changed pages (speeds up rebuilds).
+# build_cache_dir: Where build cache data is stored.
+build_incremental: true
+build_cache_dir: .osg/cache
+
+# -----------------------------------------------------------------------------
+# Dev server (osg serve)
+# -----------------------------------------------------------------------------
+# serve_watch: Watch files for changes and rebuild automatically.
+# serve_live_reload: Inject live-reload script into served pages.
+# serve_debounce_ms: Milliseconds to wait before triggering a rebuild after
+#                    a file change (avoids rapid successive builds).
+serve_watch: true
+serve_live_reload: true
+serve_debounce_ms: 300
+
+# -----------------------------------------------------------------------------
+# TUI
+# -----------------------------------------------------------------------------
+# tui_prefix: Key used as prefix in the interactive TUI ("space" or "ctrl").
+# tui_prefix_ms: Milliseconds to wait for a second key after prefix.
+tui_prefix: space
+tui_prefix_ms: 600
+
+# -----------------------------------------------------------------------------
+# Diagnostics
+# -----------------------------------------------------------------------------
+# doctor_profile: Profile for "osg doctor" checks ("dev" or "prod").
+doctor_profile: dev
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+# level: Minimum log level (debug, info, warn, error).
+# format: Log output format ("json" or "text").
+logging:
+  level: info
+  format: json
+
+# -----------------------------------------------------------------------------
+# Taxonomies
+# -----------------------------------------------------------------------------
+# Define content groupings derived from front-matter fields.
+# Each taxonomy generates listing pages and per-term pages.
+#
+# taxonomies:
+#   - name: tags            # front-matter field name
+#     paginate_by: 10       # items per page (0 = no pagination)
+#     paginate_path: page   # URL segment for paginated pages
+#     feed: true            # generate RSS/Atom feed for this taxonomy
+#     render: true          # generate HTML pages
+#   - name: area
+#     paginate_by: 10
+#     paginate_path: page
+#     feed: false
+#     render: true

@@ -9,13 +9,14 @@ import (
 	"strings"
 )
 
-//go:embed default/templates/* default/static/*
+//go:embed default
 var defaultThemeFS embed.FS
 
-// EnsureDefaultTheme writes the embedded default theme into themesDir/default
-// without overwriting existing files.
+// EnsureDefaultTheme writes the embedded default theme into themesDir/default,
+// always overwriting existing files to keep the on-disk copy in sync with the
+// version compiled into the binary.
 func EnsureDefaultTheme(themesDir string) error {
-	return installTheme(themesDir, "default", false)
+	return installTheme(themesDir, "default", true)
 }
 
 // ScaffoldTheme creates a new theme based on the embedded default theme.

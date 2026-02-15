@@ -1,0 +1,14 @@
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="generator" content="OSG" />
+{{ if .config.site_description }}<meta name="description" content="{{ .config.site_description }}" />{{ end }}
+{{ if .page }}
+<meta property="og:title" content="{{ .page.title }}" />
+<meta property="og:type" content="article" />
+{{ if .page.summary }}<meta property="og:description" content="{{ .page.summary }}" />{{ end }}
+{{ if .page.permalink }}<meta property="og:url" content="{{ .page.permalink }}" />{{ end }}
+{{ if .page.image }}<meta property="og:image" content="{{ .page.image }}" />{{ end }}
+{{ end }}
+{{ if .config.site_feed }}<link rel="alternate" type="application/atom+xml" title="{{ .config.site_title }} — {{ trans "atom_feed" }}" href="{{ get_url "/atom.xml" false false }}" />
+<link rel="alternate" type="application/rss+xml" title="{{ .config.site_title }} — {{ trans "rss_feed" }}" href="{{ get_url "/rss.xml" false false }}" />{{ end }}
+<link rel="stylesheet" href="{{ get_url "/style.css" true true }}" />

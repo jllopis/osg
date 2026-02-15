@@ -1,0 +1,51 @@
+# Traducciones en castellano para el tema por defecto de OSG.
+# Las claves se referencian en las plantillas con {{ trans "key" }}.
+
+# --- Pagina principal ---
+featured: Destacado
+recent_posts: Publicaciones recientes
+sections: Secciones
+
+# --- Comun ---
+min_read: min de lectura
+home: Inicio
+posts: Publicaciones
+subsections: Subsecciones
+
+# --- Pagina de seccion ---
+section_fallback: Seccion
+
+# --- Taxonomia ---
+browse_all_terms: "Explorar todos los terminos de %s."
+no_terms: Aun no hay terminos.
+previous: Anterior
+next: Siguiente
+
+# --- 404 ---
+not_found_title: No encontrado
+not_found_text: Esta pagina no se pudo encontrar.
+back_to_home: Volver al inicio
+
+# --- Accesibilidad (ARIA) ---
+aria_breadcrumb: Migas de pan
+aria_main_nav: Navegacion principal
+aria_recent_posts: Publicaciones recientes
+aria_sections: Secciones
+aria_terms: Terminos
+aria_posts: Publicaciones
+aria_subsections: Subsecciones
+aria_paginated_posts: Publicaciones paginadas
+
+# --- Parciales ---
+skip_to_content: Ir al contenido
+generated_by: Generado con
+
+# --- Feeds ---
+atom_feed: Feed Atom
+rss_feed: Feed RSS
+feed_description_suffix: feed
+
+# --- Formatos de fecha ---
+# Cadenas de formato de fecha de Go usadas por la funcion date_format.
+date_format_long: "January 2, 2006"
+date_format_short: "Jan 2, 2006"
