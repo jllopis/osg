@@ -152,6 +152,21 @@
 - [done] 20 tests unitarios en kairos_test.go (mock providers, factory, concurrency, context cancellation)
 - [done] Build y test end-to-end verificados
 
+## AI summary cache + language + serve isolation (done)
+- [done] AI summary cache: `.osg/cache/ai-summaries.json`, SHA-256 content hash key
+- [done] AICache struct thread-safe (sync.RWMutex), load/save JSON, lookup/store
+- [done] fillWithAI() checks cache before LLM call, stores results back
+- [done] `--force-ai-summaries` CLI flag: ignora cache, regenera todo (con confirmacion interactiva)
+- [done] `--yes`/`-y` flag: bypass confirmacion (para CI/scripts)
+- [done] Language-aware prompts: `buildDefaultPrompt(lang)` inyecta idioma en system prompt
+- [done] `Language` field en AIConfig y KairosProvider, wired desde `default_language`
+- [done] `langDisplayName()`: BCP-47 -> nombres en ingles (es->Spanish, etc.)
+- [done] Custom system_prompt ignora inyeccion de idioma
+- [done] Serve isolation: `opts.SkipAI=true` en RunServe(), fallback a auto strategy
+- [done] BuildOptions struct en build.go con SkipAI y ForceAISummaries
+- [done] 14 tests para AI cache + 10 tests para language-aware prompts
+- [done] Documentacion: DESIGN, ROADMAP, TASKS, Funcional, AGENTS.md
+
 ## Backlog (deferred)
 - [done] i18n en templates
 - [todo] galeria de imagenes / lightbox

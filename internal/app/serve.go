@@ -16,6 +16,10 @@ func RunServe(ctx context.Context, opts CLIOptions) error {
 		return err
 	}
 
+	// During serve, skip AI summary generation to avoid costly API calls
+	// on every rebuild.  Pages without summaries get the "auto" fallback.
+	opts.SkipAI = true
+
 	if opts.VaultPath != "" {
 		cfg.VaultPath = opts.VaultPath
 	}

@@ -305,6 +305,44 @@ ai:
 - Errores individuales se logean como warnings pero no interrumpen el batch
 - El contenido se pre-procesa con PlainText() (strip markdown) antes de enviarlo al LLM
 
+### Cache de summaries AI
+
+Los summaries generados por IA se cachean en disco para evitar llamadas LLM innecesarias en builds sucesivos.
+
+**Ubicacion del cache**: `.osg/cache/ai-summaries.json` (dentro de `build_cache_dir`).
+
+**Clave de cache**: SHA-256 del contenido markdown crudo (sin frontmatter). Si el contenido de un post cambia, el hash cambia automaticamente y se regenera el summary.
+
+**Comportamiento**:
+- En cada build con `summary_strategy: ai`, se carga el cache existente
+- Para cada page sin summary: si hay entrada en cache con el mismo hash, se usa el summary cacheado
+- Si no hay cache hit, se llama al LLM y se guarda el resultado en cache
+- Al final del proceso, se persiste el cache actualizado a disco
+
+**Invalidacion manual**: si se cambia el provider o modelo AI y se quiere regenerar todo:
+
+```bash
+osg build --force-ai-summaries         # pide confirmacion interactiva
+osg build --force-ai-summaries --yes   # sin confirmacion (para CI/scripts)
+```
+
+### Prompts con idioma
+
+El system prompt por defecto se adapta automaticamente al idioma configurado en `default_language`:
+
+- Si `default_language: "es"`, el prompt incluye "Write the summary in Spanish."
+- Si no hay `default_language`, el prompt no menciona idioma
+- Si se define un `system_prompt` custom en la configuracion AI, se usa tal cual sin inyectar idioma
+
+### Aislamiento en modo serve
+
+Cuando se ejecuta `osg serve`, los summaries AI se desactivan automaticamente:
+
+- El servidor establece `SkipAI=true` para todos los builds (inicial y rebuilds por watch)
+- Las pages sin summary reciben fallback a estrategia `auto` (extraccion de primeras oraciones)
+- Esto evita requests LLM costosos y lentos durante el ciclo de desarrollo
+- El build normal (`osg build`) y el TUI siguen usando la estrategia AI configurada
+
 ### Generación de HTML a partir de los ficheros Markdown originales
 
 Los ficheros se encuentran en el directorio `content`. Hay que cambiar el nombre del parámetro `build` por `update-content`. Esto debe realizar las acciones actuales de obtener los ficheros, parsearlos y copiarlos a su ubicación final (dentro de `content`).

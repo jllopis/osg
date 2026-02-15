@@ -22,7 +22,7 @@ type CLI struct {
 
 	Init          struct{}  `cmd:"" help:"Initialize project structure"`
 	UpdateContent struct{}  `cmd:"" help:"Sync content from vault"`
-	Build         struct{}  `cmd:"" help:"Build static site (HTML)"`
+	Build         BuildCmd  `cmd:"" help:"Build static site (HTML)"`
 	Serve         ServeCmd  `cmd:"" help:"Serve public directory"`
 	New           NewCmd    `cmd:"" help:"Create a new post in the vault"`
 	TUI           struct{}  `cmd:"" help:"Launch TUI"`
@@ -30,6 +30,11 @@ type CLI struct {
 	Plugin        PluginCmd `cmd:"" help:"Plugin tools"`
 	Doctor        struct{}  `cmd:"" help:"Validate configuration and environment"`
 	Version       struct{}  `cmd:"" help:"Show version information"`
+}
+
+type BuildCmd struct {
+	ForceAISummaries bool `help:"Regenerate all AI summaries (bypasses cache)" name:"force-ai-summaries"`
+	Yes              bool `help:"Skip confirmation prompts" short:"y"`
 }
 
 type ServeCmd struct {
@@ -99,17 +104,18 @@ func main() {
 	}
 
 	opts := app.CLIOptions{
-		ConfigPath:    cli.Config,
-		Verbose:       cli.Verbose,
-		DryRun:        cli.DryRun,
-		IncludeDrafts: cli.IncludeDrafts,
-		VaultPath:     cli.VaultPath,
-		OsgContentDir: cli.OsgContentDir,
-		PublicDir:     cli.PublicDir,
-		ServeAddr:     cli.Serve.Addr,
-		ServeWatch:    cli.Serve.Watch,
-		ServeReload:   cli.Serve.LiveReload,
-		ServeDebounce: cli.Serve.DebounceMs,
+		ConfigPath:       cli.Config,
+		Verbose:          cli.Verbose,
+		DryRun:           cli.DryRun,
+		IncludeDrafts:    cli.IncludeDrafts,
+		VaultPath:        cli.VaultPath,
+		OsgContentDir:    cli.OsgContentDir,
+		PublicDir:        cli.PublicDir,
+		ServeAddr:        cli.Serve.Addr,
+		ServeWatch:       cli.Serve.Watch,
+		ServeReload:      cli.Serve.LiveReload,
+		ServeDebounce:    cli.Serve.DebounceMs,
+		ForceAISummaries: cli.Build.ForceAISummaries,
 	}
 
 	var runErr error
@@ -120,6 +126,15 @@ func main() {
 	case command == "update-content":
 		runErr = app.RunUpdateContent(context.Background(), opts)
 	case command == "build":
+		if cli.Build.ForceAISummaries && !cli.Build.Yes {
+			fmt.Print("This will regenerate ALL AI summaries (may incur API costs). Continue? [y/N] ")
+			var answer string
+			fmt.Scanln(&answer)
+			if strings.ToLower(strings.TrimSpace(answer)) != "y" {
+				fmt.Fprintln(os.Stderr, "aborted")
+				os.Exit(0)
+			}
+		}
 		runErr = app.RunBuild(context.Background(), opts)
 	case strings.HasPrefix(command, "new"):
 		postOpts := app.NewPostOptions{

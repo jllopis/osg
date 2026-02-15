@@ -12,9 +12,39 @@ import (
 	"github.com/jllopis/kairos/providers/qwen"
 )
 
-// DefaultSystemPrompt is the default system instruction for AI summary
-// generation when no custom prompt is configured.
-const DefaultSystemPrompt = "Summarize the following blog post in 2-3 concise sentences for use as a preview excerpt. Return only the summary text, no labels or prefixes."
+// DefaultSystemPromptTemplate is the default system instruction for AI summary
+// generation when no custom prompt is configured.  The %s placeholder is
+// replaced with a language clause (e.g. "in Spanish") when a language is set.
+const DefaultSystemPromptTemplate = "Summarize the following blog post in 2-3 concise sentences%s for use as a preview excerpt. Return only the summary text, no labels or prefixes."
+
+// buildDefaultPrompt returns the default system prompt, optionally injecting
+// a language instruction.  When lang is empty the prompt is language-neutral.
+func buildDefaultPrompt(lang string) string {
+	if lang == "" {
+		return fmt.Sprintf(DefaultSystemPromptTemplate, "")
+	}
+	name := langDisplayName(lang)
+	return fmt.Sprintf(DefaultSystemPromptTemplate, " in "+name)
+}
+
+// langDisplayName maps a BCP-47 code to its English display name for prompt
+// injection.  Only the most common codes are mapped; unknown codes are passed
+// through as-is so the LLM can still interpret them.
+func langDisplayName(code string) string {
+	names := map[string]string{
+		"es": "Spanish", "en": "English", "fr": "French",
+		"de": "German", "it": "Italian", "pt": "Portuguese",
+		"ca": "Catalan", "eu": "Basque", "gl": "Galician",
+		"nl": "Dutch", "ja": "Japanese", "zh": "Chinese",
+		"ko": "Korean", "ru": "Russian", "ar": "Arabic",
+		"pl": "Polish", "sv": "Swedish", "da": "Danish",
+		"fi": "Finnish", "no": "Norwegian", "tr": "Turkish",
+	}
+	if name, ok := names[strings.ToLower(code)]; ok {
+		return name
+	}
+	return code
+}
 
 // KairosProvider generates summaries using an LLM via Kairos.
 //
@@ -28,7 +58,11 @@ type KairosProvider struct {
 	// If empty the provider's configured default is used.
 	Model string
 	// SystemPrompt is the system instruction sent to the LLM.
+	// When empty a language-aware default is built from Language.
 	SystemPrompt string
+	// Language is the BCP-47 language code (e.g. "es") used to build
+	// the default system prompt.  Ignored when SystemPrompt is set.
+	Language string
 }
 
 // Summarize sends the page content to the LLM and returns the generated
@@ -47,7 +81,7 @@ func (k *KairosProvider) Summarize(ctx context.Context, title string, rawMarkdow
 
 	prompt := k.SystemPrompt
 	if prompt == "" {
-		prompt = DefaultSystemPrompt
+		prompt = buildDefaultPrompt(k.Language)
 	}
 
 	userContent := fmt.Sprintf("Title: %s\n\n%s", title, plain)
@@ -75,6 +109,9 @@ type AIConfig struct {
 	APIKey       string
 	BaseURL      string
 	SystemPrompt string
+	// Language is the BCP-47 language code (e.g. "es") injected into the
+	// default system prompt.  Ignored when SystemPrompt is set explicitly.
+	Language string
 }
 
 // NewKairosProvider creates a KairosProvider from the given configuration.
@@ -105,6 +142,7 @@ func NewKairosProvider(ctx context.Context, cfg AIConfig) (*KairosProvider, erro
 		LLM:          provider,
 		Model:        cfg.Model,
 		SystemPrompt: cfg.SystemPrompt,
+		Language:     cfg.Language,
 	}, nil
 }
 

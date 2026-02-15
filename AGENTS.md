@@ -120,9 +120,18 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
 
 ## Current State (as of last session)
 
-All phases 1-10 complete. Standalone Pages feature complete. `osg new` command complete. i18n in templates complete. Kairos AI summaries complete.
+All phases 1-10 complete. Standalone Pages feature complete. `osg new` command complete. i18n in templates complete. Kairos AI summaries complete. AI summary cache, language-aware prompts, and serve isolation complete.
 
 ### Recently completed
+- AI summary cache: `internal/build/ai_cache.go` with `AICache` struct,
+  SHA-256 content hash keys, thread-safe lookup/store, JSON persistence at
+  `.osg/cache/ai-summaries.json`. `--force-ai-summaries` and `--yes` CLI flags.
+  14 unit tests.
+- Language-aware prompts: `buildDefaultPrompt(lang)` injects language into
+  system prompt based on `default_language`. `langDisplayName()` maps BCP-47
+  codes. Custom `system_prompt` bypasses language injection. 10 unit tests.
+- Serve isolation: `RunServe()` sets `SkipAI=true`, all serve builds fall back
+  to auto strategy. `BuildOptions` struct with `SkipAI`/`ForceAISummaries`.
 - Kairos AI summaries: `internal/summary/kairos.go` with `KairosProvider`,
   `NewKairosProvider()` factory for 5 LLM providers. `AIConfig` in config with
   provider/model/api_key/base_url/system_prompt/timeout/concurrency. Bounded

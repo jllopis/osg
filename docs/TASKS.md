@@ -105,3 +105,18 @@ Formato: [todo|doing|done] Tarea
 [done] (Kairos AI) 20 tests unitarios (mock providers, factory, concurrency, context cancellation)
 [done] (Kairos AI) Build y test end-to-end verificados
 [done] (Kairos AI) Documentacion: ROADMAP, TASKS, DESIGN, Funcional, AGENTS.md
+
+[done] (AI Cache) AI summary cache: `.osg/cache/ai-summaries.json`, SHA-256 content hash key
+[done] (AI Cache) AICache struct thread-safe con load/save JSON, lookup/store
+[done] (AI Cache) fillWithAI() checks cache before LLM, stores results back
+[done] (AI Cache) `--force-ai-summaries` CLI flag con confirmacion interactiva
+[done] (AI Cache) `--yes`/`-y` flag para bypass confirmacion (CI/scripts)
+[done] (AI Cache) 14 tests unitarios para ai_cache.go
+[done] (Language) buildDefaultPrompt(lang) inyecta idioma en system prompt
+[done] (Language) Language field en AIConfig y KairosProvider, wired desde default_language
+[done] (Language) langDisplayName(): BCP-47 -> nombres en ingles
+[done] (Language) Custom system_prompt ignora inyeccion de idioma
+[done] (Language) 10 tests unitarios para language-aware prompts
+[done] (Serve) Serve isolation: opts.SkipAI=true en RunServe(), fallback a auto strategy
+[done] (Serve) BuildOptions struct en build.go con SkipAI y ForceAISummaries
+[done] (AI Cache) Documentacion: ROADMAP, TASKS, DESIGN, Funcional, AGENTS.md

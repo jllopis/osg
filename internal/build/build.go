@@ -36,7 +36,19 @@ type Stats struct {
 	Errors   int
 }
 
-func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writer) error {
+// BuildOptions carries per-invocation settings that are not part of the
+// persistent Config.  Zero value is safe (all features enabled, no force).
+type BuildOptions struct {
+	// SkipAI disables LLM-based summary generation.  When true, AI
+	// summaries are not called and pages fall back to the "auto" strategy.
+	// Used during serve to avoid costly API calls on every rebuild.
+	SkipAI bool
+	// ForceAISummaries bypasses the AI summary cache and regenerates all
+	// summaries even when cached results exist.
+	ForceAISummaries bool
+}
+
+func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool, logWriter io.Writer) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -128,7 +140,7 @@ func Run(ctx context.Context, cfg config.Config, verbose bool, logWriter io.Writ
 	siteIndex.BuildHierarchy()
 
 	// Fill empty Page.Summary fields using the configured strategy.
-	fillSummaries(ctx, cfg, siteIndex, logger)
+	fillSummaries(ctx, cfg, opts, siteIndex, logger)
 
 	// Generate placeholder SVGs for pages without an image.
 	if err := generatePlaceholders(siteIndex, cfg.PublicDir, logger); err != nil {
@@ -1062,17 +1074,25 @@ func sectionUpdated(section *site.Section) time.Time {
 
 // fillSummaries populates Page.Summary for any page that lacks one,
 // using the configured summary strategy (auto/manual/ai).
-func fillSummaries(ctx context.Context, cfg config.Config, siteIndex *site.Site, logger *slog.Logger) {
+func fillSummaries(ctx context.Context, cfg config.Config, opts BuildOptions, siteIndex *site.Site, logger *slog.Logger) {
 	strategy := cfg.SummaryStrategy
 
 	// For "ai", create a KairosProvider with the configured LLM backend.
+	// If SkipAI is set (e.g. during serve), fall back to auto.
 	if strings.EqualFold(strategy, "ai") {
+		if opts.SkipAI {
+			logger.Info("AI summaries skipped (serve mode), falling back to auto")
+			fillWithProvider(ctx, siteIndex, summary.ExtractProvider{}, "auto", logger)
+			return
+		}
+
 		aiCfg := summary.AIConfig{
 			Provider:     cfg.AI.Provider,
 			Model:        cfg.AI.Model,
 			APIKey:       cfg.AI.APIKey,
 			BaseURL:      cfg.AI.BaseURL,
 			SystemPrompt: cfg.AI.SystemPrompt,
+			Language:     cfg.DefaultLanguage,
 		}
 		kp, err := summary.NewKairosProvider(ctx, aiCfg)
 		if err != nil {
@@ -1087,7 +1107,18 @@ func fillSummaries(ctx context.Context, cfg config.Config, siteIndex *site.Site,
 			concurrency = 3
 		}
 
-		fillWithAI(ctx, siteIndex, kp, timeout, concurrency, logger)
+		// Load AI summary cache.
+		cachePath := aiCachePath(cfg)
+		cache := loadAICache(cachePath, logger)
+		cache.provider = cfg.AI.Provider
+		cache.model = cfg.AI.Model
+
+		fillWithAI(ctx, siteIndex, kp, timeout, concurrency, cache, opts.ForceAISummaries, logger)
+
+		// Save updated cache.
+		if err := saveAICache(cachePath, cache, logger); err != nil {
+			logger.Warn("failed to save AI summary cache", "error", err)
+		}
 		return
 	}
 
@@ -1125,17 +1156,36 @@ func fillWithProvider(ctx context.Context, siteIndex *site.Site, provider summar
 }
 
 // fillWithAI runs concurrent LLM-based summary generation with bounded
-// parallelism and per-request timeouts.
-func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Provider, timeout time.Duration, concurrency int, logger *slog.Logger) {
+// parallelism and per-request timeouts.  It checks the cache before calling
+// the LLM and stores new results back into the cache.
+func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Provider, timeout time.Duration, concurrency int, cache *AICache, force bool, logger *slog.Logger) {
 	// Collect pages that need summaries.
 	type pageJob struct {
-		page *site.Page
+		page        *site.Page
+		contentHash string
 	}
 	var jobs []pageJob
+	cacheHits := 0
 	for _, page := range siteIndex.Pages {
-		if page.Summary == "" {
-			jobs = append(jobs, pageJob{page: page})
+		if page.Summary != "" {
+			continue // already has a frontmatter summary
 		}
+		hash := contentHash(page.RawContent)
+
+		// Check cache (unless force is set).
+		if !force {
+			if entry, ok := cache.Lookup(hash); ok {
+				page.Summary = entry.Summary
+				cacheHits++
+				continue
+			}
+		}
+
+		jobs = append(jobs, pageJob{page: page, contentHash: hash})
+	}
+
+	if cacheHits > 0 {
+		logger.Info("AI summaries from cache", "count", cacheHits)
 	}
 	if len(jobs) == 0 {
 		return
@@ -1177,6 +1227,7 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 		}
 		if r.summary != "" {
 			jobs[r.idx].page.Summary = r.summary
+			cache.Store(jobs[r.idx].contentHash, r.summary)
 			filled++
 		}
 	}

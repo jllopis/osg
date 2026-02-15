@@ -147,13 +147,21 @@ Corta en el ultimo `.`/`!`/`?` antes de maxLen. Si no hay puntuacion, corta en e
 
 ### Flujo en build
 ```
-Site.BuildHierarchy() -> fillSummaries() -> generatePlaceholders()
+Site.BuildHierarchy() -> fillSummaries(opts) -> generatePlaceholders()
                          |
+                         opts.SkipAI == true (serve mode):
+                           log "skipping AI summaries"
+                           fallback a auto strategy
                          strategy == "ai":
-                           NewKairosProvider(ctx, aiCfg)
-                           fillWithAI(): bounded concurrency (semaphore),
-                                        per-request timeout, goroutines
-                           si falla creacion: fallback a auto
+                           load AI cache (.osg/cache/ai-summaries.json)
+                           NewKairosProvider(ctx, aiCfg) con Language del config
+                           fillWithAI(): para cada page:
+                             - hash = SHA-256(content)
+                             - cache hit? usar summary cacheado
+                             - cache miss? LLM call -> store en cache
+                           save AI cache
+                           si opts.ForceAISummaries: ignorar cache, regenerar todo
+                           si falla creacion provider: fallback a auto
                          strategy == "auto":
                            fillWithProvider() secuencial con ExtractProvider
                          strategy == "manual":
@@ -187,6 +195,60 @@ page.RawContent -> PlainText() -> "Title: {title}\n\n{plain text}"
 - Cada goroutine adquiere slot, genera summary, libera slot
 - Per-request timeout via `context.WithTimeout` (default 30s)
 - Errores se logean como warnings, no interrumpen el batch
+
+### Cache de summaries AI
+
+`internal/build/ai_cache.go` implementa un cache persistente para evitar regenerar summaries AI en cada build.
+
+**Ubicacion**: `.osg/cache/ai-summaries.json` (dentro de `build_cache_dir`).
+
+**Clave**: SHA-256 del contenido markdown crudo (sin frontmatter). Si el contenido cambia, el hash cambia y se regenera el summary.
+
+**Entrada** (`AICacheEntry`):
+- `summary`: el texto generado
+- `provider`: nombre del provider usado (e.g. "gemini")
+- `model`: modelo usado (e.g. "gemini-3-flash-preview")
+- `generated_at`: timestamp ISO 8601
+
+**Flujo**:
+```
+fillSummaries() -> loadAICache(path)
+                -> fillWithAI(): para cada page sin summary:
+                     hash = SHA-256(rawContent)
+                     if cache.Lookup(hash) -> usar summary cacheado (log "cache hit")
+                     else -> llamar LLM -> cache.Store(hash, entry)
+                -> saveAICache(cache, path)
+```
+
+**Invalidacion**:
+- Cambio de contenido: automatica (hash diferente)
+- Cambio de provider/modelo: NO automatica. Usar `--force-ai-summaries` para regenerar todo
+- `--force-ai-summaries`: ignora el cache y regenera todos los summaries. Requiere confirmacion interactiva (bypass con `--yes`/`-y`)
+
+**Thread-safety**: `AICache` usa `sync.RWMutex` para acceso concurrente seguro.
+
+### Prompts con idioma
+
+El system prompt por defecto inyecta el idioma configurado en `default_language`:
+
+- Si `default_language` esta definido (e.g. "es"), el prompt incluye "Write the summary in Spanish."
+- Si no hay `default_language`, el prompt no menciona idioma
+- Si se define un `system_prompt` custom en la config AI, se usa tal cual sin inyectar idioma
+- `langDisplayName()` mapea codigos BCP-47 a nombres en ingles: es->Spanish, en->English, fr->French, de->German, pt->Portuguese, it->Italian, ca->Catalan, etc. Codigos desconocidos se pasan tal cual
+
+### Aislamiento de serve
+
+`osg serve` ahora establece `SkipAI=true` para todos los builds (inicial y por watch/rebuild):
+
+- En modo serve, las pages sin summary reciben fallback automatico a estrategia `auto` (extraccion de primeras oraciones)
+- Esto evita requests LLM costosos y lentos durante desarrollo
+- El build normal (`osg build`) sigue usando la estrategia AI configurada
+- El TUI (`osg tui` -> build) tampoco salta AI, solo serve
+
+### CLI flags de build
+
+- `--force-ai-summaries`: regenera todos los summaries AI ignorando el cache. Requiere confirmacion interactiva
+- `--yes` / `-y`: bypass de confirmacion para `--force-ai-summaries` (util en CI/scripts)
 
 ## Featured overlay (CSS)
 
@@ -275,7 +337,7 @@ Se expone como `data-color-scheme` en el atributo del `<html>` de todas las plan
 - `model`: modelo LLM. Si vacio, usa el default del provider (gemini: "gemini-3-flash-preview", anthropic: "claude-haiku-4-20250514", openai: "gpt-5-mini", qwen: "qwen-turbo")
 - `api_key`: API key. Si vacio, el provider usa su env var por defecto (GOOGLE_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY). Qwen requiere key explicita
 - `base_url`: override del endpoint. Util para ollama ("http://localhost:11434") o proxies
-- `system_prompt`: instruccion de sistema custom. Default: "Summarize the following blog post in 2-3 concise sentences for use as a preview excerpt."
+- `system_prompt`: instruccion de sistema custom. Si vacio, usa prompt por defecto con idioma inyectado segun `default_language`. Default: "Summarize the following blog post in 2-3 concise sentences for use as a preview excerpt. Write the summary in {Language}."
 - `timeout` (default: 30): timeout per-request en segundos. Valores <= 0 se normalizan a 30
 - `concurrency` (default: 3): max goroutines paralelas para requests LLM. Valores <= 0 se normalizan a 3
 - Provider invalido produce error: `invalid ai.provider "X": must be gemini, anthropic, openai, qwen, or ollama`
@@ -324,6 +386,10 @@ Flags (core):
 Flags (osg new):
 - --tags (comma-separated list)
 - --publish (default: false -> draft)
+
+Flags (osg build):
+- --force-ai-summaries (regenera summaries AI ignorando cache, requiere confirmacion)
+- --yes / -y (bypass confirmacion de --force-ai-summaries)
 
 ## Comando `osg new`
 

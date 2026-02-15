@@ -23,5 +23,10 @@ func RunBuild(ctx context.Context, opts CLIOptions) error {
 		cfg.IncludeDrafts = *opts.IncludeDrafts
 	}
 
-	return build.Run(ctx, cfg, opts.Verbose, opts.LogWriter)
+	buildOpts := build.BuildOptions{
+		SkipAI:           opts.SkipAI,
+		ForceAISummaries: opts.ForceAISummaries,
+	}
+
+	return build.Run(ctx, cfg, buildOpts, opts.Verbose, opts.LogWriter)
 }

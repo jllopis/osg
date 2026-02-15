@@ -133,14 +133,15 @@ func TestKairosProvider_DefaultSystemPrompt(t *testing.T) {
 			return &llm.ChatResponse{Content: "Summary."}, nil
 		},
 	}
-	kp := &KairosProvider{LLM: mock} // no custom prompt
+	kp := &KairosProvider{LLM: mock} // no custom prompt, no language
 
 	_, err := kp.Summarize(context.Background(), "Title", "Content.")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if capturedReq.Messages[0].Content != DefaultSystemPrompt {
-		t.Errorf("expected default prompt, got %q", capturedReq.Messages[0].Content)
+	expected := buildDefaultPrompt("")
+	if capturedReq.Messages[0].Content != expected {
+		t.Errorf("expected default prompt %q, got %q", expected, capturedReq.Messages[0].Content)
 	}
 }
 
@@ -348,5 +349,125 @@ func TestNewKairosProvider_ProviderCaseInsensitive(t *testing.T) {
 		if kp == nil {
 			t.Errorf("NewKairosProvider(%q): expected non-nil", name)
 		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Language-aware prompt generation
+// ---------------------------------------------------------------------------
+
+func TestBuildDefaultPrompt_NoLanguage(t *testing.T) {
+	prompt := buildDefaultPrompt("")
+	// Without a language, the prompt should not contain "in Spanish", "in English", etc.
+	// The base prompt naturally contains "in 2-3" so we check for language names specifically.
+	if strings.Contains(prompt, "in Spanish") || strings.Contains(prompt, "in English") {
+		t.Errorf("expected no language clause, got %q", prompt)
+	}
+	if !strings.Contains(prompt, "2-3 concise sentences") {
+		t.Errorf("expected base prompt text, got %q", prompt)
+	}
+	// Verify the language-neutral prompt matches the template with empty string.
+	expected := fmt.Sprintf(DefaultSystemPromptTemplate, "")
+	if prompt != expected {
+		t.Errorf("expected %q, got %q", expected, prompt)
+	}
+}
+
+func TestBuildDefaultPrompt_Spanish(t *testing.T) {
+	prompt := buildDefaultPrompt("es")
+	if !strings.Contains(prompt, "in Spanish") {
+		t.Errorf("expected 'in Spanish' in prompt, got %q", prompt)
+	}
+}
+
+func TestBuildDefaultPrompt_English(t *testing.T) {
+	prompt := buildDefaultPrompt("en")
+	if !strings.Contains(prompt, "in English") {
+		t.Errorf("expected 'in English' in prompt, got %q", prompt)
+	}
+}
+
+func TestBuildDefaultPrompt_UnknownLanguage(t *testing.T) {
+	prompt := buildDefaultPrompt("xx")
+	// Unknown codes are passed through as-is.
+	if !strings.Contains(prompt, "in xx") {
+		t.Errorf("expected 'in xx' in prompt for unknown code, got %q", prompt)
+	}
+}
+
+func TestLangDisplayName_KnownCodes(t *testing.T) {
+	tests := map[string]string{
+		"es": "Spanish", "en": "English", "fr": "French",
+		"de": "German", "ca": "Catalan",
+	}
+	for code, expected := range tests {
+		got := langDisplayName(code)
+		if got != expected {
+			t.Errorf("langDisplayName(%q) = %q, want %q", code, got, expected)
+		}
+	}
+}
+
+func TestLangDisplayName_CaseInsensitive(t *testing.T) {
+	if got := langDisplayName("ES"); got != "Spanish" {
+		t.Errorf("expected 'Spanish' for uppercase 'ES', got %q", got)
+	}
+}
+
+func TestKairosProvider_LanguageInPrompt(t *testing.T) {
+	var capturedReq llm.ChatRequest
+
+	mock := &llm.MockProvider{
+		ChatFunc: func(ctx context.Context, req llm.ChatRequest) (*llm.ChatResponse, error) {
+			capturedReq = req
+			return &llm.ChatResponse{Content: "Resumen en espanol."}, nil
+		},
+	}
+	kp := &KairosProvider{LLM: mock, Language: "es"}
+
+	_, err := kp.Summarize(context.Background(), "Mi Post", "Contenido.")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	systemPrompt := capturedReq.Messages[0].Content
+	if !strings.Contains(systemPrompt, "in Spanish") {
+		t.Errorf("expected language in system prompt, got %q", systemPrompt)
+	}
+}
+
+func TestKairosProvider_CustomPromptIgnoresLanguage(t *testing.T) {
+	custom := "My custom prompt."
+	var capturedReq llm.ChatRequest
+
+	mock := &llm.MockProvider{
+		ChatFunc: func(ctx context.Context, req llm.ChatRequest) (*llm.ChatResponse, error) {
+			capturedReq = req
+			return &llm.ChatResponse{Content: "Result."}, nil
+		},
+	}
+	kp := &KairosProvider{LLM: mock, Language: "es", SystemPrompt: custom}
+
+	_, err := kp.Summarize(context.Background(), "Title", "Content.")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Custom prompt should be used as-is, not the language-aware default.
+	if capturedReq.Messages[0].Content != custom {
+		t.Errorf("expected custom prompt, got %q", capturedReq.Messages[0].Content)
+	}
+}
+
+func TestNewKairosProvider_SetsLanguage(t *testing.T) {
+	kp, err := NewKairosProvider(context.Background(), AIConfig{
+		Provider: "ollama",
+		Language: "fr",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if kp.Language != "fr" {
+		t.Errorf("expected language %q, got %q", "fr", kp.Language)
 	}
 }
