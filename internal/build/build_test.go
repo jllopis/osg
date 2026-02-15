@@ -640,6 +640,139 @@ func TestFillWithAI_ReturnsAffectedFromCacheAndLLM(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// fillWithProvider — skips menu pages
+// ---------------------------------------------------------------------------
+
+func TestFillWithProvider_SkipsMenuPages(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	siteIndex := site.New()
+	siteIndex.AddPage(&site.Page{Title: "Post", SourcePath: "post.md", RawContent: "Post content here."})
+	siteIndex.AddPage(&site.Page{Title: "About", SourcePath: "about.md", RawContent: "About page content.", Menu: true})
+
+	affected := fillWithProvider(context.Background(), siteIndex, summary.ExtractProvider{}, "auto", logger)
+
+	if len(affected) != 1 {
+		t.Fatalf("expected 1 affected path, got %d: %v", len(affected), affected)
+	}
+	if affected[0] != "post.md" {
+		t.Errorf("affected[0] = %q; want %q", affected[0], "post.md")
+	}
+	if siteIndex.Pages[1].Summary != "" {
+		t.Errorf("menu page should not have a summary, got %q", siteIndex.Pages[1].Summary)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// fillWithAI — skips menu pages
+// ---------------------------------------------------------------------------
+
+func TestFillWithAI_SkipsMenuPages(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	siteIndex := site.New()
+	siteIndex.AddPage(&site.Page{Title: "Post", SourcePath: "post.md", RawContent: "Post body"})
+	siteIndex.AddPage(&site.Page{Title: "About", SourcePath: "about.md", RawContent: "About body", Menu: true})
+
+	cache := newAICache("gemini", "test-model")
+	provider := fakeProvider{results: map[string]string{
+		"Post":  "Post summary",
+		"About": "About summary",
+	}}
+
+	affected := fillWithAI(context.Background(), siteIndex, provider, 10*time.Second, 2, cache, false, logger, nil)
+
+	if len(affected) != 1 {
+		t.Fatalf("expected 1 affected path, got %d: %v", len(affected), affected)
+	}
+	if affected[0] != "post.md" {
+		t.Errorf("affected[0] = %q; want %q", affected[0], "post.md")
+	}
+	if siteIndex.Pages[0].Summary != "Post summary" {
+		t.Errorf("post summary = %q; want %q", siteIndex.Pages[0].Summary, "Post summary")
+	}
+	if siteIndex.Pages[1].Summary != "" {
+		t.Errorf("menu page should not have a summary, got %q", siteIndex.Pages[1].Summary)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// fillFromCacheOrAuto — serve mode: cached AI + auto fallback
+// ---------------------------------------------------------------------------
+
+func TestFillFromCacheOrAuto_UsesCachedAndFallsBack(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	siteIndex := site.New()
+	siteIndex.AddPage(&site.Page{Title: "Cached", SourcePath: "cached.md", RawContent: "cached body"})
+	siteIndex.AddPage(&site.Page{Title: "Uncached", SourcePath: "uncached.md", RawContent: "Uncached body. This is a test page."})
+	siteIndex.AddPage(&site.Page{Title: "HasSummary", SourcePath: "has.md", RawContent: "body", Summary: "already set"})
+	siteIndex.AddPage(&site.Page{Title: "MenuPage", SourcePath: "menu.md", RawContent: "menu body", Menu: true})
+
+	cache := newAICache("gemini", "test-model")
+	cache.Store(contentHash("cached body"), "AI cached summary")
+
+	affected := fillFromCacheOrAuto(context.Background(), siteIndex, cache, logger)
+
+	// "Cached"     -> cache hit
+	// "Uncached"   -> auto-extracted
+	// "HasSummary" -> skipped (already has summary)
+	// "MenuPage"   -> skipped (menu page)
+	if len(affected) != 2 {
+		t.Fatalf("expected 2 affected paths, got %d: %v", len(affected), affected)
+	}
+
+	has := map[string]bool{}
+	for _, sp := range affected {
+		has[sp] = true
+	}
+	if !has["cached.md"] {
+		t.Error("cached.md should be in affected list (cache hit)")
+	}
+	if !has["uncached.md"] {
+		t.Error("uncached.md should be in affected list (auto fallback)")
+	}
+
+	// Verify the cached page got the AI summary, not auto-extracted.
+	if siteIndex.Pages[0].Summary != "AI cached summary" {
+		t.Errorf("cached page summary = %q; want %q", siteIndex.Pages[0].Summary, "AI cached summary")
+	}
+	// Verify the uncached page got an auto-extracted summary.
+	if siteIndex.Pages[1].Summary == "" {
+		t.Error("uncached page should have an auto-extracted summary")
+	}
+	if siteIndex.Pages[1].Summary == "AI cached summary" {
+		t.Error("uncached page should NOT have the AI cached summary")
+	}
+	// Verify existing summary was not overwritten.
+	if siteIndex.Pages[2].Summary != "already set" {
+		t.Errorf("page with existing summary = %q; want %q", siteIndex.Pages[2].Summary, "already set")
+	}
+	// Verify menu page was skipped.
+	if siteIndex.Pages[3].Summary != "" {
+		t.Errorf("menu page should not have a summary, got %q", siteIndex.Pages[3].Summary)
+	}
+}
+
+func TestFillFromCacheOrAuto_EmptyCache(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	siteIndex := site.New()
+	siteIndex.AddPage(&site.Page{Title: "A", SourcePath: "a.md", RawContent: "Some content. More sentences."})
+
+	cache := newAICache("", "")
+
+	affected := fillFromCacheOrAuto(context.Background(), siteIndex, cache, logger)
+
+	if len(affected) != 1 {
+		t.Fatalf("expected 1 affected path, got %d: %v", len(affected), affected)
+	}
+	if siteIndex.Pages[0].Summary == "" {
+		t.Error("page should have an auto-extracted summary when cache is empty")
+	}
+}
+
 func TestFillWithAI_AffectedPagesMarkChangedInPlan(t *testing.T) {
 	// Simulate the integration: fillSummaries returns affected paths,
 	// and Run() adds them to plan.changedFiles.

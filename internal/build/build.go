@@ -1095,11 +1095,13 @@ func fillSummaries(ctx context.Context, cfg config.Config, opts BuildOptions, si
 	strategy := cfg.SummaryStrategy
 
 	// For "ai", create a KairosProvider with the configured LLM backend.
-	// If SkipAI is set (e.g. during serve), fall back to auto.
+	// If SkipAI is set (e.g. during serve), honour cached AI summaries
+	// without making new LLM calls; uncached pages fall back to auto.
 	if strings.EqualFold(strategy, "ai") {
 		if opts.SkipAI {
-			logger.Info("AI summaries skipped (serve mode), falling back to auto")
-			return fillWithProvider(ctx, siteIndex, summary.ExtractProvider{}, "auto", logger)
+			cachePath := aiCachePath(cfg)
+			cache := loadAICache(cachePath, logger)
+			return fillFromCacheOrAuto(ctx, siteIndex, cache, logger)
 		}
 
 		aiCfg := summary.AIConfig{
@@ -1156,6 +1158,9 @@ func fillWithProvider(ctx context.Context, siteIndex *site.Site, provider summar
 		if page.Summary != "" {
 			continue // already has a frontmatter summary
 		}
+		if page.Menu {
+			continue // standalone/menu pages are navigation items, not posts
+		}
 		text, err := provider.Summarize(ctx, page.Title, page.RawContent)
 		if err != nil {
 			logger.Warn("summary generation failed", "title", page.Title, "path", page.Path, "error", err)
@@ -1168,6 +1173,51 @@ func fillWithProvider(ctx context.Context, siteIndex *site.Site, provider summar
 	}
 	if len(affected) > 0 {
 		logger.Info("summaries generated", "count", len(affected), "strategy", strategy)
+	}
+	return affected
+}
+
+// fillFromCacheOrAuto is used during serve mode when the AI strategy is
+// configured but LLM calls are skipped.  It loads cached AI summaries for
+// pages that have them and falls back to auto-extraction for the rest.
+// This avoids discarding previously generated AI summaries on every serve
+// rebuild while still keeping serve fast (no LLM calls).
+func fillFromCacheOrAuto(ctx context.Context, siteIndex *site.Site, cache *AICache, logger *slog.Logger) []string {
+	auto := summary.ExtractProvider{}
+	var affected []string
+	fromCache := 0
+	fromAuto := 0
+
+	for _, page := range siteIndex.Pages {
+		if page.Summary != "" {
+			continue
+		}
+		if page.Menu {
+			continue // standalone/menu pages are navigation items, not posts
+		}
+
+		hash := contentHash(page.RawContent)
+		if entry, ok := cache.Lookup(hash); ok {
+			page.Summary = entry.Summary
+			affected = append(affected, page.SourcePath)
+			fromCache++
+			continue
+		}
+
+		text, err := auto.Summarize(ctx, page.Title, page.RawContent)
+		if err != nil {
+			logger.Warn("auto summary failed", "title", page.Title, "path", page.Path, "error", err)
+			continue
+		}
+		if text != "" {
+			page.Summary = text
+			affected = append(affected, page.SourcePath)
+			fromAuto++
+		}
+	}
+
+	if fromCache > 0 || fromAuto > 0 {
+		logger.Info("summaries filled (serve mode)", "from_cache", fromCache, "from_auto", fromAuto)
 	}
 	return affected
 }
@@ -1188,6 +1238,9 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 	for _, page := range siteIndex.Pages {
 		if page.Summary != "" {
 			continue // already has a frontmatter summary
+		}
+		if page.Menu {
+			continue // standalone/menu pages are navigation items, not posts
 		}
 		hash := contentHash(page.RawContent)
 
