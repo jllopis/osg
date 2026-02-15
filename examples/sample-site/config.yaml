@@ -1,6 +1,8 @@
 vault_path: ""
 base_url: ""
+default_language: es
 theme: default
+color_scheme: auto
 content_dir: content
 public_dir: public
 templates_dir: templates
@@ -12,6 +14,12 @@ sass_dir: sass
 content_layout: "{date}/{slug}"
 include_drafts: false
 compile_sass: false
+summary_strategy: auto
+site_feed: true
+site_feed_limit: 20
+image_optimization: true
+image_quality: 80
+image_widths: [640, 1200]
 tui_prefix: space
 tui_prefix_ms: 600
 serve_watch: true
@@ -20,6 +28,7 @@ serve_debounce_ms: 300
 build_incremental: true
 build_cache_dir: .osg/cache
 clean_public: true
+doctor_profile: dev
 logging:
   level: info
   format: json

@@ -225,6 +225,7 @@ func DefaultConfigYAML() string {
 # OSG — Obsidian Site Generator
 # Full configuration reference. Every key shown here can also be set via
 # environment variables with the OSG_ prefix (e.g. OSG_SITE_TITLE).
+# For nested keys use double underscores (e.g. OSG_AI__PROVIDER=gemini).
 # =============================================================================
 
 # -----------------------------------------------------------------------------

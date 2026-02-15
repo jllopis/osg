@@ -2,6 +2,7 @@
 # OSG — Obsidian Site Generator
 # Full configuration reference. Every key shown here can also be set via
 # environment variables with the OSG_ prefix (e.g. OSG_SITE_TITLE).
+# For nested keys use double underscores (e.g. OSG_AI__PROVIDER=gemini).
 #
 # Copy this file as config.yaml and adjust to your needs:
 #   cp config.yaml.example config.yaml
@@ -14,9 +15,13 @@
 # site_description: Used in the HTML <meta name="description"> and OpenGraph.
 # base_url: Absolute URL of the deployed site (e.g. "https://blog.example.com").
 #           Leave empty for local/relative links.
+# default_language: BCP-47 language code (e.g. "es", "en", "fr") used as the
+#                   default for template translations and date localisation.
+#                   Each page can override this via the "lang" front-matter field.
 site_title: "OSG"
 site_description: ""
 base_url: ""
+default_language: es
 
 # -----------------------------------------------------------------------------
 # Content
@@ -35,8 +40,13 @@ include_drafts: false
 # -----------------------------------------------------------------------------
 # theme: Active theme name (must match a subdirectory of themes_dir).
 # themes_dir: Directory that contains installed themes.
+# color_scheme: Color scheme for the default theme.
+#   "auto"  — follows the visitor's OS preference (prefers-color-scheme).
+#   "light" — always light mode.
+#   "dark"  — always dark mode.
 theme: default
 themes_dir: themes
+color_scheme: auto
 
 # -----------------------------------------------------------------------------
 # Output
@@ -45,6 +55,77 @@ themes_dir: themes
 # clean_public: Remove public_dir before a full build.
 public_dir: public
 clean_public: true
+
+# -----------------------------------------------------------------------------
+# Summaries
+# -----------------------------------------------------------------------------
+# summary_strategy: How to generate page summaries for listings and feeds.
+#   "auto"   — (default) extract first sentences from the markdown body when
+#              the page has no summary/description/excerpt in front-matter.
+#   "manual" — only use summaries written explicitly in front-matter.
+#   "ai"     — generate summaries via LLM using Kairos (see "ai" section
+#              below). If the AI provider cannot be created (e.g. missing API
+#              key), falls back to "auto" automatically with a warning.
+summary_strategy: auto
+
+# -----------------------------------------------------------------------------
+# AI summary generation (Kairos)
+# -----------------------------------------------------------------------------
+# Only used when summary_strategy is "ai".
+#
+# ai.provider: LLM provider to use. Supported values:
+#   "gemini"    — Google Gemini (default)
+#   "anthropic" — Anthropic Claude
+#   "openai"    — OpenAI
+#   "qwen"      — Alibaba Qwen (DashScope)
+#   "ollama"    — Local Ollama instance
+#
+# ai.model: Model identifier. If empty, the provider's default is used:
+#   gemini    -> gemini-3-flash-preview
+#   anthropic -> claude-haiku-4-20250514
+#   openai    -> gpt-5-mini
+#   qwen      -> qwen-turbo
+#   ollama    -> (must be set explicitly, e.g. "llama3.2")
+#
+# ai.api_key: API key for the provider. RECOMMENDED: use an environment
+#   variable instead of putting the key here (avoids committing secrets).
+#   If left empty, the provider looks for its native env var:
+#     gemini    -> GOOGLE_API_KEY  or  GEMINI_API_KEY
+#     anthropic -> ANTHROPIC_API_KEY
+#     openai    -> OPENAI_API_KEY
+#     qwen      -> (no default env var — api_key is required)
+#     ollama    -> (not needed)
+#   You can also use the OSG env var: OSG_AI__API_KEY=your-key
+#
+# ai.base_url: Override the API endpoint. Mainly useful for:
+#   - ollama: "http://localhost:11434" (default if omitted)
+#   - OpenAI-compatible proxies or self-hosted endpoints
+#
+# ai.system_prompt: Custom system instruction sent to the LLM.
+#   Default: "Summarize the following blog post in 2-3 concise sentences
+#   for use as a preview excerpt."
+#
+# ai.timeout: Per-request timeout in seconds (default: 30).
+#
+# ai.concurrency: Maximum number of parallel LLM requests (default: 3).
+#   Higher values speed up builds with many pages but increase API load.
+ai:
+  provider: gemini
+  model: "gemini-3-flash-preview"
+  # api_key: ""        # Prefer env var: export GOOGLE_API_KEY=your-key
+  # base_url: ""
+  # system_prompt: ""
+  timeout: 30
+  concurrency: 3
+
+# -----------------------------------------------------------------------------
+# Site feed
+# -----------------------------------------------------------------------------
+# site_feed: Generate a site-wide RSS and Atom feed at the root (/atom.xml,
+#            /rss.xml) containing the most recent pages across all sections.
+# site_feed_limit: Maximum number of entries in the site feed (0 = all pages).
+site_feed: true
+site_feed_limit: 20
 
 # -----------------------------------------------------------------------------
 # Templates & static assets
@@ -77,6 +158,21 @@ compile_sass: false
 # build_cache_dir: Where build cache data is stored.
 build_incremental: true
 build_cache_dir: .osg/cache
+
+# -----------------------------------------------------------------------------
+# Image optimization
+# -----------------------------------------------------------------------------
+# image_optimization: Generate responsive image variants (resized JPEG + WebP).
+#   When enabled, raster images (jpg, jpeg, png) in public/ are processed
+#   after asset copy: resized to each configured width and, if the cwebp
+#   binary is available, also converted to WebP.  Templates automatically
+#   emit <picture> elements with srcset when variants exist.
+# image_quality: Encoding quality for JPEG and WebP variants (1-100).
+# image_widths: List of pixel widths to generate (images smaller than a width
+#               are skipped — no upscaling).  The original is always kept.
+image_optimization: true
+image_quality: 80
+image_widths: [640, 1200]
 
 # -----------------------------------------------------------------------------
 # Dev server (osg serve)
