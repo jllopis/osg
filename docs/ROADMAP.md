@@ -240,14 +240,20 @@
 - [done] Dual-file sync: head.html en internal/theme/ y themes/default/
 - [done] Tests: all passing
 
-## Phase 12B - CI/CD + README + Content features (todo)
-- [todo] GitHub Actions CI/CD pipeline
-- [todo] README profesional (features, install, badges, quickstart)
-- [todo] Shell completions (Kong nativo)
-- [todo] .goreleaser.yml
-- [todo] Related posts feature
-- [todo] Prev/next navigation (series/collections)
-- [todo] Reading progress bar
+## Phase 12B - CI/CD + README + Content features (done)
+- [done] GitHub Actions CI/CD pipeline (test, build, lint, vet en paralelo)
+- [done] README profesional (features, install, usage, config, theme, plugins, structure)
+- [done] Shell completions: `osg completion bash|zsh|fish`
+- [done] .goreleaser.yml para releases multi-plataforma
+- [done] Related posts: scoring por terms compartidos, top 3, grid en page.html
+- [done] Prev/next navigation: cronologica (newest-first), excluye menu pages
+- [done] Reading progress bar: JS scroll-based, CSS accent color, fixed top
+- [done] i18n: claves newer_post, older_post, related_posts (en + es)
+- [done] page.html: prev/next nav, related posts grid, progress bar
+- [done] CSS: post-nav, related-card, reading-progress-bar, responsive
+- [done] Dual-file sync: templates, i18n, CSS, JS
+- [done] 6 tests unitarios para relatedPages()
+- [done] Tests: all passing
 
 ## Phase 12C - Minificacion + TOC + Theme system (todo)
 - [todo] HTML/JS minification (tdewolff/minify)

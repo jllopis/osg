@@ -22,17 +22,22 @@ type CLI struct {
 	OsgContentDir string `help:"Content directory override"`
 	PublicDir     string `help:"Public directory override"`
 
-	Init          struct{}  `cmd:"" help:"Initialize project structure"`
-	UpdateContent struct{}  `cmd:"" help:"Sync content from vault"`
-	Build         BuildCmd  `cmd:"" help:"Build static site (HTML)"`
-	Deploy        DeployCmd `cmd:"" help:"Deploy site to remote destination"`
-	Serve         ServeCmd  `cmd:"" help:"Serve public directory"`
-	New           NewCmd    `cmd:"" help:"Create a new post in the vault"`
-	TUI           struct{}  `cmd:"" help:"Launch TUI"`
-	Theme         ThemeCmd  `cmd:"" help:"Theme tools"`
-	Plugin        PluginCmd `cmd:"" help:"Plugin tools"`
-	Doctor        struct{}  `cmd:"" help:"Validate configuration and environment"`
-	Version       struct{}  `cmd:"" help:"Show version information"`
+	Init          struct{}      `cmd:"" help:"Initialize project structure"`
+	UpdateContent struct{}      `cmd:"" help:"Sync content from vault"`
+	Build         BuildCmd      `cmd:"" help:"Build static site (HTML)"`
+	Deploy        DeployCmd     `cmd:"" help:"Deploy site to remote destination"`
+	Serve         ServeCmd      `cmd:"" help:"Serve public directory"`
+	New           NewCmd        `cmd:"" help:"Create a new post in the vault"`
+	TUI           struct{}      `cmd:"" help:"Launch TUI"`
+	Theme         ThemeCmd      `cmd:"" help:"Theme tools"`
+	Plugin        PluginCmd     `cmd:"" help:"Plugin tools"`
+	Doctor        struct{}      `cmd:"" help:"Validate configuration and environment"`
+	Version       struct{}      `cmd:"" help:"Show version information"`
+	Completion    CompletionCmd `cmd:"" help:"Generate shell completion script" hidden:""`
+}
+
+type CompletionCmd struct {
+	Shell string `arg:"" enum:"bash,zsh,fish" help:"Shell type (bash, zsh, fish)"`
 }
 
 type BuildCmd struct {
@@ -206,6 +211,8 @@ func main() {
 		runErr = app.RunPluginUpdate(context.Background(), opts, cli.Plugin.Update.Name, os.Stdout)
 	case command == "version":
 		fmt.Println(app.VersionInfo())
+	case strings.HasPrefix(command, "completion"):
+		printCompletion(cli.Completion.Shell)
 	default:
 		runErr = fmt.Errorf("unknown command: %s", command)
 	}
@@ -241,4 +248,36 @@ func hasHelpFlag(args []string) bool {
 		}
 	}
 	return false
+}
+
+func printCompletion(shell string) {
+	commands := "init update-content build deploy serve new tui theme plugin doctor version completion"
+
+	switch shell {
+	case "bash":
+		fmt.Printf(`# Bash completion for osg
+# Add to ~/.bashrc: eval "$(osg completion bash)"
+_osg_completions() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local commands="%s"
+    COMPREPLY=($(compgen -W "${commands}" -- "${cur}"))
+}
+complete -F _osg_completions osg
+`, commands)
+	case "zsh":
+		fmt.Printf(`# Zsh completion for osg
+# Add to ~/.zshrc: eval "$(osg completion zsh)"
+_osg() {
+    local commands=(%s)
+    _describe 'command' commands
+}
+compdef _osg osg
+`, commands)
+	case "fish":
+		fmt.Println(`# Fish completion for osg
+# Save to ~/.config/fish/completions/osg.fish`)
+		for _, cmd := range strings.Fields(commands) {
+			fmt.Printf("complete -c osg -n '__fish_use_subcommand' -a '%s'\n", cmd)
+		}
+	}
 }

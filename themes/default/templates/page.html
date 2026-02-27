@@ -5,6 +5,7 @@
     {{ template "partials/head.html" . }}
   </head>
   <body>
+    <div class="reading-progress-bar" aria-hidden="true"></div>
     <div class="page">
       {{ template "partials/header.html" . }}
 
@@ -51,11 +52,57 @@
             {{ end }}
           </footer>
           {{ end }}
+
+          {{- /* --- Prev / Next Navigation --- */ -}}
+          {{ if or .prev_page .next_page }}
+          <nav class="post-nav container-narrow" aria-label="Post navigation">
+            {{ if .prev_page }}
+            <a class="post-nav-link post-nav-prev" href="{{ get_url .prev_page.path true false }}">
+              <span class="post-nav-label">&larr; {{ trans "older_post" }}</span>
+              <span class="post-nav-title">{{ .prev_page.title }}</span>
+            </a>
+            {{ else }}
+            <span class="post-nav-link post-nav-spacer"></span>
+            {{ end }}
+            {{ if .next_page }}
+            <a class="post-nav-link post-nav-next" href="{{ get_url .next_page.path true false }}">
+              <span class="post-nav-label">{{ trans "newer_post" }} &rarr;</span>
+              <span class="post-nav-title">{{ .next_page.title }}</span>
+            </a>
+            {{ else }}
+            <span class="post-nav-link post-nav-spacer"></span>
+            {{ end }}
+          </nav>
+          {{ end }}
+
+          {{- /* --- Related Posts --- */ -}}
+          {{ if .related_posts }}
+          <section class="related-posts container-narrow" aria-label="{{ trans "related_posts" }}">
+            <h2 class="section-heading">{{ trans "related_posts" }}</h2>
+            <div class="related-grid">
+              {{ range .related_posts }}
+              <a class="related-card" href="{{ get_url .path true false }}">
+                {{ if .image }}
+                <div class="related-card-image">
+                  <img src="{{ .image }}" alt="{{ .title }}" loading="lazy" />
+                </div>
+                {{ end }}
+                <div class="related-card-body">
+                  <span class="related-card-title">{{ .title }}</span>
+                  {{ if .summary }}<span class="related-card-summary">{{ .summary }}</span>{{ end }}
+                </div>
+              </a>
+              {{ end }}
+            </div>
+          </section>
+          {{ end }}
+
         </article>
       </main>
 
       {{ template "partials/footer.html" . }}
     </div>
     {{ if .config.lightbox }}<script src="{{ get_url "/js/lightbox.js" false true }}"></script>{{ end }}
+    <script src="{{ get_url "/js/progress.js" false true }}"></script>
   </body>
 </html>

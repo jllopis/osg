@@ -21,6 +21,11 @@ no_terms: Aun no hay terminos.
 previous: Anterior
 next: Siguiente
 
+# --- Navegacion de posts ---
+newer_post: Mas reciente
+older_post: Anterior
+related_posts: Publicaciones relacionadas
+
 # --- 404 ---
 not_found_title: No encontrado
 not_found_text: Esta pagina no se pudo encontrar.

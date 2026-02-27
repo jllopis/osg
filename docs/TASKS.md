@@ -176,13 +176,18 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 12A) Font preload: Inter y JetBrains Mono (woff2)
 [done] (Phase 12A) Dual-file sync: head.html
 
-[todo] (Phase 12B) GitHub Actions CI/CD pipeline
-[todo] (Phase 12B) README profesional (features, install, badges, quickstart)
-[todo] (Phase 12B) Shell completions (Kong nativo)
-[todo] (Phase 12B) .goreleaser.yml
-[todo] (Phase 12B) Related posts feature
-[todo] (Phase 12B) Prev/next navigation
-[todo] (Phase 12B) Reading progress bar
+[done] (Phase 12B) GitHub Actions CI/CD pipeline (test, build, lint, vet)
+[done] (Phase 12B) README profesional (features, install, usage, config, theme, plugins)
+[done] (Phase 12B) Shell completions: osg completion bash|zsh|fish
+[done] (Phase 12B) .goreleaser.yml para releases multi-plataforma
+[done] (Phase 12B) Related posts: scoring por terms compartidos, grid en page.html
+[done] (Phase 12B) Prev/next navigation cronologica (excluye menu pages)
+[done] (Phase 12B) Reading progress bar (JS scroll-based, CSS accent)
+[done] (Phase 12B) i18n: claves newer_post, older_post, related_posts
+[done] (Phase 12B) page.html: prev/next nav, related posts, progress bar
+[done] (Phase 12B) CSS: post-nav, related-card, reading-progress-bar, responsive
+[done] (Phase 12B) Dual-file sync: templates, i18n, CSS, JS
+[done] (Phase 12B) 6 tests unitarios relatedPages()
 
 [todo] (Phase 12C) HTML/JS minification (tdewolff/minify)
 [todo] (Phase 12C) Table of Contents generation

@@ -1,227 +1,241 @@
-# OSG (Obsidian Site Generator)
+# OSG - Obsidian Site Generator
 
-## Requisitos
-- Go 1.25.x
+A fast, opinionated static site generator that turns your [Obsidian](https://obsidian.md) vault into a fully rendered website. Written in Go with zero runtime dependencies.
 
-## Uso rapido
-Inicializa la estructura y el archivo de configuracion:
+## Features
+
+- **Obsidian-native** — reads your vault directly, respects wikilinks, images, and tags
+- **Two-phase pipeline** — `update-content` syncs from vault, `build` renders HTML
+- **Nord-themed default** — dark/light modes, Inter + JetBrains Mono fonts, responsive
+- **Taxonomy system** — tags, categories, custom taxonomies with pagination and feeds
+- **Full-text search** — bundled WASM plugin, zero-JS index, keyboard-navigable dropdown
+- **Image pipeline** — WebP optimization, srcset, lazy loading, lightbox gallery
+- **AI summaries** — auto/manual/AI strategies via Kairos (Gemini, Anthropic, OpenAI, etc.)
+- **WASM plugins** — 10 hooks, Rust/Go SDKs, GitHub registry, hot-reload in TUI
+- **i18n** — English and Spanish built-in, extensible translation system
+- **SEO** — canonical URLs, Open Graph, Twitter Cards, sitemaps, RSS/Atom feeds
+- **Sass compilation** — compressed output, theme overrides
+- **TUI** — two-panel Bubble Tea interface with slash commands
+- **Related posts** — automatic recommendations by shared taxonomy terms
+- **Reading progress** — scroll progress bar on article pages
+
+## Quick Start
+
+### Install from source
 
 ```bash
+go install osg/cmd/osg@latest
+```
+
+### Or build locally
+
+```bash
+git clone https://github.com/jllopis/osg.git
+cd osg
+make build
+# Binary at ./build/osg
+```
+
+### Initialize a site
+
+```bash
+mkdir my-site && cd my-site
 osg init
 ```
 
-Lanza la TUI (comando por defecto):
+Edit `config.yaml` to set your `vault_path`, then:
 
 ```bash
-osg
-```
-
-TUI con vault preconfigurado:
-
-```bash
-osg --vault-path /ruta/al/vault
-```
-
-Sincroniza contenido desde el vault:
-
-```bash
-osg update-content --vault-path /ruta/al/vault
-```
-
-Con include-drafts:
-
-```bash
-osg update-content --vault-path /ruta/al/vault --include-drafts
-```
-
-Dry run:
-
-```bash
-osg update-content --vault-path /ruta/al/vault --dry-run
-```
-
-Build HTML:
-
-```bash
+osg update-content
 osg build
+osg serve
 ```
 
-Serve local:
+Open `http://localhost:1313`.
 
-```bash
-osg serve --addr :1313
+## Usage
+
 ```
-
-Serve con watch + live reload:
-
-```bash
+osg                          # Launch TUI (default command)
+osg init                     # Initialize project structure
+osg update-content           # Sync content from Obsidian vault
+osg build                    # Build static site to public/
+osg serve                    # Serve with live reload
 osg serve --watch --live-reload
+osg new "My Post Title"      # Create a new post in the vault
+osg doctor                   # Validate configuration
+osg deploy                   # Deploy to Cloudflare/rsync/S3
+osg version                  # Show version info
 ```
 
-Crear un theme starter:
+### Plugin management
+
+```
+osg plugin list              # List installed plugins
+osg plugin install <path>    # Install from local .wasm or GitHub
+osg plugin enable <name>     # Enable a plugin
+osg plugin disable <name>    # Disable a plugin
+osg plugin init <name>       # Scaffold a new plugin (Rust/Go)
+osg plugin search [query]    # Search the curated plugin index
+osg plugin update [name]     # Update plugins to latest version
+```
+
+### Shell completions
+
+```bash
+eval "$(osg completion bash)"   # Bash
+eval "$(osg completion zsh)"    # Zsh
+osg completion fish > ~/.config/fish/completions/osg.fish  # Fish
+```
+
+## Configuration
+
+OSG reads `config.yaml` (override with `-c`). Key fields:
+
+```yaml
+base_url: "https://my-site.com"
+site_title: "My Blog"
+site_description: "A blog about things"
+theme: default
+color_scheme: auto          # auto | light | dark
+default_language: es        # BCP-47 language code
+vault_path: "../my-vault/"
+```
+
+### Obsidian frontmatter
+
+OSG uses an `osg:` namespace in YAML frontmatter:
+
+```yaml
+---
+title: My Post
+tags:
+  - philosophy
+osg:
+  publish: true          # true | "draft" | false
+  featured: true         # highlight on homepage
+  image: "header.jpg"    # hero image (vault name or relative path)
+  path: "/about/"        # custom URL (standalone page)
+  menu: true             # add to site navigation
+---
+```
+
+### Taxonomies
+
+```yaml
+taxonomies:
+  - name: tags
+    paginate_by: 10
+    feed: true
+  - name: categories
+    paginate_by: 0
+```
+
+### AI summaries
+
+```yaml
+summary_strategy: ai       # auto | manual | ai
+ai:
+  provider: gemini          # gemini | anthropic | openai | qwen | ollama
+  model: gemini-2.0-flash
+  api_key: ${GEMINI_API_KEY}
+  timeout: 30
+  concurrency: 3
+```
+
+## Theme
+
+The default theme uses the [Nord color palette](https://www.nordtheme.com/) with:
+
+- Responsive design (mobile-first)
+- Dark mode via `color_scheme: auto|light|dark`
+- Self-hosted Inter (variable) and JetBrains Mono fonts
+- Image lightbox with gallery grouping
+- Reading progress bar
+- Prev/next post navigation
+- Related posts grid
+- Sticky header with search
+
+Create a custom theme:
 
 ```bash
 osg theme init my-theme
+# Edit themes/my-theme/templates/ and themes/my-theme/sass/
 ```
 
-Luego actualiza `config.yaml` con `theme: my-theme`.
+## Plugins
 
-TUI:
+WASM plugins (Rust or Go via TinyGo) with 10 lifecycle hooks:
+
+| Hook | Phase | Purpose |
+|------|-------|---------|
+| `config.validate` | Pre-build | Validate configuration |
+| `content.transform` | Pre-render | Modify Markdown |
+| `image.process` | Build | Transform images |
+| `build.started` | Build | React to build start |
+| `page.render` | Build | Override page context |
+| `section.render` | Build | Override section context |
+| `taxonomy.list.render` | Build | Override taxonomy list |
+| `taxonomy.term.render` | Build | Override taxonomy term |
+| `build.finished` | Post-build | React to build completion |
+| `after.build` | Post-build | Deploy, notify, etc. |
+
+Install from GitHub:
 
 ```bash
-osg tui
+osg plugin install github.com/user/plugin-repo@v1.0.0
 ```
 
-Wizard en TUI (pasos guiados):
+See [docs/PLUGINS.md](docs/PLUGINS.md) for the full SDK documentation.
+
+## Project Structure
 
 ```
-wizard on
-next
+cmd/osg/              CLI entry point (Kong)
+internal/
+  app/                CLI commands (init, tui, serve, new, deploy)
+  assets/             Sass pipeline, static copy, cachebust
+  build/              HTML build: hierarchy, pagination, feeds, templates
+  config/             Config loading, validation, defaults
+  content/            Content indexer, frontmatter parsing
+  i18n/               Translation system (YAML bundles)
+  image/              Image optimization (WebP, srcset)
+  markdown/           Goldmark renderer (GFM, footnotes, heading IDs, lightbox)
+  plugin/             WASM plugin host (wazero), SDK, bundled plugins
+  render/             Template engine, FuncMap, resolution
+  site/               Site model (Page, Section, hierarchy)
+  summary/            Summary generation (auto/manual/AI via Kairos)
+  taxonomy/           Taxonomy builder (tags, categories, custom)
+  theme/              Embedded default theme (//go:embed)
+  tui/                Bubble Tea TUI (12 modules)
+  vault/              Vault reader, wikilink rewriting
+themes/default/       Runtime theme (extracted from embedded)
+plugins-src/search/   Bundled search plugin (Rust WASM)
+docs/                 Specifications and plans
 ```
 
-Doctor (validacion de config y entorno):
+## Development
 
 ```bash
-osg doctor
+make test              # Run tests
+make test-coverage     # Tests with HTML coverage report
+make lint              # golangci-lint
+make fmt               # go fmt
+make build             # Build binary to ./build/osg
+make install           # Install to ~/.local/bin
+make build-all         # Cross-compile for all platforms
 ```
 
-## Makefile
-Comandos habituales:
+## Documentation
 
-```bash
-make tidy
-make fmt
-make test
-make build
-make update-content VAULT_PATH=/ruta/al/vault
-make serve SERVE_ADDR=:1313
-make tui
-```
+- [DESIGN.md](docs/DESIGN.md) — Architecture, data flow, decisions
+- [TEMPLATES.md](docs/TEMPLATES.md) — Template system, context, functions
+- [TAXONOMIES.md](docs/TAXONOMIES.md) — Taxonomy configuration
+- [THEMES.md](docs/THEMES.md) — Theme structure, Nord palette
+- [PLUGINS.md](docs/PLUGINS.md) — Plugin system, WASM SDK, hooks
+- [QUICKSTART.md](docs/QUICKSTART.md) — Getting started guide
+- [ROADMAP.md](docs/ROADMAP.md) — Project roadmap
 
-Mostrar version:
+## License
 
-```bash
-osg version
-```
-
-## Configuracion
-Por defecto se lee `config.yaml`. Se puede sobreescribir con `-c` o `--config`.
-
-### Campos principales
-
-```yaml
-base_url: "https://mi-sitio.com"
-site_title: "Mi Blog"
-site_description: "Blog personal sobre filosofia y tecnologia"
-theme: default
-color_scheme: auto          # auto | light | dark
-vault_path: "../mi-vault/"
-```
-
-### Frontmatter: bloque `osg`
-
-OSG soporta un namespace `osg` en el frontmatter YAML de las notas de Obsidian para controlar la publicacion sin interferir con otros campos:
-
-```yaml
----
-title: Mi Post
-tags:
-  - filosofia
-osg:
-  publish: true          # true | "draft" | false (omitir = no publicar)
-  featured: true         # destacar en homepage como hero
-  image: "cabecera.jpg"  # imagen de cabecera (nombre o path relativo en vault)
----
-```
-
-**Prioridades de resolucion** (el bloque `osg` siempre gana sobre campos top-level):
-- `osg.publish` > `publish`
-- `osg.image` > `image` > `cover` > `banner`
-- `osg.featured` > `featured`
-
-Los campos top-level siguen funcionando para compatibilidad.
-
-### Color scheme
-
-```yaml
-color_scheme: auto   # valor por defecto
-```
-
-- `auto`: respeta la preferencia del sistema (dark/light) via CSS media query
-- `light`: fuerza modo claro siempre
-- `dark`: fuerza modo oscuro siempre
-
-No usa JavaScript. Se implementa con el atributo `data-color-scheme` en `<html>` y reglas CSS.
-
-### Imagenes
-
-OSG maneja imagenes del vault de Obsidian automaticamente:
-
-1. **Imagenes de frontmatter** (`osg.image`): se resuelven por nombre o path relativo, se copian al directorio de salida con rutas absolutas.
-2. **Wikilinks de imagen** (`![[foto.png|alt]]`): se detectan en el body y se convierten a Markdown estandar `![alt](foto.png)`.
-3. **Placeholders automaticos**: si un post no tiene imagen, se genera un SVG placeholder determinista con patron geometrico usando la paleta Nord.
-
-Las imagenes aparecen en:
-- Hero de homepage (post featured)
-- Thumbnails en la lista de posts
-- Hero de la pagina del articulo
-- Meta tag `og:image`
-
-### Featured posts
-
-Cuando multiples posts tienen `osg.featured: true`:
-- El mas reciente por fecha se muestra como hero en la homepage
-- Los demas featured aparecen al inicio de la lista de posts
-- Si ningun post es featured, el mas reciente se usa como hero
-
-### Theme
-
-- `theme: default` usa el tema base con paleta Nord, fonts Inter/JetBrains Mono.
-- El theme por defecto se embebe en el binario y se extrae en cada build.
-- `osg init` crea `themes/default` si no existe.
-- Ver `docs/THEMES.md` para estructura, paleta Nord y personalización.
-
-Sass:
-- `compile_sass: true` para compilar `sass/` a `public/`.
-- Las carpetas `themes/<theme>/sass` se compilan siempre (requiere `sass` en PATH).
-
-TUI:
-- `tui_prefix`: tecla prefijo para atajos (por defecto `space`).
-- `tui_prefix_ms`: timeout del prefijo en milisegundos (por defecto `600`).
-
-Serve:
-- `serve_watch`: habilita watch y rebuild (por defecto `true`).
-- `serve_live_reload`: habilita live reload (por defecto `true`).
-- `serve_debounce_ms`: debounce de eventos (por defecto `300`).
-
-Build:
-- `build_incremental`: cache incremental del build (por defecto `true`).
-- `build_cache_dir`: directorio para el cache (por defecto `.osg/cache`).
-  - guarda `build.json` con stamps de contenido/templates/assets/plugins.
-- `clean_public`: limpia `public/` en rebuilds completos o si se eliminan contenidos (por defecto `true`).
-
-Doctor:
-- `doctor_profile`: `dev` o `prod` (por defecto `dev`).
-
-Plugins WASM:
-- Instala el `.wasm` en `plugins/` o usa `osg plugin install <path>`.
-- Activa con `plugins_enabled` en config o `osg plugin enable <name>`.
-- Desactiva con `osg plugin disable <name>`.
-- Ver `docs/PLUGINS.md` para ABI, eventos y lifecycle.
-- Ejemplo: `examples/plugins/feed`.
-- Search: `examples/plugins/search` genera `search.json` + `search/index.html`.
-
-## Documentacion
-- `docs/DESIGN.md` — arquitectura, data flow, decisiones
-- `docs/THEMES.md` — estructura de themes, paleta Nord, color scheme
-- `docs/TEMPLATES.md` — sistema de plantillas, contexto, filtros
-- `docs/PLAN_THEME_UPGRADE.md` — plan del theme profesional (completado)
-- `docs/ROADMAP.md` — fases del proyecto
-- `docs/QUICKSTART.md` — guia rapida
-- `docs/TAXONOMIES.md` — configuracion de taxonomias
-- `docs/PLUGINS.md` — sistema de plugins WASM
-
-## Notas
-- `tui` es el comando por defecto.
-- `build` genera HTML en `public/`.
-- Ver `docs/QUICKSTART.md` y `examples/sample-site/` para empezar rapido.
+[Apache License 2.0](LICENSE)

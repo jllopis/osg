@@ -23,6 +23,7 @@ import (
 	"osg/internal/plugin"
 	"osg/internal/render"
 	"osg/internal/site"
+	"osg/internal/slug"
 	"osg/internal/summary"
 	"osg/internal/taxonomy"
 	"osg/internal/theme"
@@ -248,7 +249,7 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	stats.Rendered += renderedSections
 	stats.Cached += cachedSections
 
-	renderedPages, cachedPages, err := renderPages(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
+	renderedPages, cachedPages, err := renderPages(ctx, renderer, cfg, baseCtx, siteIndex, indices, plugins, plan)
 	if err != nil {
 		stats.Errors++
 		return err
@@ -392,7 +393,19 @@ func removeEmptyParents(root string, leaf string) {
 	}
 }
 
-func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
+func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, indices map[string]*taxonomy.Index, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
+	// Build chronological navigation index (excluding menu pages).
+	postPages := make([]*site.Page, 0, len(siteIndex.Pages))
+	for _, p := range siteIndex.Pages {
+		if !p.Menu {
+			postPages = append(postPages, p)
+		}
+	}
+	pagePos := make(map[*site.Page]int, len(postPages))
+	for i, p := range postPages {
+		pagePos[p] = i
+	}
+
 	rendered := 0
 	cached := 0
 	for _, page := range siteIndex.Pages {
@@ -407,6 +420,26 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 			continue
 		}
 		renderCtx := pageContext(baseCtx, page)
+
+		// Prev/next chronological navigation (sorted newest-first).
+		if idx, ok := pagePos[page]; ok {
+			if idx > 0 {
+				renderCtx["next_page"] = postPages[idx-1].View() // newer
+			}
+			if idx < len(postPages)-1 {
+				renderCtx["prev_page"] = postPages[idx+1].View() // older
+			}
+		}
+
+		// Related posts by shared taxonomy terms.
+		if related := relatedPages(page, indices, 3); len(related) > 0 {
+			views := make([]map[string]any, 0, len(related))
+			for _, rp := range related {
+				views = append(views, rp.View())
+			}
+			renderCtx["related_posts"] = views
+		}
+
 		renderCtx = applyPluginOverrides(ctx, plugins, "page.render", renderCtx)
 		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
 			return rendered, cached, err
@@ -414,6 +447,58 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 		rendered++
 	}
 	return rendered, cached, nil
+}
+
+// relatedPages returns up to limit pages that share taxonomy terms with page,
+// scored by how many terms they share (descending), then by date (newest first).
+func relatedPages(page *site.Page, indices map[string]*taxonomy.Index, limit int) []*site.Page {
+	if len(page.Taxonomies) == 0 || len(indices) == 0 {
+		return nil
+	}
+
+	scores := map[*site.Page]int{}
+	for kind, terms := range page.Taxonomies {
+		index, ok := indices[kind]
+		if !ok {
+			continue
+		}
+		for _, termName := range terms {
+			termSlug := slug.Slugify(strings.TrimSpace(termName))
+			if termSlug == "" {
+				continue
+			}
+			term, ok := index.Terms[termSlug]
+			if !ok {
+				continue
+			}
+			for _, p := range term.Pages {
+				if p != page && !p.Menu {
+					scores[p]++
+				}
+			}
+		}
+	}
+
+	if len(scores) == 0 {
+		return nil
+	}
+
+	candidates := make([]*site.Page, 0, len(scores))
+	for p := range scores {
+		candidates = append(candidates, p)
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		si, sj := scores[candidates[i]], scores[candidates[j]]
+		if si != sj {
+			return si > sj
+		}
+		return candidates[i].Date.After(candidates[j].Date)
+	})
+
+	if len(candidates) > limit {
+		candidates = candidates[:limit]
+	}
+	return candidates
 }
 
 func renderSections(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager, plan buildPlan) (int, int, error) {

@@ -1539,3 +1539,143 @@ func TestIncludeAllFiles(t *testing.T) {
 		t.Error("includeAllFiles should return false for directories")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// relatedPages
+// ---------------------------------------------------------------------------
+
+func TestRelatedPages_NoTaxonomies(t *testing.T) {
+	page := &site.Page{Title: "No Tags"}
+	result := relatedPages(page, nil, 3)
+	if result != nil {
+		t.Errorf("expected nil for page with no taxonomies, got %v", result)
+	}
+}
+
+func TestRelatedPages_NoIndices(t *testing.T) {
+	page := &site.Page{
+		Title:      "Has Tags",
+		Taxonomies: map[string][]string{"tags": {"go"}},
+	}
+	result := relatedPages(page, map[string]*taxonomy.Index{}, 3)
+	if result != nil {
+		t.Errorf("expected nil for empty indices, got %v", result)
+	}
+}
+
+func TestRelatedPages_SharedTag(t *testing.T) {
+	now := time.Now()
+	pageA := &site.Page{
+		Title:      "A",
+		Path:       "/a/",
+		Date:       now,
+		Taxonomies: map[string][]string{"tags": {"go", "web"}},
+	}
+	pageB := &site.Page{
+		Title:      "B",
+		Path:       "/b/",
+		Date:       now.Add(-1 * time.Hour),
+		Taxonomies: map[string][]string{"tags": {"go"}},
+	}
+	pageC := &site.Page{
+		Title:      "C",
+		Path:       "/c/",
+		Date:       now.Add(-2 * time.Hour),
+		Taxonomies: map[string][]string{"tags": {"go", "web"}},
+	}
+	pageUnrelated := &site.Page{
+		Title:      "Unrelated",
+		Path:       "/unrelated/",
+		Date:       now,
+		Taxonomies: map[string][]string{"tags": {"python"}},
+	}
+
+	allPages := []*site.Page{pageA, pageB, pageC, pageUnrelated}
+	indices := taxonomy.Build(
+		[]config.TaxonomyConfig{{Name: "tags", Render: true}},
+		allPages, "",
+	)
+
+	related := relatedPages(pageA, indices, 3)
+	if len(related) != 2 {
+		t.Fatalf("expected 2 related pages, got %d", len(related))
+	}
+	// pageC shares 2 tags with A (go+web), pageB shares 1 (go).
+	// pageC should come first due to higher score.
+	if related[0] != pageC {
+		t.Errorf("expected pageC first (higher score), got %s", related[0].Title)
+	}
+	if related[1] != pageB {
+		t.Errorf("expected pageB second, got %s", related[1].Title)
+	}
+}
+
+func TestRelatedPages_ExcludesSelf(t *testing.T) {
+	now := time.Now()
+	pageA := &site.Page{
+		Title:      "A",
+		Path:       "/a/",
+		Date:       now,
+		Taxonomies: map[string][]string{"tags": {"go"}},
+	}
+	indices := taxonomy.Build(
+		[]config.TaxonomyConfig{{Name: "tags", Render: true}},
+		[]*site.Page{pageA}, "",
+	)
+	related := relatedPages(pageA, indices, 3)
+	if len(related) != 0 {
+		t.Errorf("should not include self, got %d related", len(related))
+	}
+}
+
+func TestRelatedPages_ExcludesMenuPages(t *testing.T) {
+	now := time.Now()
+	pageA := &site.Page{
+		Title:      "A",
+		Path:       "/a/",
+		Date:       now,
+		Taxonomies: map[string][]string{"tags": {"go"}},
+	}
+	menuPage := &site.Page{
+		Title:      "About",
+		Path:       "/about/",
+		Date:       now,
+		Menu:       true,
+		Taxonomies: map[string][]string{"tags": {"go"}},
+	}
+	indices := taxonomy.Build(
+		[]config.TaxonomyConfig{{Name: "tags", Render: true}},
+		[]*site.Page{pageA, menuPage}, "",
+	)
+	related := relatedPages(pageA, indices, 3)
+	if len(related) != 0 {
+		t.Errorf("should exclude menu pages, got %d related", len(related))
+	}
+}
+
+func TestRelatedPages_RespectsLimit(t *testing.T) {
+	now := time.Now()
+	pageA := &site.Page{
+		Title:      "A",
+		Path:       "/a/",
+		Date:       now,
+		Taxonomies: map[string][]string{"tags": {"go"}},
+	}
+	pages := []*site.Page{pageA}
+	for i := 0; i < 10; i++ {
+		pages = append(pages, &site.Page{
+			Title:      fmt.Sprintf("P%d", i),
+			Path:       fmt.Sprintf("/p%d/", i),
+			Date:       now.Add(time.Duration(-i) * time.Hour),
+			Taxonomies: map[string][]string{"tags": {"go"}},
+		})
+	}
+	indices := taxonomy.Build(
+		[]config.TaxonomyConfig{{Name: "tags", Render: true}},
+		pages, "",
+	)
+	related := relatedPages(pageA, indices, 3)
+	if len(related) != 3 {
+		t.Errorf("expected limit of 3, got %d", len(related))
+	}
+}
