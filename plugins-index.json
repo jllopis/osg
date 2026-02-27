@@ -1,0 +1,11 @@
+{
+  "plugins": [
+    {
+      "name": "search",
+      "description": "Full-text search with header bar, standalone page, and keyboard navigation",
+      "author": "jllopis",
+      "repo": "github.com/jllopis/osg-search",
+      "version": "0.1.0"
+    }
+  ]
+}

@@ -463,7 +463,7 @@ func (m Model) handleThemeCommand(args []string) (Model, tea.Cmd) {
 
 func (m Model) handlePluginCommand(args []string) (Model, tea.Cmd) {
 	if len(args) < 1 {
-		m.appendMessage("ERROR", "Usage: /plugin <enable|disable|toggle|list|install|init> [args]")
+		m.appendMessage("ERROR", "Usage: /plugin <enable|disable|toggle|list|install|init|search|update> [args]")
 		return m, nil
 	}
 	sub := strings.ToLower(args[0])
@@ -522,8 +522,32 @@ func (m Model) handlePluginCommand(args []string) (Model, tea.Cmd) {
 		m.appendMessage("PROGRESS", fmt.Sprintf("Scaffolding plugin %s...", name))
 		m.lastAction = "Plugin init"
 		return m, runPluginInitCmd(context.Background(), name, dir, lang, m.actions.PluginInit)
+	case "search":
+		if m.actions.PluginSearch == nil {
+			m.appendMessage("ERROR", "Plugin search not available")
+			return m, nil
+		}
+		query := ""
+		if len(args) >= 2 {
+			query = strings.Join(args[1:], " ")
+		}
+		m.appendMessage("PROGRESS", "Searching plugin index...")
+		m.lastAction = "Plugin search"
+		return m, runPluginSearchCmd(context.Background(), query, m.actions.PluginSearch)
+	case "update":
+		if m.actions.PluginUpdate == nil {
+			m.appendMessage("ERROR", "Plugin update not available")
+			return m, nil
+		}
+		name := ""
+		if len(args) >= 2 {
+			name = args[1]
+		}
+		m.appendMessage("PROGRESS", "Checking for plugin updates...")
+		m.lastAction = "Plugin update"
+		return m, runPluginUpdateCmd(context.Background(), name, m.actions.PluginUpdate)
 	default:
-		m.appendMessage("ERROR", "Usage: /plugin <enable|disable|toggle|list|install|init> [args]")
+		m.appendMessage("ERROR", "Usage: /plugin <enable|disable|toggle|list|install|init|search|update> [args]")
 		return m, nil
 	}
 }

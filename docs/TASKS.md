@@ -141,9 +141,13 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 11-D) CLI --lang flag en PluginInitCmd (default rust), TUI /plugin init <name> [dir] [lang]
 [done] (Phase 11-D) Fix embed: go.mod.tmpl renaming, .tmpl extension stripping, //go:build ignore en template
 [done] (Phase 11-D) 12 tests scaffold: Go+Rust content, .tmpl stripping, tinygo alias, default lang, naming, errors
-[todo] (Phase 11-E) Instalacion desde GitHub (osg plugin install github.com/user/repo)
-[todo] (Phase 11-E) Indice curado (plugins-index.json, osg plugin search, cache local)
-[todo] (Phase 11-E) Versionado plugins (plugin_info version, update, lock file)
+[done] (Phase 11-E) Instalacion desde GitHub: osg plugin install github.com/user/repo[@tag]
+[done] (Phase 11-E) Deteccion automatica de GitHub refs, GitHub Releases API, GITHUB_TOKEN
+[done] (Phase 11-E) Indice curado: plugins-index.json en repo, osg plugin search [query]
+[done] (Phase 11-E) Lock file: .osg/plugins.lock.json con source + version por plugin
+[done] (Phase 11-E) Comando update: osg plugin update [name], check contra latest release
+[done] (Phase 11-E) TUI: /plugin search [query] y /plugin update [name]
+[done] (Phase 11-E) 15 tests: GitHub refs, lock file CRUD, index search, download, mock server
 [todo] (Phase 11-F) Actualizar docs/PLUGINS.md con nuevos hooks, SDK, registry
 [todo] (Phase 11-F) Templates: link /search/ en header, claves i18n
 

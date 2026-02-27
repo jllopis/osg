@@ -20,7 +20,7 @@ type PluginInfo struct {
 	Path    string
 }
 
-func RunPluginInstall(_ context.Context, opts CLIOptions, srcPath string, name string) error {
+func RunPluginInstall(ctx context.Context, opts CLIOptions, srcPath string, name string) error {
 	cfg, err := config.Load(opts.ConfigPath)
 	if err != nil {
 		return err
@@ -33,6 +33,19 @@ func RunPluginInstall(_ context.Context, opts CLIOptions, srcPath string, name s
 		return fmt.Errorf("plugins dir is not configured")
 	}
 
+	// GitHub repository reference: github.com/user/repo[@tag]
+	if plugin.IsGitHubRef(srcPath) {
+		owner, repo, tag := plugin.ParseGitHubRef(srcPath)
+		installedName, err := plugin.InstallFromGitHub(ctx, owner, repo, tag, cfg.PluginsDir)
+		if err != nil {
+			return fmt.Errorf("install from GitHub: %w", err)
+		}
+		logger := logging.New(cfg.Logging, opts.Verbose)
+		logger.Info("installed plugin from GitHub", "name", installedName, "source", srcPath)
+		return nil
+	}
+
+	// Local file path.
 	info, err := os.Stat(srcPath)
 	if err != nil {
 		return err
@@ -133,6 +146,79 @@ func RunPluginList(ctx context.Context, opts CLIOptions, out io.Writer) error {
 		}
 		attrs = append(attrs, "path", p.Path)
 		logger.Info("plugin", attrs...)
+	}
+	return nil
+}
+
+func RunPluginSearch(ctx context.Context, opts CLIOptions, query string, out io.Writer) error {
+	index, err := plugin.FetchIndex(ctx)
+	if err != nil {
+		return fmt.Errorf("fetch plugin index: %w", err)
+	}
+
+	results := plugin.SearchIndex(index, query)
+	if len(results) == 0 {
+		fmt.Fprintln(out, "No plugins found.")
+		return nil
+	}
+
+	for _, e := range results {
+		line := e.Name
+		if e.Version != "" {
+			line += " (" + e.Version + ")"
+		}
+		if e.Description != "" {
+			line += " — " + e.Description
+		}
+		fmt.Fprintln(out, line)
+		if e.Repo != "" {
+			fmt.Fprintf(out, "  install: osg plugin install %s\n", e.Repo)
+		}
+	}
+	return nil
+}
+
+func RunPluginUpdate(ctx context.Context, opts CLIOptions, name string, out io.Writer) error {
+	cfg, err := config.Load(opts.ConfigPath)
+	if err != nil {
+		return err
+	}
+
+	lock, err := plugin.LoadLockFile(".")
+	if err != nil {
+		return fmt.Errorf("load lock file: %w", err)
+	}
+
+	names := []string{name}
+	if strings.TrimSpace(name) == "" {
+		names = lock.Names()
+	}
+
+	if len(names) == 0 {
+		fmt.Fprintln(out, "No plugins tracked in lock file. Install plugins from GitHub to enable updates.")
+		return nil
+	}
+
+	for _, n := range names {
+		newVersion, err := plugin.CheckUpdate(ctx, n, lock)
+		if err != nil {
+			fmt.Fprintf(out, "%s: %v\n", n, err)
+			continue
+		}
+		if newVersion == "" {
+			fmt.Fprintf(out, "%s: up to date\n", n)
+			continue
+		}
+
+		entry, _ := lock.Get(n)
+		fmt.Fprintf(out, "%s: %s -> %s, updating...\n", n, entry.Version, newVersion)
+
+		_, err = plugin.UpdatePlugin(ctx, n, cfg.PluginsDir, lock)
+		if err != nil {
+			fmt.Fprintf(out, "%s: update failed: %v\n", n, err)
+			continue
+		}
+		fmt.Fprintf(out, "%s: updated to %s\n", n, newVersion)
 	}
 	return nil
 }

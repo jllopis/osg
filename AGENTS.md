@@ -160,10 +160,17 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
 
 ## Current State (as of last session)
 
-All phases 1-10 complete. Phase 11 (Plugin ecosystem) in progress: Fase A, B, C, D done.
+All phases 1-10 complete. Phase 11 (Plugin ecosystem) in progress: Fase A, B, C, D, E done.
 Standalone Pages, `osg new`, i18n, Kairos AI summaries, AI cache all complete.
 
 ### Recently completed
+- Phase 11-E (Registry and remote install): `osg plugin install github.com/user/repo[@tag]`
+  downloads .wasm from GitHub Releases API. Curated plugin index
+  (`plugins-index.json`) with `osg plugin search [query]`. Lock file
+  (`.osg/plugins.lock.json`) tracks source + version. `osg plugin update [name]`
+  checks latest release and re-downloads. GITHUB_TOKEN support for private
+  repos. TUI `/plugin search` and `/plugin update` commands.
+  15 new tests (GitHub refs, lock file, index search, download, mock server).
 - Phase 11-D (SDK Go / TinyGo scaffolds): Go SDK package (`internal/plugin/sdk/`)
   with Event/Response/PluginMeta types, Plugin struct with On() handlers, ABI
   helpers. TinyGo scaffold via `osg plugin init --lang=go` (main.go with

@@ -198,10 +198,16 @@
 - [done] D5: fix embed issue (go.mod.tmpl + .tmpl stripping, //go:build ignore en template main.go)
 - [done] D6: 12 tests scaffold (Go+Rust content, .tmpl stripping, tinygo alias, default lang, errors) + 17 tests SDK
 
-### Fase E - Registry e instalacion remota
-- [todo] E1: instalacion desde GitHub (osg plugin install github.com/user/repo[@version])
-- [todo] E2: indice curado (plugins-index.json, osg plugin search, cache local)
-- [todo] E3: versionado de plugins (plugin_info version, osg plugin update, lock file)
+### Fase E - Registry e instalacion remota (done)
+- [done] E1: instalacion desde GitHub (osg plugin install github.com/user/repo[@tag])
+- [done] E1: deteccion automatica de GitHub refs, descarga de .wasm desde GitHub Releases API
+- [done] E1: soporte GITHUB_TOKEN para repos privados y rate limits
+- [done] E2: indice curado (plugins-index.json en repo, osg plugin search [query])
+- [done] E2: busqueda por nombre, descripcion y autor (case-insensitive)
+- [done] E3: lock file (.osg/plugins.lock.json) con source + version por plugin
+- [done] E3: osg plugin update [name] con check contra latest GitHub release
+- [done] E4: CLI --lang flag, TUI /plugin search y /plugin update
+- [done] E5: 15 tests unitarios (GitHub refs, lock file, index search, download, mock server)
 
 ### Fase F - Documentacion y templates
 - [todo] F1: actualizar docs/PLUGINS.md (nuevos hooks, SDK Go, registry, plugin_info)

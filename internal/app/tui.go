@@ -83,6 +83,12 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		PluginInit: func(actionCtx context.Context, name string, dir string, lang string) error {
 			return RunPluginInit(actionCtx, withLog(), name, dir, lang)
 		},
+		PluginSearch: func(actionCtx context.Context, query string) error {
+			return RunPluginSearch(actionCtx, withLog(), query, logSink)
+		},
+		PluginUpdate: func(actionCtx context.Context, name string) error {
+			return RunPluginUpdate(actionCtx, withLog(), name, logSink)
+		},
 		NewPost: func(actionCtx context.Context, title string) error {
 			postOpts := NewPostOptions{Title: title}
 			return RunNew(actionCtx, withLog(), postOpts)

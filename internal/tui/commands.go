@@ -23,7 +23,7 @@ var commandRegistry = []slashCommand{
 	{Name: "/doctor", Hint: "Run diagnostics"},
 	{Name: "/next", Aliases: []string{"n"}, Hint: "Run next workflow step"},
 	{Name: "/theme", Hint: "Theme commands", Args: "init <name>"},
-	{Name: "/plugin", Hint: "Plugin management", Args: "enable|disable|toggle|list|install|init"},
+	{Name: "/plugin", Hint: "Plugin management", Args: "enable|disable|toggle|list|install|init|search|update"},
 	{Name: "/version", Aliases: []string{"v"}, Hint: "Show version info"},
 	{Name: "/clear", Hint: "Clear output"},
 	{Name: "/help", Aliases: []string{"h"}, Hint: "Show help"},

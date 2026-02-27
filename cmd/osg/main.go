@@ -68,16 +68,26 @@ type ThemeInitCmd struct {
 }
 
 type PluginCmd struct {
-	Install PluginInstallCmd `cmd:"" help:"Install a WASM plugin"`
+	Install PluginInstallCmd `cmd:"" help:"Install a WASM plugin (local path or github.com/user/repo[@tag])"`
 	Enable  PluginToggleCmd  `cmd:"" help:"Enable a plugin"`
 	Disable PluginToggleCmd  `cmd:"" help:"Disable a plugin"`
 	List    struct{}         `cmd:"" help:"List plugins"`
 	Init    PluginInitCmd    `cmd:"" help:"Scaffold a plugin project"`
+	Search  PluginSearchCmd  `cmd:"" help:"Search the curated plugin index"`
+	Update  PluginUpdateCmd  `cmd:"" help:"Update a plugin to the latest version"`
 }
 
 type PluginInstallCmd struct {
-	Path string `arg:"" help:"Path to .wasm file"`
+	Path string `arg:"" help:"Path to .wasm file or GitHub repo (github.com/user/repo[@tag])"`
 	Name string `help:"Optional plugin name (without extension)"`
+}
+
+type PluginSearchCmd struct {
+	Query string `arg:"" optional:"" help:"Search query (matches name, description, author)"`
+}
+
+type PluginUpdateCmd struct {
+	Name string `arg:"" optional:"" help:"Plugin name to update (omit to check all)"`
 }
 
 type PluginToggleCmd struct {
@@ -190,6 +200,10 @@ func main() {
 		runErr = app.RunPluginList(context.Background(), opts, os.Stdout)
 	case strings.HasPrefix(command, "plugin init"):
 		runErr = app.RunPluginInit(context.Background(), opts, cli.Plugin.Init.Name, cli.Plugin.Init.Dir, cli.Plugin.Init.Lang)
+	case strings.HasPrefix(command, "plugin search"):
+		runErr = app.RunPluginSearch(context.Background(), opts, cli.Plugin.Search.Query, os.Stdout)
+	case strings.HasPrefix(command, "plugin update"):
+		runErr = app.RunPluginUpdate(context.Background(), opts, cli.Plugin.Update.Name, os.Stdout)
 	case command == "version":
 		fmt.Println(app.VersionInfo())
 	default:

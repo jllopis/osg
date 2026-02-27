@@ -35,6 +35,8 @@ type Actions struct {
 	PluginInstall func(context.Context, string, string) error
 	PluginList    func(context.Context) error
 	PluginInit    func(context.Context, string, string, string) error
+	PluginSearch  func(context.Context, string) error
+	PluginUpdate  func(context.Context, string) error
 	NewPost       func(context.Context, string) error
 	Version       func() string
 }
@@ -302,6 +304,26 @@ func runPluginInitCmd(ctx context.Context, name string, dir string, lang string,
 		}
 		err := action(ctx, name, dir, lang)
 		return simpleActionFinishedMsg{label: "Plugin init", err: err}
+	}
+}
+
+func runPluginSearchCmd(ctx context.Context, query string, action func(context.Context, string) error) tea.Cmd {
+	return func() tea.Msg {
+		if action == nil {
+			return simpleActionFinishedMsg{label: "Plugin search", err: fmt.Errorf("action not available")}
+		}
+		err := action(ctx, query)
+		return simpleActionFinishedMsg{label: "Plugin search", err: err}
+	}
+}
+
+func runPluginUpdateCmd(ctx context.Context, name string, action func(context.Context, string) error) tea.Cmd {
+	return func() tea.Msg {
+		if action == nil {
+			return simpleActionFinishedMsg{label: "Plugin update", err: fmt.Errorf("action not available")}
+		}
+		err := action(ctx, name)
+		return simpleActionFinishedMsg{label: "Plugin update", err: err}
 	}
 }
 
