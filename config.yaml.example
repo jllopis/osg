@@ -140,8 +140,13 @@ static_dir: static
 # -----------------------------------------------------------------------------
 # plugins_dir: Directory containing .wasm plugin files.
 # plugins_enabled: List of plugin names to activate (without .wasm extension).
+#   The "search" plugin is bundled and enabled by default if plugins_enabled
+#   is not set. Set to [] to disable all plugins.
+# plugin_timeout: Per-plugin call timeout in seconds (0 = no timeout).
 plugins_dir: plugins
-plugins_enabled: []
+plugins_enabled:
+  - search
+plugin_timeout: 5
 
 # -----------------------------------------------------------------------------
 # Sass
@@ -158,6 +163,15 @@ compile_sass: false
 # build_cache_dir: Where build cache data is stored.
 build_incremental: true
 build_cache_dir: .osg/cache
+
+# -----------------------------------------------------------------------------
+# Image lightbox
+# -----------------------------------------------------------------------------
+# lightbox: Enable click-to-zoom lightbox for content images. Standalone images
+#           in Markdown are wrapped in <figure data-lightbox> and a zero-dependency
+#           JS lightbox handles fullscreen overlay, keyboard/touch navigation,
+#           auto gallery grouping for consecutive images, and captions from alt text.
+lightbox: true
 
 # -----------------------------------------------------------------------------
 # Image optimization

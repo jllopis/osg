@@ -69,9 +69,6 @@ func (p *RsyncProvider) Deploy(ctx context.Context, publicDir string) error {
 	}
 
 	if p.Delete {
-		args = append(args, "--delete")
-	}
-	if p.Delete {
 		args = append(args, "--delete-after")
 	}
 

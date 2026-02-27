@@ -12,6 +12,7 @@ import (
 	"osg/internal/config"
 	"osg/internal/site"
 	"osg/internal/summary"
+	"osg/internal/taxonomy"
 )
 
 // ---------------------------------------------------------------------------
@@ -820,5 +821,721 @@ func TestFillWithAI_AffectedPagesMarkChangedInPlan(t *testing.T) {
 	// An unaffected page should not be in changedFiles.
 	if plan.changedFiles["unchanged.md"] {
 		t.Error("unchanged.md should not be in changedFiles")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// isNilInterface
+// ---------------------------------------------------------------------------
+
+func TestIsNilInterface(t *testing.T) {
+	var nilPtr *site.Page
+	var nilMap map[string]any
+	var nilSlice []string
+	var nilFunc func()
+	var nilChan chan int
+
+	tests := []struct {
+		name string
+		val  any
+		want bool
+	}{
+		{"untyped nil", nil, true},
+		{"nil pointer", nilPtr, true},
+		{"nil map", nilMap, true},
+		{"nil slice", nilSlice, true},
+		{"nil func", nilFunc, true},
+		{"nil chan", nilChan, true},
+		{"non-nil pointer", &site.Page{}, false},
+		{"non-nil map", map[string]any{"a": 1}, false},
+		{"non-nil slice", []string{"a"}, false},
+		{"string value", "hello", false},
+		{"int value", 42, false},
+		{"bool value", false, false},
+		{"struct value", site.Page{Title: "x"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isNilInterface(tt.val)
+			if got != tt.want {
+				t.Errorf("isNilInterface(%v) = %v, want %v", tt.val, got, tt.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// defaultLangFromCtx
+// ---------------------------------------------------------------------------
+
+func TestDefaultLangFromCtx(t *testing.T) {
+	tests := []struct {
+		name string
+		ctx  map[string]any
+		want string
+	}{
+		{"nil map", nil, "es"},
+		{"empty map", map[string]any{}, "es"},
+		{"no config key", map[string]any{"foo": "bar"}, "es"},
+		{"config is not a map", map[string]any{"config": "string"}, "es"},
+		{"config has no default_language", map[string]any{
+			"config": map[string]any{"theme": "default"},
+		}, "es"},
+		{"default_language is empty string", map[string]any{
+			"config": map[string]any{"default_language": ""},
+		}, "es"},
+		{"default_language is int", map[string]any{
+			"config": map[string]any{"default_language": 42},
+		}, "es"},
+		{"default_language is en", map[string]any{
+			"config": map[string]any{"default_language": "en"},
+		}, "en"},
+		{"default_language is fr", map[string]any{
+			"config": map[string]any{"default_language": "fr"},
+		}, "fr"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := defaultLangFromCtx(tt.ctx)
+			if got != tt.want {
+				t.Errorf("defaultLangFromCtx() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// themeI18nDir
+// ---------------------------------------------------------------------------
+
+func TestThemeI18nDir(t *testing.T) {
+	tests := []struct {
+		name      string
+		themesDir string
+		theme     string
+		want      string
+	}{
+		{"both set", "themes", "default", "themes/default/i18n"},
+		{"empty themes dir", "", "default", ""},
+		{"whitespace themes dir", "  ", "default", ""},
+		{"empty theme", "themes", "", ""},
+		{"whitespace theme", "themes", "  ", ""},
+		{"both empty", "", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.Config{ThemesDir: tt.themesDir, Theme: tt.theme}
+			got := themeI18nDir(cfg)
+			if got != tt.want {
+				t.Errorf("themeI18nDir() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// aiCachePath
+// ---------------------------------------------------------------------------
+
+func TestAICachePath(t *testing.T) {
+	tests := []struct {
+		name          string
+		buildCacheDir string
+		want          string
+	}{
+		{"custom dir", "/tmp/cache", filepath.Join("/tmp/cache", "ai-summaries.json")},
+		{"empty uses default", "", filepath.Join(".osg/cache", "ai-summaries.json")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.Config{BuildCacheDir: tt.buildCacheDir}
+			got := aiCachePath(cfg)
+			if got != tt.want {
+				t.Errorf("aiCachePath() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// hashConfig
+// ---------------------------------------------------------------------------
+
+func TestHashConfig(t *testing.T) {
+	cfg1 := config.Config{BaseURL: "http://example.com", Theme: "default"}
+	cfg2 := config.Config{BaseURL: "http://example.com", Theme: "default"}
+	cfg3 := config.Config{BaseURL: "http://other.com", Theme: "default"}
+
+	h1, err := hashConfig(cfg1)
+	if err != nil {
+		t.Fatalf("hashConfig(cfg1) error: %v", err)
+	}
+	h2, err := hashConfig(cfg2)
+	if err != nil {
+		t.Fatalf("hashConfig(cfg2) error: %v", err)
+	}
+	h3, err := hashConfig(cfg3)
+	if err != nil {
+		t.Fatalf("hashConfig(cfg3) error: %v", err)
+	}
+
+	if h1 != h2 {
+		t.Error("identical configs should produce the same hash")
+	}
+	if h1 == h3 {
+		t.Error("different configs should produce different hashes")
+	}
+	if h1 == "" {
+		t.Error("hash should not be empty")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// pageContext
+// ---------------------------------------------------------------------------
+
+func TestPageContext(t *testing.T) {
+	base := map[string]any{
+		"config": map[string]any{"default_language": "en"},
+		"site":   map[string]any{},
+	}
+	page := &site.Page{
+		Title:     "Hello",
+		Path:      "/blog/hello/",
+		Permalink: "http://example.com/blog/hello/",
+		Lang:      "fr",
+	}
+
+	ctx := pageContext(base, page)
+
+	if ctx["current_path"] != "/blog/hello/" {
+		t.Errorf("current_path = %v, want /blog/hello/", ctx["current_path"])
+	}
+	if ctx["current_url"] != "http://example.com/blog/hello/" {
+		t.Errorf("current_url = %v, want page permalink", ctx["current_url"])
+	}
+	if ctx["lang"] != "fr" {
+		t.Errorf("lang = %v, want fr (from page)", ctx["lang"])
+	}
+
+	// page without Lang should fall back to config default_language
+	page2 := &site.Page{Path: "/x/", Permalink: "http://example.com/x/"}
+	ctx2 := pageContext(base, page2)
+	if ctx2["lang"] != "en" {
+		t.Errorf("lang = %v, want en (fallback)", ctx2["lang"])
+	}
+
+	// base context should not be mutated
+	if _, exists := base["page"]; exists {
+		t.Error("pageContext should not mutate base context")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// sectionContext
+// ---------------------------------------------------------------------------
+
+func TestSectionContext(t *testing.T) {
+	base := map[string]any{
+		"config": map[string]any{"default_language": "de"},
+		"site":   map[string]any{},
+	}
+	section := &site.Section{
+		Title:     "Blog",
+		Path:      "/blog/",
+		Permalink: "http://example.com/blog/",
+	}
+
+	ctx := sectionContext(base, section)
+
+	if ctx["current_path"] != "/blog/" {
+		t.Errorf("current_path = %v, want /blog/", ctx["current_path"])
+	}
+	if ctx["current_url"] != "http://example.com/blog/" {
+		t.Errorf("current_url = %v", ctx["current_url"])
+	}
+	if ctx["lang"] != "de" {
+		t.Errorf("lang = %v, want de", ctx["lang"])
+	}
+	if ctx["section"] == nil {
+		t.Error("section key should be present")
+	}
+	if _, exists := base["section"]; exists {
+		t.Error("sectionContext should not mutate base context")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// baseContext
+// ---------------------------------------------------------------------------
+
+func TestBaseContext(t *testing.T) {
+	cfg := config.Config{
+		BaseURL:   "http://example.com",
+		SiteTitle: "My Site",
+	}
+	siteView := map[string]any{"pages": []any{}}
+
+	t.Run("no taxonomies no menu", func(t *testing.T) {
+		ctx := baseContext(cfg, siteView, nil, nil)
+		if ctx["config"] == nil {
+			t.Error("config key should be present")
+		}
+		if ctx["site"] == nil {
+			t.Error("site key should be present")
+		}
+		if _, exists := ctx["taxonomies"]; exists {
+			t.Error("taxonomies should not be present when indices is nil")
+		}
+		if _, exists := ctx["menu_pages"]; exists {
+			t.Error("menu_pages should not be present when empty")
+		}
+	})
+
+	t.Run("with taxonomies", func(t *testing.T) {
+		idx := &taxonomy.Index{
+			Config: config.TaxonomyConfig{Name: "tags", Render: true},
+			Terms:  map[string]*taxonomy.Term{},
+		}
+		indices := map[string]*taxonomy.Index{"tags": idx}
+		ctx := baseContext(cfg, siteView, indices, nil)
+		if ctx["taxonomies"] == nil {
+			t.Error("taxonomies key should be present when indices provided")
+		}
+	})
+
+	t.Run("with menu pages", func(t *testing.T) {
+		menuPages := []*site.Page{
+			{Title: "About", Path: "/about/"},
+		}
+		ctx := baseContext(cfg, siteView, nil, menuPages)
+		mp, ok := ctx["menu_pages"].([]map[string]any)
+		if !ok {
+			t.Fatal("menu_pages should be a []map[string]any")
+		}
+		if len(mp) != 1 {
+			t.Errorf("menu_pages len = %d, want 1", len(mp))
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// buildOutputsIndex
+// ---------------------------------------------------------------------------
+
+func TestBuildOutputsIndex(t *testing.T) {
+	t.Run("nil site returns nil", func(t *testing.T) {
+		got := buildOutputsIndex(nil, "public")
+		if got != nil {
+			t.Errorf("expected nil, got %v", got)
+		}
+	})
+
+	t.Run("maps pages and sections", func(t *testing.T) {
+		s := &site.Site{
+			Pages: []*site.Page{
+				{SourcePath: "content/blog/hello.md", Path: "/blog/hello/"},
+				{SourcePath: "", Path: "/no-source/"},
+			},
+			Sections: map[string]*site.Section{
+				"blog":  {SourcePath: "content/blog/_index.md", Path: "/blog/"},
+				"empty": {SourcePath: "", Path: "/empty/"},
+			},
+		}
+		out := buildOutputsIndex(s, "public")
+		if len(out) != 2 {
+			t.Errorf("expected 2 entries, got %d", len(out))
+		}
+		if _, ok := out["content/blog/hello.md"]; !ok {
+			t.Error("missing page entry")
+		}
+		if _, ok := out["content/blog/_index.md"]; !ok {
+			t.Error("missing section entry")
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// taxonomiesView
+// ---------------------------------------------------------------------------
+
+func TestTaxonomiesView(t *testing.T) {
+	t.Run("empty indices", func(t *testing.T) {
+		out := taxonomiesView(map[string]*taxonomy.Index{})
+		if len(out) != 0 {
+			t.Errorf("expected empty map, got %d entries", len(out))
+		}
+	})
+
+	t.Run("non-empty", func(t *testing.T) {
+		idx := &taxonomy.Index{
+			Config: config.TaxonomyConfig{Name: "tags"},
+			Terms: map[string]*taxonomy.Term{
+				"go": {
+					Name: "go",
+					Slug: "go",
+					Path: "/tags/go/",
+				},
+			},
+		}
+		out := taxonomiesView(map[string]*taxonomy.Index{"tags": idx})
+		if out["tags"] == nil {
+			t.Error("tags key should be present")
+		}
+		tv, ok := out["tags"].(map[string]any)
+		if !ok {
+			t.Fatal("tags value should be a map[string]any")
+		}
+		if tv["taxonomy"] == nil {
+			t.Error("taxonomy key should be present")
+		}
+		if tv["terms"] == nil {
+			t.Error("terms key should be present")
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// taxonomyListContext
+// ---------------------------------------------------------------------------
+
+func TestTaxonomyListContext(t *testing.T) {
+	base := map[string]any{
+		"config": map[string]any{"default_language": "en"},
+	}
+	taxCfg := config.TaxonomyConfig{Name: "tags"}
+	cfg := config.Config{BaseURL: "http://example.com"}
+	terms := []*taxonomy.Term{
+		{Name: "go", Slug: "go", Path: "/tags/go/"},
+	}
+
+	ctx := taxonomyListContext(base, cfg, taxCfg, terms, "/tags/")
+
+	if ctx["current_path"] != "/tags/" {
+		t.Errorf("current_path = %v", ctx["current_path"])
+	}
+	if ctx["current_url"] != "http://example.com/tags/" {
+		t.Errorf("current_url = %v", ctx["current_url"])
+	}
+	if ctx["lang"] != "en" {
+		t.Errorf("lang = %v", ctx["lang"])
+	}
+	if ctx["taxonomy"] == nil {
+		t.Error("taxonomy should be present")
+	}
+	if ctx["terms"] == nil {
+		t.Error("terms should be present")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// taxonomyTermContext
+// ---------------------------------------------------------------------------
+
+func TestTaxonomyTermContext(t *testing.T) {
+	base := map[string]any{
+		"config": map[string]any{"default_language": "en"},
+	}
+	taxCfg := config.TaxonomyConfig{Name: "tags"}
+	cfg := config.Config{BaseURL: "http://example.com"}
+	term := &taxonomy.Term{Name: "go", Slug: "go", Path: "/tags/go/"}
+
+	t.Run("without paginator", func(t *testing.T) {
+		ctx := taxonomyTermContext(base, cfg, taxCfg, term, "/tags/go/", nil)
+		if ctx["term"] == nil {
+			t.Error("term should be present")
+		}
+		if _, ok := ctx["paginator"]; ok {
+			t.Error("paginator should not be present when nil")
+		}
+		if ctx["lang"] != "en" {
+			t.Errorf("lang = %v", ctx["lang"])
+		}
+	})
+
+	t.Run("with paginator", func(t *testing.T) {
+		pag := &taxonomy.Paginator{
+			CurrentIndex: 0,
+			TotalPages:   3,
+		}
+		ctx := taxonomyTermContext(base, cfg, taxCfg, term, "/tags/go/", pag)
+		if ctx["paginator"] == nil {
+			t.Error("paginator should be present")
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// feedContext
+// ---------------------------------------------------------------------------
+
+func TestFeedContext(t *testing.T) {
+	base := map[string]any{
+		"config": map[string]any{"default_language": "en"},
+	}
+	taxCfg := config.TaxonomyConfig{Name: "tags"}
+	cfg := config.Config{BaseURL: "http://example.com"}
+	now := time.Now()
+	term := &taxonomy.Term{
+		Name:  "go",
+		Slug:  "go",
+		Path:  "/tags/go/",
+		Pages: []*site.Page{{Title: "Post", Date: now}},
+	}
+
+	ctx := feedContext(base, cfg, taxCfg, term, "http://example.com/tags/go/atom.xml", now)
+
+	if ctx["feed_url"] != "http://example.com/tags/go/atom.xml" {
+		t.Errorf("feed_url = %v", ctx["feed_url"])
+	}
+	if ctx["last_updated"] != now.Format(time.RFC3339) {
+		t.Errorf("last_updated = %v", ctx["last_updated"])
+	}
+	if ctx["lang"] != "en" {
+		t.Errorf("lang = %v", ctx["lang"])
+	}
+	if ctx["taxonomy"] == nil {
+		t.Error("taxonomy should be present")
+	}
+	if ctx["term"] == nil {
+		t.Error("term should be present")
+	}
+	pages, ok := ctx["pages"].([]map[string]any)
+	if !ok || len(pages) != 1 {
+		t.Error("pages should have 1 entry")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// siteFeedContext
+// ---------------------------------------------------------------------------
+
+func TestSiteFeedContext(t *testing.T) {
+	base := map[string]any{
+		"config": map[string]any{"default_language": "en"},
+	}
+	cfg := config.Config{
+		SiteTitle:       "My Blog",
+		SiteDescription: "A test blog",
+		BaseURL:         "http://example.com",
+	}
+	now := time.Now()
+	pages := []*site.Page{
+		{Title: "Post 1", Date: now, Permalink: "http://example.com/post-1/"},
+	}
+
+	ctx := siteFeedContext(base, cfg, pages, "http://example.com/atom.xml", now)
+
+	if ctx["feed_title"] != "My Blog" {
+		t.Errorf("feed_title = %v", ctx["feed_title"])
+	}
+	if ctx["feed_description"] != "A test blog" {
+		t.Errorf("feed_description = %v", ctx["feed_description"])
+	}
+	if ctx["feed_url"] != "http://example.com/atom.xml" {
+		t.Errorf("feed_url = %v", ctx["feed_url"])
+	}
+	if ctx["lang"] != "en" {
+		t.Errorf("lang = %v", ctx["lang"])
+	}
+	fp, ok := ctx["pages"].([]map[string]any)
+	if !ok || len(fp) != 1 {
+		t.Error("pages should have 1 entry")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// sectionUpdated
+// ---------------------------------------------------------------------------
+
+func TestSectionUpdated(t *testing.T) {
+	t.Run("empty section returns now-ish", func(t *testing.T) {
+		s := &site.Section{}
+		got := sectionUpdated(s)
+		// Should return time.Now() for empty sections; just check it's recent
+		if time.Since(got) > 2*time.Second {
+			t.Errorf("expected recent time for empty section, got %v", got)
+		}
+	})
+
+	t.Run("picks latest page date", func(t *testing.T) {
+		old := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		recent := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+		s := &site.Section{
+			Pages: []*site.Page{
+				{Title: "Old", Date: old},
+				{Title: "Recent", Date: recent},
+			},
+		}
+		got := sectionUpdated(s)
+		if !got.Equal(recent) {
+			t.Errorf("got %v, want %v", got, recent)
+		}
+	})
+
+	t.Run("recurses into subsections", func(t *testing.T) {
+		old := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		deep := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+		s := &site.Section{
+			Pages: []*site.Page{{Date: old}},
+			Subsections: []*site.Section{
+				{Pages: []*site.Page{{Date: deep}}},
+			},
+		}
+		got := sectionUpdated(s)
+		if !got.Equal(deep) {
+			t.Errorf("got %v, want %v", got, deep)
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// taxonomyIndexUpdated
+// ---------------------------------------------------------------------------
+
+func TestTaxonomyIndexUpdated(t *testing.T) {
+	t.Run("empty index returns now-ish", func(t *testing.T) {
+		idx := &taxonomy.Index{Terms: map[string]*taxonomy.Term{}}
+		got := taxonomyIndexUpdated(idx)
+		if time.Since(got) > 2*time.Second {
+			t.Errorf("expected recent time for empty index, got %v", got)
+		}
+	})
+
+	t.Run("picks latest across terms", func(t *testing.T) {
+		d1 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		d2 := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+		idx := &taxonomy.Index{
+			Terms: map[string]*taxonomy.Term{
+				"go":   {Pages: []*site.Page{{Date: d1}}},
+				"rust": {Pages: []*site.Page{{Date: d2}}},
+			},
+		}
+		got := taxonomyIndexUpdated(idx)
+		if !got.Equal(d2) {
+			t.Errorf("got %v, want %v", got, d2)
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// collectSitemapEntries
+// ---------------------------------------------------------------------------
+
+func TestCollectSitemapEntries(t *testing.T) {
+	now := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+
+	t.Run("pages and sections", func(t *testing.T) {
+		cfg := config.Config{BaseURL: "http://example.com"}
+		s := &site.Site{
+			Pages: []*site.Page{
+				{Permalink: "http://example.com/hello/", Date: now},
+				{Permalink: "http://example.com/world/", Date: now},
+			},
+			Sections: map[string]*site.Section{
+				"blog": {
+					Permalink: "http://example.com/blog/",
+					Pages:     []*site.Page{{Date: now}},
+				},
+			},
+		}
+		entries := collectSitemapEntries(cfg, s, nil)
+		if len(entries) != 3 {
+			t.Errorf("expected 3 entries, got %d", len(entries))
+		}
+	})
+
+	t.Run("deduplicates by permalink", func(t *testing.T) {
+		cfg := config.Config{BaseURL: "http://example.com"}
+		s := &site.Site{
+			Pages: []*site.Page{
+				{Permalink: "http://example.com/same/", Date: now},
+				{Permalink: "http://example.com/same/", Date: now},
+			},
+		}
+		entries := collectSitemapEntries(cfg, s, nil)
+		if len(entries) != 1 {
+			t.Errorf("expected 1 deduplicated entry, got %d", len(entries))
+		}
+	})
+
+	t.Run("skips empty permalinks", func(t *testing.T) {
+		cfg := config.Config{BaseURL: "http://example.com"}
+		s := &site.Site{
+			Pages: []*site.Page{
+				{Permalink: "", Date: now},
+				{Permalink: "  ", Date: now},
+			},
+		}
+		entries := collectSitemapEntries(cfg, s, nil)
+		if len(entries) != 0 {
+			t.Errorf("expected 0 entries for empty permalinks, got %d", len(entries))
+		}
+	})
+
+	t.Run("includes taxonomy entries", func(t *testing.T) {
+		cfg := config.Config{
+			BaseURL: "http://example.com",
+			Taxonomies: []config.TaxonomyConfig{
+				{Name: "tags", Render: true},
+			},
+		}
+		s := &site.Site{}
+		idx := &taxonomy.Index{
+			Config: config.TaxonomyConfig{Name: "tags", Render: true},
+			Terms: map[string]*taxonomy.Term{
+				"go": {
+					Name:      "go",
+					Slug:      "go",
+					Path:      "/tags/go/",
+					Permalink: "http://example.com/tags/go/",
+					Pages:     []*site.Page{{Date: now}},
+				},
+			},
+		}
+		indices := map[string]*taxonomy.Index{"tags": idx}
+		entries := collectSitemapEntries(cfg, s, indices)
+		// Should have: /tags/ (list) + /tags/go/ (term) = 2
+		if len(entries) < 2 {
+			t.Errorf("expected at least 2 entries (list + term), got %d", len(entries))
+		}
+	})
+
+	t.Run("skips non-render taxonomies", func(t *testing.T) {
+		cfg := config.Config{
+			BaseURL: "http://example.com",
+			Taxonomies: []config.TaxonomyConfig{
+				{Name: "tags", Render: false},
+			},
+		}
+		s := &site.Site{}
+		idx := &taxonomy.Index{
+			Config: config.TaxonomyConfig{Name: "tags", Render: false},
+			Terms: map[string]*taxonomy.Term{
+				"go": {Name: "go", Pages: []*site.Page{{Date: now}}},
+			},
+		}
+		indices := map[string]*taxonomy.Index{"tags": idx}
+		entries := collectSitemapEntries(cfg, s, indices)
+		if len(entries) != 0 {
+			t.Errorf("expected 0 entries when render=false, got %d", len(entries))
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// includeAllFiles (cache.go) — uses fakeDirEntry from cache_test.go
+// ---------------------------------------------------------------------------
+
+func TestIncludeAllFiles(t *testing.T) {
+	// includeAllFiles returns !d.IsDir(), so files pass, dirs don't
+	file := fakeDirEntry{name: "test.txt", isDir: false}
+	dir := fakeDirEntry{name: "subdir", isDir: true}
+
+	if !includeAllFiles("test.txt", file) {
+		t.Error("includeAllFiles should return true for files")
+	}
+	if includeAllFiles("subdir", dir) {
+		t.Error("includeAllFiles should return false for directories")
 	}
 }

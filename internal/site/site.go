@@ -359,6 +359,7 @@ func (p *Page) View() map[string]any {
 		"reading_time": p.ReadingTime,
 		"taxonomies":   p.Taxonomies,
 		"extra":        p.Extra,
+		"lang":         p.Lang,
 	}
 }
 

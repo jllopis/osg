@@ -181,12 +181,7 @@ export default {
 		return fmt.Errorf("cloudflare workers: %w", err)
 	}
 
-	fmt.Printf("Deployed to Cloudflare Workers: https://%s.%s.workers.dev\n", p.WorkerName, getAccountSubdomain(env))
+	fmt.Printf("Deployed to Cloudflare Workers: %s\n", p.WorkerName)
+	fmt.Println("Check the wrangler output above for the full deployment URL.")
 	return nil
-}
-
-func getAccountSubdomain(env []string) string {
-	// Workers URL format: https://worker-name.account-subdomain.workers.dev
-	// We can't easily get the subdomain, so use a placeholder
-	return "<account>"
 }
