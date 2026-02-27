@@ -115,6 +115,46 @@ content/ -> site.ParseFile -> Page.Image -> if empty -> placeholder SVG -> publi
                                          -> if set -> used in templates (hero, thumbnail, og:image)
 ```
 
+## Image lightbox y galeria
+
+### Lightbox
+
+Las imagenes standalone en el contenido (Markdown `![alt](src)` que son unico hijo de un parrafo) se envuelven automaticamente en `<figure data-lightbox>` con `<figcaption>` opcional (derivada del alt text). El renderer custom (`internal/markdown/figure.go`) sustituye el `<p><img>` por defecto de Goldmark.
+
+Caracteristicas:
+- **Click-to-zoom**: las imagenes con `data-lightbox` abren un overlay fullscreen Nord-styled
+- **Navegacion**: flechas izquierda/derecha, swipe tactil en movil, teclado (Esc, Left, Right)
+- **Captions**: texto alternativo mostrado como leyenda debajo de la imagen ampliada
+- **Counter**: indicador N/M cuando hay multiples imagenes en la pagina
+- **Accesible**: `role="dialog"`, `aria-modal`, labels en botones, respeta `prefers-reduced-motion`
+- **Zero-dependency**: ~120 lineas de JS vanilla, sin librerias externas
+
+### Galeria automatica
+
+Las `<figure>` consecutivas (sin texto entre ellas) se agrupan automaticamente en un `<div class="gallery">` con CSS grid responsive:
+- Grid auto-fill con columnas de minimo 280px
+- Imagenes con `aspect-ratio: 4/3` y `object-fit: cover` para uniformidad
+- En movil: columna unica
+
+### Config
+
+```yaml
+lightbox: true   # default: true, habilita lightbox JS en pages
+```
+
+`lightbox: false` desactiva el script JS en las paginas (las imagenes siguen renderizandose con `<figure>` pero sin overlay).
+
+### Imagenes inline vs standalone
+
+- **Standalone**: `![alt](src)` como unico contenido de un parrafo → `<figure data-lightbox>` con lightbox
+- **Inline**: `texto ![icon](src) mas texto` → `<img>` dentro de `<p>`, sin figure ni lightbox
+
+### Ficheros
+
+- `internal/markdown/figure.go`: renderers custom (figureImageRenderer, figureParagraphRenderer)
+- `internal/theme/default/static/js/lightbox.js`: JS de lightbox (//go:embed via theme)
+- `internal/theme/default/static/style.css`: CSS de lightbox, galeria y figure
+
 ## Featured posts (multiples)
 
 Cuando multiples posts tienen `osg.featured: true` (o `featured: true` en frontmatter):
@@ -476,4 +516,4 @@ Planificado (Phase 10):
 - Doctor improvements con diagnosticos accionables (Step 3).
 
 ## Open questions
-- Soporte para galeria de imagenes o lightbox.
+- (ninguna pendiente)

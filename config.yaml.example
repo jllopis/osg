@@ -186,6 +186,63 @@ serve_live_reload: true
 serve_debounce_ms: 300
 
 # -----------------------------------------------------------------------------
+# Deployment (osg deploy)
+# -----------------------------------------------------------------------------
+# Deploy the generated site to a remote destination.
+#
+# deploy.provider: Deployment target. Supported values:
+#   "cloudflare" — Cloudflare Pages or Workers (requires wrangler CLI)
+#   "rsync"      — rsync over SSH (any VPS or server)
+#   "s3"         — AWS S3 or compatible (Cloudflare R2, Backblaze B2)
+#
+# Usage:
+#   osg deploy                  # uses deploy.provider from config
+#   osg deploy --provider rsync # override provider
+#   osg deploy --preview        # dry-run (validate config only)
+#   osg deploy --build=false    # skip build step
+#
+# All providers support environment variables via OSG_DEPLOY__ prefix.
+
+# deploy:
+#   provider: cloudflare
+#
+#   # Cloudflare Pages (recommended for static sites)
+#   cloudflare:
+#     project: "my-blog"           # Pages project name (required)
+#     branch: "main"               # Git branch (default: main)
+#     account_id: ""               # Optional, for multi-account
+#     # CLOUDFLARE_API_TOKEN env var required
+#
+#   # Cloudflare Workers (for dynamic sites, not recommended for static)
+#   # cloudflare:
+#   #   workers: true
+#   #   worker_name: "my-worker"
+#   #   account_id: ""
+#
+#   # rsync over SSH (any VPS/server)
+#   rsync:
+#     host: "user@example.com"     # SSH destination (required)
+#     path: "/var/www/blog"        # Remote path (required)
+#     port: "22"                   # SSH port (default: 22)
+#     key_file: "~/.ssh/id_ed25519"  # SSH private key
+#     delete: true                 # Remove stale remote files
+#     exclude: ".osg,*.tmp"        # Comma-separated exclude patterns
+#     extra_flags: ""              # Additional rsync flags
+#
+#   # S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2)
+#   s3:
+#     bucket: "my-bucket"          # Bucket name (required)
+#     region: "eu-west-1"          # AWS region
+#     endpoint: ""                 # Custom endpoint for R2/B2
+#     path: "blog"                 # Optional prefix
+#     delete: false                # Sync deletions (careful!)
+#     acl: "public-read"           # Object ACL
+#     profile: ""                  # AWS profile (or AWS_PROFILE env)
+#     extra_flags: ""              # Additional aws s3 flags
+#     # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY env vars required
+#     # Optional: CLOUDFRONT_DISTRIBUTION_ID to invalidate CDN cache
+
+# -----------------------------------------------------------------------------
 # TUI
 # -----------------------------------------------------------------------------
 # tui_prefix: Key used as prefix in the interactive TUI ("space" or "ctrl").

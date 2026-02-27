@@ -34,7 +34,7 @@ type Actions struct {
 	PluginToggle  func(context.Context, string) error
 	PluginInstall func(context.Context, string, string) error
 	PluginList    func(context.Context) error
-	PluginInit    func(context.Context, string, string) error
+	PluginInit    func(context.Context, string, string, string) error
 	NewPost       func(context.Context, string) error
 	Version       func() string
 }
@@ -295,12 +295,12 @@ func runPluginInstallCmd(ctx context.Context, path string, name string, action f
 	}
 }
 
-func runPluginInitCmd(ctx context.Context, name string, dir string, action func(context.Context, string, string) error) tea.Cmd {
+func runPluginInitCmd(ctx context.Context, name string, dir string, lang string, action func(context.Context, string, string, string) error) tea.Cmd {
 	return func() tea.Msg {
 		if action == nil {
 			return simpleActionFinishedMsg{label: "Plugin init", err: fmt.Errorf("action not available")}
 		}
-		err := action(ctx, name, dir)
+		err := action(ctx, name, dir, lang)
 		return simpleActionFinishedMsg{label: "Plugin init", err: err}
 	}
 }

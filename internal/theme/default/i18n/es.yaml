@@ -36,6 +36,9 @@ aria_posts: Publicaciones
 aria_subsections: Subsecciones
 aria_paginated_posts: Publicaciones paginadas
 
+# --- Navegacion ---
+nav.search: Buscar
+
 # --- Parciales ---
 skip_to_content: Ir al contenido
 generated_by: Generado con

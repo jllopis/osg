@@ -503,7 +503,7 @@ func (m Model) handlePluginCommand(args []string) (Model, tea.Cmd) {
 		return m, runPluginInstallCmd(context.Background(), path, name, m.actions.PluginInstall)
 	case "init":
 		if len(args) < 2 {
-			m.appendMessage("ERROR", "Usage: /plugin init <name> [dir]")
+			m.appendMessage("ERROR", "Usage: /plugin init <name> [dir] [lang]")
 			return m, nil
 		}
 		if m.actions.PluginInit == nil {
@@ -515,9 +515,13 @@ func (m Model) handlePluginCommand(args []string) (Model, tea.Cmd) {
 		if len(args) >= 3 {
 			dir = args[2]
 		}
+		lang := ""
+		if len(args) >= 4 {
+			lang = args[3]
+		}
 		m.appendMessage("PROGRESS", fmt.Sprintf("Scaffolding plugin %s...", name))
 		m.lastAction = "Plugin init"
-		return m, runPluginInitCmd(context.Background(), name, dir, m.actions.PluginInit)
+		return m, runPluginInitCmd(context.Background(), name, dir, lang, m.actions.PluginInit)
 	default:
 		m.appendMessage("ERROR", "Usage: /plugin <enable|disable|toggle|list|install|init> [args]")
 		return m, nil

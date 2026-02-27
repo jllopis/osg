@@ -54,6 +54,7 @@ type Config struct {
 	ThemesDir         string           `koanf:"themes_dir" yaml:"themes_dir"`
 	PluginsDir        string           `koanf:"plugins_dir" yaml:"plugins_dir"`
 	PluginsEnabled    []string         `koanf:"plugins_enabled" yaml:"plugins_enabled"`
+	PluginTimeout     int              `koanf:"plugin_timeout" yaml:"plugin_timeout"`
 	SassDir           string           `koanf:"sass_dir" yaml:"sass_dir"`
 	ContentLayout     string           `koanf:"content_layout" yaml:"content_layout"`
 	IncludeDrafts     bool             `koanf:"include_drafts" yaml:"include_drafts"`
@@ -72,11 +73,13 @@ type Config struct {
 	ImageOptimization bool             `koanf:"image_optimization" yaml:"image_optimization"`
 	ImageQuality      int              `koanf:"image_quality" yaml:"image_quality"`
 	ImageWidths       []int            `koanf:"image_widths" yaml:"image_widths"`
+	Lightbox          bool             `koanf:"lightbox" yaml:"lightbox"`
 	DefaultLanguage   string           `koanf:"default_language" yaml:"default_language"`
 	DoctorProfile     string           `koanf:"doctor_profile" yaml:"doctor_profile"`
 	AI                AIConfig         `koanf:"ai" yaml:"ai"`
 	Logging           LoggingConfig    `koanf:"logging" yaml:"logging"`
 	Taxonomies        []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
+	Deploy            DeployConfig     `koanf:"deploy" yaml:"deploy"`
 }
 
 type TaxonomyConfig struct {
@@ -85,6 +88,18 @@ type TaxonomyConfig struct {
 	PaginatePath string `koanf:"paginate_path" yaml:"paginate_path"`
 	Feed         bool   `koanf:"feed" yaml:"feed"`
 	Render       bool   `koanf:"render" yaml:"render"`
+}
+
+// DeployConfig holds deployment settings.
+type DeployConfig struct {
+	// Provider is the deployment target: "cloudflare", "rsync", or "s3".
+	Provider string `koanf:"provider" yaml:"provider"`
+	// Cloudflare configures Cloudflare Pages/Workers deployment.
+	Cloudflare map[string]any `koanf:"cloudflare" yaml:"cloudflare"`
+	// Rsync configures rsync over SSH deployment.
+	Rsync map[string]any `koanf:"rsync" yaml:"rsync"`
+	// S3 configures S3-compatible storage deployment.
+	S3 map[string]any `koanf:"s3" yaml:"s3"`
 }
 
 func Default() Config {
@@ -100,7 +115,8 @@ func Default() Config {
 		StaticDir:         "static",
 		ThemesDir:         "themes",
 		PluginsDir:        "plugins",
-		PluginsEnabled:    []string{},
+		PluginsEnabled:    []string{"search"},
+		PluginTimeout:     5,
 		SassDir:           "sass",
 		ContentLayout:     "{date}/{slug}",
 		IncludeDrafts:     false,
@@ -119,6 +135,7 @@ func Default() Config {
 		ImageOptimization: true,
 		ImageQuality:      80,
 		ImageWidths:       []int{640, 1200},
+		Lightbox:          true,
 		DefaultLanguage:   "es",
 		DoctorProfile:     "dev",
 		AI: AIConfig{
@@ -343,8 +360,13 @@ static_dir: static
 # -----------------------------------------------------------------------------
 # plugins_dir: Directory containing .wasm plugin files.
 # plugins_enabled: List of plugin names to activate (without .wasm extension).
+#   The "search" plugin is bundled with OSG and enabled by default.
+#   It generates a search index (search.json) and search page (search/index.html).
+# plugin_timeout: Per-plugin call timeout in seconds. 0 = no timeout.
 plugins_dir: plugins
-plugins_enabled: []
+plugins_enabled:
+  - search
+plugin_timeout: 5
 
 # -----------------------------------------------------------------------------
 # Sass
@@ -373,9 +395,14 @@ build_cache_dir: .osg/cache
 # image_quality: Encoding quality for JPEG and WebP variants (1-100).
 # image_widths: List of pixel widths to generate (images smaller than a width
 #               are skipped — no upscaling).  The original is always kept.
+# lightbox: Enable click-to-zoom lightbox for content images.
+#   When enabled, standalone images in post content get a fullscreen overlay
+#   with keyboard/touch navigation, captions from alt text, and automatic
+#   gallery grouping for consecutive images.
 image_optimization: true
 image_quality: 80
 image_widths: [640, 1200]
+lightbox: true
 
 # -----------------------------------------------------------------------------
 # Dev server (osg serve)

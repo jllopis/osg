@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -116,6 +117,23 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		return err
 	}
 
+	// Load plugins early so they are available for all pipeline phases.
+	if err := plugin.EnsureBundledPlugins(cfg.PluginsDir); err != nil {
+		logger.Warn("failed to extract bundled plugins", "error", err)
+	}
+	plugins, err := plugin.Load(ctx, cfg.PluginsDir, cfg.PluginsEnabled, cfg.PluginTimeout, logger)
+	if err != nil {
+		logger.Warn("plugins disabled", "error", err)
+		plugins = nil
+	}
+	if plugins != nil {
+		defer func() {
+			if err := plugins.Close(ctx); err != nil {
+				logger.Warn("failed to close plugins", "error", err)
+			}
+		}()
+	}
+
 	siteIndex := site.New()
 	stats := Stats{Total: len(files)}
 
@@ -141,6 +159,9 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	}
 
 	siteIndex.BuildHierarchy()
+
+	// content.transform: let plugins modify Markdown before rendering.
+	applyContentTransform(ctx, plugins, cfg, siteIndex, logger)
 
 	// Fill empty Page.Summary fields using the configured strategy.
 	// Returns source paths of pages whose summary changed, so the
@@ -184,22 +205,19 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		}
 	}
 
+	// image.process: let plugins transform images via WASI filesystem.
+	emitImageProcess(ctx, plugins, cfg, imageResults, logger)
+
 	indices := taxonomy.Build(cfg.Taxonomies, siteIndex.Pages, cfg.BaseURL)
 	siteView := siteIndex.View()
 	baseCtx := baseContext(cfg, siteView, indices, siteIndex.MenuPages())
 
-	plugins, err := plugin.Load(ctx, cfg.PluginsDir, cfg.PluginsEnabled, logger)
-	if err != nil {
-		logger.Warn("plugins disabled", "error", err)
-		plugins = nil
+	// config.validate: plugins can validate config and return errors/warnings.
+	if err := emitConfigValidate(ctx, plugins, cfg, logger); err != nil {
+		return err
 	}
-	if plugins != nil {
-		defer func() {
-			if err := plugins.Close(ctx); err != nil {
-				logger.Warn("failed to close plugins", "error", err)
-			}
-		}()
 
+	if plugins != nil {
 		startPayload := cloneMap(baseCtx)
 		startPayload["stats"] = buildStatsView(stats, siteIndex)
 		if overrides := plugins.Emit(ctx, "build.started", startPayload); overrides != nil {
@@ -302,6 +320,15 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		if err := saveBuildCache(buildCachePath(cfg), cacheToSave); err != nil {
 			logger.Warn("cache write failed", "error", err)
 		}
+	}
+
+	// after.build: emitted after all output is finalized (post build.finished,
+	// post cache save). Plugins can use this for deploy, notifications, etc.
+	if plugins != nil {
+		afterPayload := cloneMap(baseCtx)
+		afterPayload["stats"] = buildStatsView(stats, siteIndex)
+		afterPayload["public_dir"] = cfg.PublicDir
+		_ = plugins.Emit(ctx, "after.build", afterPayload)
 	}
 
 	return nil
@@ -473,6 +500,8 @@ func configView(cfg config.Config) map[string]any {
 		taxonomies = append(taxonomies, taxonomy.ConfigView(taxCfg))
 	}
 
+	absPublicDir, _ := filepath.Abs(cfg.PublicDir)
+
 	return map[string]any{
 		"base_url":           cfg.BaseURL,
 		"site_title":         cfg.SiteTitle,
@@ -482,7 +511,7 @@ func configView(cfg config.Config) map[string]any {
 		"default_language":   cfg.DefaultLanguage,
 		"vault_path":         cfg.VaultPath,
 		"content_dir":        cfg.ContentDir,
-		"public_dir":         cfg.PublicDir,
+		"public_dir":         absPublicDir,
 		"templates_dir":      cfg.TemplatesDir,
 		"static_dir":         cfg.StaticDir,
 		"themes_dir":         cfg.ThemesDir,
@@ -506,6 +535,7 @@ func configView(cfg config.Config) map[string]any {
 		"image_optimization": cfg.ImageOptimization,
 		"image_quality":      cfg.ImageQuality,
 		"image_widths":       cfg.ImageWidths,
+		"lightbox":           cfg.Lightbox,
 		"logging": map[string]any{
 			"level":  cfg.Logging.Level,
 			"format": cfg.Logging.Format,
@@ -1270,7 +1300,8 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 	logger.Info("generating AI summaries", "pages", len(jobs), "concurrency", concurrency)
 
 	// Start a user-visible spinner if a progress indicator is available.
-	if progress != nil {
+	// Use reflection to check for nil interface or nil pointer inside interface.
+	if progress != nil && !isNilInterface(progress) {
 		progress.Start(fmt.Sprintf("Generating AI summaries (0/%d)…", len(jobs)))
 	}
 
@@ -1314,12 +1345,12 @@ func fillWithAI(ctx context.Context, siteIndex *site.Site, provider summary.Prov
 			affected = append(affected, job.page.SourcePath)
 			filled++
 		}
-		if progress != nil {
+		if progress != nil && !isNilInterface(progress) {
 			progress.Update(fmt.Sprintf("Generating AI summaries (%d/%d)…", processed, len(jobs)))
 		}
 	}
 
-	if progress != nil {
+	if progress != nil && !isNilInterface(progress) {
 		progress.Stop()
 	}
 
@@ -1362,4 +1393,17 @@ func generatePlaceholders(siteIndex *site.Site, publicDir string, logger *slog.L
 		logger.Info("placeholders generated", "count", generated)
 	}
 	return nil
+}
+
+// isNilInterface checks if an interface value is nil or contains a nil pointer.
+func isNilInterface(i any) bool {
+	if i == nil {
+		return true
+	}
+	v := reflect.ValueOf(i)
+	switch v.Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Slice, reflect.Chan, reflect.Func:
+		return v.IsNil()
+	}
+	return false
 }

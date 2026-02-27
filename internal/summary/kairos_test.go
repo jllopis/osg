@@ -362,7 +362,7 @@ func TestBuildDefaultPrompt_NoLanguage(t *testing.T) {
 	if strings.Contains(prompt, "in Spanish") || strings.Contains(prompt, "in English") {
 		t.Errorf("expected no language clause, got %q", prompt)
 	}
-	if !strings.Contains(prompt, "1-2 short sentences") {
+	if !strings.Contains(prompt, "2-3 sentences") {
 		t.Errorf("expected base prompt text, got %q", prompt)
 	}
 	// Verify the language-neutral prompt matches the template with empty string.

@@ -12,5 +12,23 @@
       {{ end }}
     </nav>
     {{ end }}
+    <div class="header-search">
+      <input type="search" id="header-search-input" placeholder="{{ trans "nav.search" }}..." autocomplete="off" aria-label="{{ trans "nav.search" }}" />
+      <div id="header-search-results" class="search-dropdown" aria-expanded="false"></div>
+    </div>
   </div>
 </header>
+<script src="https://cdn.jsdelivr.net/npm/minisearch@7.1.0/dist/umd/index.min.js" defer></script>
+<script src="/js/search.js" defer></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof OSGSearch !== 'undefined') {
+      new OSGSearch({
+        inputSelector: '#header-search-input',
+        resultsSelector: '#header-search-results',
+        maxResults: 8,
+        minChars: 2
+      });
+    }
+  });
+</script>

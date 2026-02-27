@@ -20,8 +20,17 @@ cover.out
 .osg/
 examples/sample-site/public/
 
-# Rust / WASM examples
+# Rust / WASM build artifacts
 examples/plugins/**/target/
 examples/plugins/**/Cargo.lock
 examples/plugins/**/*.wasm
+plugins-src/**/target/
+plugins-src/**/Cargo.lock
+plugins-src/**/*.wasm
+
+# Runtime plugins directory (extracted from embedded or user-installed)
 plugins/*.wasm
+
+# Bundled plugin binaries are embedded via //go:embed and must be tracked.
+# The .wasm inside internal/plugin/bundled/ is NOT ignored.
+# To update it: make plugins && cp plugins-src/search/search.wasm internal/plugin/bundled/

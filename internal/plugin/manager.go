@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
@@ -18,6 +20,7 @@ type Manager struct {
 	runtime wazero.Runtime
 	plugins []*Plugin
 	logger  *slog.Logger
+	timeout time.Duration // per-plugin call timeout; zero means no timeout
 }
 
 type Plugin struct {
@@ -27,6 +30,16 @@ type Plugin struct {
 	allocFn   api.Function
 	deallocFn api.Function
 	handleFn  api.Function
+	info      PluginMeta
+}
+
+// PluginMeta holds optional metadata exported by a plugin via plugin_info.
+type PluginMeta struct {
+	Name        string   `json:"name"`
+	Version     string   `json:"version"`
+	Description string   `json:"description"`
+	Author      string   `json:"author"`
+	Hooks       []string `json:"hooks"`
 }
 
 type Event struct {
@@ -38,20 +51,27 @@ type Response struct {
 	Payload map[string]any `json:"payload"`
 }
 
-func Load(ctx context.Context, dir string, enabled []string, logger *slog.Logger) (*Manager, error) {
+// Load discovers and loads enabled .wasm plugins from dir.
+// timeoutSec sets the per-call timeout in seconds (0 = no timeout).
+func Load(ctx context.Context, dir string, enabled []string, timeoutSec int, logger *slog.Logger) (*Manager, error) {
+	var timeout time.Duration
+	if timeoutSec > 0 {
+		timeout = time.Duration(timeoutSec) * time.Second
+	}
+
 	if strings.TrimSpace(dir) == "" {
-		return &Manager{logger: logger}, nil
+		return &Manager{logger: logger, timeout: timeout}, nil
 	}
 
 	info, err := os.Stat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &Manager{logger: logger}, nil
+			return &Manager{logger: logger, timeout: timeout}, nil
 		}
 		return nil, fmt.Errorf("stat plugins dir: %w", err)
 	}
 	if !info.IsDir() {
-		return &Manager{logger: logger}, nil
+		return &Manager{logger: logger, timeout: timeout}, nil
 	}
 
 	runtime := wazero.NewRuntime(ctx)
@@ -59,7 +79,7 @@ func Load(ctx context.Context, dir string, enabled []string, logger *slog.Logger
 		return nil, fmt.Errorf("init wasi: %w", err)
 	}
 
-	manager := &Manager{runtime: runtime, logger: logger}
+	manager := &Manager{runtime: runtime, logger: logger, timeout: timeout}
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -125,11 +145,28 @@ func normalizePluginName(name string) string {
 	return strings.TrimSpace(name)
 }
 
+// Metadata returns metadata for all loaded plugins.
+func (m *Manager) Metadata() []PluginMeta {
+	out := make([]PluginMeta, len(m.plugins))
+	for i, p := range m.plugins {
+		out[i] = p.info
+	}
+	return out
+}
+
 func (m *Manager) Close(ctx context.Context) error {
 	if m.runtime == nil {
 		return nil
 	}
 	return m.runtime.Close(ctx)
+}
+
+// pluginResult holds the outcome of a single plugin call.
+type pluginResult struct {
+	name    string
+	resp    *Response
+	err     error
+	elapsed time.Duration
 }
 
 func (m *Manager) Emit(ctx context.Context, event string, payload map[string]any) map[string]any {
@@ -146,28 +183,97 @@ func (m *Manager) Emit(ctx context.Context, event string, payload map[string]any
 		return nil
 	}
 
+	// Single plugin: avoid goroutine overhead.
+	if len(m.plugins) == 1 {
+		return m.emitSingle(ctx, m.plugins[0], event, data)
+	}
+
+	// Multiple plugins: run in parallel, collect results.
+	results := make([]pluginResult, len(m.plugins))
+	var wg sync.WaitGroup
+	wg.Add(len(m.plugins))
+
+	for i, p := range m.plugins {
+		go func(idx int, plugin *Plugin) {
+			defer wg.Done()
+			callCtx := ctx
+			var cancel context.CancelFunc
+			if m.timeout > 0 {
+				callCtx, cancel = context.WithTimeout(ctx, m.timeout)
+			}
+
+			start := time.Now()
+			resp, err := plugin.Call(callCtx, data)
+			elapsed := time.Since(start)
+
+			if cancel != nil {
+				cancel()
+			}
+
+			results[idx] = pluginResult{
+				name:    plugin.name,
+				resp:    resp,
+				err:     err,
+				elapsed: elapsed,
+			}
+		}(i, p)
+	}
+	wg.Wait()
+
+	// Merge results in original order (alphabetical by plugin name)
+	// to guarantee deterministic output.
 	overrides := map[string]any{}
-	for _, plugin := range m.plugins {
-		resp, err := plugin.Call(ctx, data)
-		if err != nil {
+	for _, r := range results {
+		if r.err != nil {
 			if m.logger != nil {
-				m.logger.Warn("plugin call failed", "plugin", plugin.name, "event", event, "error", err)
+				m.logger.Warn("plugin call failed", "plugin", r.name, "event", event, "elapsed", r.elapsed, "error", r.err)
 			}
 			continue
 		}
-		if resp == nil {
+		if m.logger != nil {
+			m.logger.Debug("plugin call", "plugin", r.name, "event", event, "elapsed", r.elapsed)
+		}
+		if r.resp == nil || r.resp.Payload == nil {
 			continue
 		}
-		if resp.Payload == nil {
-			continue
-		}
-		mergeMaps(overrides, resp.Payload)
+		mergeMaps(overrides, r.resp.Payload)
 	}
 
 	if len(overrides) == 0 {
 		return nil
 	}
 	return overrides
+}
+
+// emitSingle handles the common single-plugin case without goroutine overhead.
+func (m *Manager) emitSingle(ctx context.Context, plugin *Plugin, event string, data []byte) map[string]any {
+	callCtx := ctx
+	var cancel context.CancelFunc
+	if m.timeout > 0 {
+		callCtx, cancel = context.WithTimeout(ctx, m.timeout)
+	}
+
+	start := time.Now()
+	resp, err := plugin.Call(callCtx, data)
+	elapsed := time.Since(start)
+
+	if cancel != nil {
+		cancel()
+	}
+
+	if err != nil {
+		if m.logger != nil {
+			m.logger.Warn("plugin call failed", "plugin", plugin.name, "event", event, "elapsed", elapsed, "error", err)
+		}
+		return nil
+	}
+	if m.logger != nil {
+		m.logger.Debug("plugin call", "plugin", plugin.name, "event", event, "elapsed", elapsed)
+	}
+	if resp == nil || resp.Payload == nil {
+		return nil
+	}
+	return resp.Payload
 }
 
 func loadPlugin(ctx context.Context, runtime wazero.Runtime, path string) (*Plugin, error) {
@@ -182,7 +288,17 @@ func loadPlugin(ctx context.Context, runtime wazero.Runtime, path string) (*Plug
 	}
 
 	name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-	module, err := runtime.InstantiateModule(ctx, compiled, wazero.NewModuleConfig().WithName(name))
+
+	// Mount the host filesystem at "/" so plugins can write to public_dir
+	// and other paths via WASI file operations (e.g. std::fs::write in Rust).
+	fsConfig := wazero.NewFSConfig().WithDirMount("/", "/")
+	modConfig := wazero.NewModuleConfig().
+		WithName(name).
+		WithFSConfig(fsConfig).
+		WithStdout(os.Stdout).
+		WithStderr(os.Stderr)
+
+	module, err := runtime.InstantiateModule(ctx, compiled, modConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -200,14 +316,55 @@ func loadPlugin(ctx context.Context, runtime wazero.Runtime, path string) (*Plug
 
 	deallocFn := module.ExportedFunction("dealloc")
 
-	return &Plugin{
+	p := &Plugin{
 		name:      name,
 		module:    module,
 		memory:    memory,
 		allocFn:   allocFn,
 		deallocFn: deallocFn,
 		handleFn:  handleFn,
-	}, nil
+	}
+
+	// Attempt to read optional plugin_info export for metadata.
+	p.info = readPluginInfo(ctx, p)
+
+	return p, nil
+}
+
+// readPluginInfo calls the optional plugin_info export.
+// The function must take no args and return an i64 (packed ptr/len).
+// Returns zero-value PluginMeta if the export is missing or fails.
+func readPluginInfo(ctx context.Context, p *Plugin) PluginMeta {
+	infoFn := p.module.ExportedFunction("plugin_info")
+	if infoFn == nil {
+		return PluginMeta{Name: p.name}
+	}
+
+	ret, err := infoFn.Call(ctx)
+	if err != nil || len(ret) == 0 {
+		return PluginMeta{Name: p.name}
+	}
+
+	out := ret[0]
+	outPtr := uint32(out >> 32)
+	outLen := uint32(out)
+	if outLen == 0 {
+		return PluginMeta{Name: p.name}
+	}
+
+	data, ok := p.memory.Read(outPtr, outLen)
+	if !ok {
+		return PluginMeta{Name: p.name}
+	}
+
+	var meta PluginMeta
+	if err := json.Unmarshal(data, &meta); err != nil {
+		return PluginMeta{Name: p.name}
+	}
+	if meta.Name == "" {
+		meta.Name = p.name
+	}
+	return meta
 }
 
 func (p *Plugin) Call(ctx context.Context, payload []byte) (*Response, error) {

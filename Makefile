@@ -30,7 +30,7 @@ SERVE_ADDR ?= :1313
 INSTALL_PATH := $(HOME)/.local/bin
 
 .PHONY: all build build-all clean test test-coverage lint fmt vet tidy deps run init update-content serve tui install uninstall version help
-.PHONY: plugins plugins-feed plugins-search
+.PHONY: plugins plugins-search plugins-example-feed install-plugins
 
 ## Default target
 all: tidy fmt vet test build
@@ -154,17 +154,24 @@ help:
 	@echo ""
 	@echo "Usage: make [target]"
 
-## Build example WASM plugins
-plugins: plugins-feed plugins-search
+## Build bundled WASM plugins (from plugins-src/)
+plugins: plugins-search
 
-## Build RSS feed plugin (Rust WASM)
-plugins-feed:
-	@echo "Building feed plugin..."
-	@cd examples/plugins/feed && ./build.sh
-	@echo "Built: examples/plugins/feed/feed.wasm"
-
-## Build search plugin (Rust WASM)
+## Build search plugin (bundled, Rust WASM)
 plugins-search:
 	@echo "Building search plugin..."
-	@cd examples/plugins/search && ./build.sh
-	@echo "Built: examples/plugins/search/search.wasm"
+	@cd plugins-src/search && ./build.sh
+	@echo "Built: plugins-src/search/search.wasm"
+
+## Install compiled plugins into plugins/ directory
+install-plugins: plugins
+	@echo "Installing bundled plugins..."
+	@mkdir -p plugins
+	@cp plugins-src/search/search.wasm plugins/
+	@echo "Installed: plugins/search.wasm"
+
+## Build example feed plugin (reference only, not bundled)
+plugins-example-feed:
+	@echo "Building example feed plugin..."
+	@cd examples/plugins/feed && ./build.sh
+	@echo "Built: examples/plugins/feed/feed.wasm"

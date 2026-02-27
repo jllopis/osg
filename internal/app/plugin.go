@@ -86,7 +86,7 @@ func RunPluginToggle(_ context.Context, opts CLIOptions, name string) error {
 	return updatePluginState(opts, name, !on)
 }
 
-func RunPluginList(_ context.Context, opts CLIOptions, out io.Writer) error {
+func RunPluginList(ctx context.Context, opts CLIOptions, out io.Writer) error {
 	cfg, err := config.Load(opts.ConfigPath)
 	if err != nil {
 		return err
@@ -107,22 +107,42 @@ func RunPluginList(_ context.Context, opts CLIOptions, out io.Writer) error {
 		return nil
 	}
 
-	for _, plugin := range installed {
+	// Load plugins to read optional metadata (plugin_info export).
+	mgr, loadErr := plugin.Load(ctx, cfg.PluginsDir, cfg.PluginsEnabled, 0, nil)
+	metaMap := map[string]plugin.PluginMeta{}
+	if loadErr == nil && mgr != nil {
+		defer mgr.Close(ctx)
+		for _, m := range mgr.Metadata() {
+			metaMap[m.Name] = m
+		}
+	}
+
+	for _, p := range installed {
 		state := "disabled"
-		if enabled[plugin.Name] {
+		if enabled[p.Name] {
 			state = "enabled"
 		}
-		logger.Info("plugin", "name", plugin.Name, "state", state, "path", plugin.Path)
+		attrs := []any{"name", p.Name, "state", state}
+		if meta, ok := metaMap[p.Name]; ok {
+			if meta.Version != "" {
+				attrs = append(attrs, "version", meta.Version)
+			}
+			if meta.Description != "" {
+				attrs = append(attrs, "description", meta.Description)
+			}
+		}
+		attrs = append(attrs, "path", p.Path)
+		logger.Info("plugin", attrs...)
 	}
 	return nil
 }
 
-func RunPluginInit(_ context.Context, opts CLIOptions, name string, baseDir string) error {
+func RunPluginInit(_ context.Context, opts CLIOptions, name string, baseDir string, lang string) error {
 	baseDir = strings.TrimSpace(baseDir)
 	if baseDir == "" {
 		baseDir = "plugins_src"
 	}
-	return plugin.ScaffoldRust(baseDir, name)
+	return plugin.Scaffold(baseDir, name, lang)
 }
 
 func updatePluginState(opts CLIOptions, name string, enable bool) error {

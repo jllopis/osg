@@ -70,6 +70,33 @@ func TestShouldPublish(t *testing.T) {
 			expect: true,
 			draft:  false,
 		},
+		// osg block as list-of-maps (YAML with - prefixes)
+		{
+			name: "osg list-of-maps with publish",
+			fm: map[string]any{"osg": []any{
+				map[string]any{"publish": true},
+				map[string]any{"image": "test.jpg"},
+			}},
+			expect: true,
+			draft:  false,
+		},
+		{
+			name: "osg list-of-maps without publish",
+			fm: map[string]any{"osg": []any{
+				map[string]any{"image": "test.jpg"},
+			}},
+			expect: false,
+			draft:  false,
+		},
+		{
+			name: "osg list-of-maps with publish draft",
+			fm: map[string]any{"osg": []any{
+				map[string]any{"publish": "draft"},
+				map[string]any{"featured": true},
+			}},
+			expect: true,
+			draft:  true,
+		},
 	}
 
 	for _, tc := range cases {
@@ -126,6 +153,24 @@ func TestGetOSGString(t *testing.T) {
 		{
 			name:   "osg block wrong type",
 			fm:     map[string]any{"osg": "not a map"},
+			key:    "path",
+			expect: "",
+		},
+		// osg block as list-of-maps (YAML with - prefixes)
+		{
+			name: "osg list-of-maps extracts path",
+			fm: map[string]any{"osg": []any{
+				map[string]any{"publish": true},
+				map[string]any{"path": "about"},
+			}},
+			key:    "path",
+			expect: "about",
+		},
+		{
+			name: "osg list-of-maps missing key",
+			fm: map[string]any{"osg": []any{
+				map[string]any{"publish": true},
+			}},
 			key:    "path",
 			expect: "",
 		},
@@ -199,6 +244,25 @@ func TestGetOSGBool(t *testing.T) {
 			fm:     map[string]any{"osg": map[string]any{"menu": 42}},
 			key:    "menu",
 			expect: false,
+		},
+		// osg block as list-of-maps (YAML with - prefixes)
+		{
+			name: "osg list-of-maps extracts featured bool",
+			fm: map[string]any{"osg": []any{
+				map[string]any{"publish": true},
+				map[string]any{"featured": true},
+			}},
+			key:    "featured",
+			expect: true,
+		},
+		{
+			name: "osg list-of-maps extracts menu string",
+			fm: map[string]any{"osg": []any{
+				map[string]any{"publish": true},
+				map[string]any{"menu": "true"},
+			}},
+			key:    "menu",
+			expect: true,
 		},
 	}
 

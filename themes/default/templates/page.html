@@ -28,7 +28,7 @@
           </header>
 
           {{ if .page.image }}
-          <div class="article-hero container">
+          <div class="article-hero container-narrow">
             {{ picture .page.image .page.title "eager" }}
           </div>
           {{ end }}
@@ -56,5 +56,6 @@
 
       {{ template "partials/footer.html" . }}
     </div>
+    {{ if .config.lightbox }}<script src="{{ get_url "/js/lightbox.js" false true }}"></script>{{ end }}
   </body>
 </html>

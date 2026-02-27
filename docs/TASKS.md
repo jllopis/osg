@@ -120,3 +120,38 @@ Formato: [todo|doing|done] Tarea
 [done] (Serve) Serve isolation: opts.SkipAI=true en RunServe(), fallback a auto strategy
 [done] (Serve) BuildOptions struct en build.go con SkipAI y ForceAISummaries
 [done] (AI Cache) Documentacion: ROADMAP, TASKS, DESIGN, Funcional, AGENTS.md
+
+[done] (Phase 11-A) Mover search plugin a plugins-src/search/, feed a ejemplo de referencia
+[done] (Phase 11-A) Actualizar Makefile: plugins desde plugins-src/, target install-plugins
+[done] (Phase 11-A) Embeber search.wasm en binario con EnsureBundledPlugins() (//go:embed)
+[done] (Phase 11-A) Habilitar search por defecto, link en header.html, claves i18n nav.search
+[done] (Phase 11-A) Limpiar examples/plugins/, actualizar README y .gitignore
+[done] (Phase 11-B) Tests unitarios para manager.go (Load, Emit, Call, Merge) + fix WASI mount
+[done] (Phase 11-B) Timeouts por plugin call (PluginTimeout config, context.WithTimeout)
+[done] (Phase 11-B) Ejecucion paralela de plugins (WaitGroup, merge determinista)
+[done] (Phase 11-B) Plugin metadata (export plugin_info, PluginMeta, Metadata(), osg plugin list)
+[done] (Phase 11-C) Hook config.validate (post-config, errores detienen build)
+[done] (Phase 11-C) Hook content.transform (modifica Markdown pre-render)
+[done] (Phase 11-C) Hook image.process (transformacion imagenes via WASI)
+[done] (Phase 11-C) Hook after.build (post-build garantizado)
+[done] (Phase 11-D) Package osg-plugin-sdk-go: Event/Response/PluginMeta types, Plugin struct, On() handlers, ABI helpers
+[done] (Phase 11-D) 17 tests unitarios para SDK Go (handler dispatch, plugin_info, helpers, edge cases)
+[done] (Phase 11-D) Scaffold TinyGo: osg plugin init --lang=go (main.go con wasmexport, go.mod, build.sh, README)
+[done] (Phase 11-D) Actualizar scaffold Rust con plugin_info, bytes_to_wasm, doc de 10 hooks
+[done] (Phase 11-D) CLI --lang flag en PluginInitCmd (default rust), TUI /plugin init <name> [dir] [lang]
+[done] (Phase 11-D) Fix embed: go.mod.tmpl renaming, .tmpl extension stripping, //go:build ignore en template
+[done] (Phase 11-D) 12 tests scaffold: Go+Rust content, .tmpl stripping, tinygo alias, default lang, naming, errors
+[todo] (Phase 11-E) Instalacion desde GitHub (osg plugin install github.com/user/repo)
+[todo] (Phase 11-E) Indice curado (plugins-index.json, osg plugin search, cache local)
+[todo] (Phase 11-E) Versionado plugins (plugin_info version, update, lock file)
+[todo] (Phase 11-F) Actualizar docs/PLUGINS.md con nuevos hooks, SDK, registry
+[todo] (Phase 11-F) Templates: link /search/ en header, claves i18n
+
+[done] (Lightbox) Custom Goldmark renderer: figure[data-lightbox] con figcaption para imagenes standalone
+[done] (Lightbox) Lightbox JS: overlay fullscreen Nord, nav teclado/touch, captions, counter
+[done] (Lightbox) Galeria automatica: figures consecutivas en CSS grid responsive
+[done] (Lightbox) Config lightbox: true (default habilitado), JS condicional en page.html
+[done] (Lightbox) CSS: overlay, botones, transiciones, responsive, prefers-reduced-motion
+[done] (Lightbox) 10 tests unitarios figure rendering + test paragrafos normales
+[done] (Lightbox) Dual-file sync: CSS, JS, templates en internal/theme/ y themes/default/
+[done] (Lightbox) Documentacion: ROADMAP, TASKS, DESIGN, AGENTS.md

@@ -25,6 +25,7 @@ type CLI struct {
 	Init          struct{}  `cmd:"" help:"Initialize project structure"`
 	UpdateContent struct{}  `cmd:"" help:"Sync content from vault"`
 	Build         BuildCmd  `cmd:"" help:"Build static site (HTML)"`
+	Deploy        DeployCmd `cmd:"" help:"Deploy site to remote destination"`
 	Serve         ServeCmd  `cmd:"" help:"Serve public directory"`
 	New           NewCmd    `cmd:"" help:"Create a new post in the vault"`
 	TUI           struct{}  `cmd:"" help:"Launch TUI"`
@@ -37,6 +38,12 @@ type CLI struct {
 type BuildCmd struct {
 	ForceAISummaries bool `help:"Regenerate all AI summaries (bypasses cache)" name:"force-ai-summaries"`
 	Yes              bool `help:"Skip confirmation prompts" short:"y"`
+}
+
+type DeployCmd struct {
+	Provider string `help:"Deploy provider (cloudflare, rsync, s3)" short:"p"`
+	Build    bool   `help:"Run build before deploying" default:"true"`
+	Preview  bool   `help:"Show what would be deployed without making changes"`
 }
 
 type ServeCmd struct {
@@ -80,6 +87,7 @@ type PluginToggleCmd struct {
 type PluginInitCmd struct {
 	Name string `arg:"" help:"Plugin name"`
 	Dir  string `help:"Base directory for plugin sources" default:"plugins_src"`
+	Lang string `help:"Plugin language: rust (default), go" default:"rust"`
 }
 
 func main() {
@@ -150,6 +158,13 @@ func main() {
 			}
 		}
 		runErr = app.RunBuild(context.Background(), opts)
+	case strings.HasPrefix(command, "deploy"):
+		deployOpts := app.DeployOptions{
+			Provider: cli.Deploy.Provider,
+			Build:    cli.Deploy.Build,
+			DryRun:   cli.Deploy.Preview,
+		}
+		runErr = app.RunDeploy(context.Background(), opts, deployOpts)
 	case strings.HasPrefix(command, "new"):
 		postOpts := app.NewPostOptions{
 			Title:   cli.New.Title,
@@ -174,7 +189,7 @@ func main() {
 	case command == "plugin list":
 		runErr = app.RunPluginList(context.Background(), opts, os.Stdout)
 	case strings.HasPrefix(command, "plugin init"):
-		runErr = app.RunPluginInit(context.Background(), opts, cli.Plugin.Init.Name, cli.Plugin.Init.Dir)
+		runErr = app.RunPluginInit(context.Background(), opts, cli.Plugin.Init.Name, cli.Plugin.Init.Dir, cli.Plugin.Init.Lang)
 	case command == "version":
 		fmt.Println(app.VersionInfo())
 	default:

@@ -38,7 +38,7 @@ internal/
   logging/            Structured logger (slog)
   markdown/           Goldmark renderer
   placeholder/        SVG placeholder generation (Nord palette)
-  plugin/             WASM plugin host (wazero), hooks, SDK
+  plugin/             WASM plugin host (wazero), hooks, SDK, bundled plugin embed
   publish/            Publish filter, osg block extraction, slug derivation
   render/             Template renderer, FuncMap, template resolution
   site/               Site model: Page, Taxonomy, hierarchy, MenuPages()
@@ -51,9 +51,12 @@ internal/
   wikilink/           Wikilink -> Markdown rewriter (![[img|alt]])
 docs/                 Specs and plans (DESIGN, TEMPLATES, TAXONOMIES, etc.)
 themes/default/       Runtime theme (extracted from embedded on each build)
+plugins-src/
+  search/             Bundled search plugin source (Rust WASM, embedded in binary)
 examples/
   sample-site/        Minimal CI example site (vault_path: "")
-  plugins/            WASM plugin examples (feed, search)
+  plugins/
+    feed/             Reference example plugin (RSS feed, not bundled)
 ```
 
 ## Critical: Template Dual-File Sync
@@ -115,31 +118,79 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
   bounded parallelism with semaphore channel and per-request timeouts
 - **Theme**: Nord color palette, dark mode (auto/light/dark via `color_scheme`),
   Inter + JetBrains Mono fonts, responsive CSS
-- **Plugins**: WASM via wazero, hook-based (transform_content, etc.)
+- **Plugins**: WASM via wazero, hook-based. Search plugin bundled (embedded
+  in binary via `//go:embed`, extracted to `plugins/` at build time).
+  `EnsureBundledPlugins()` in `internal/plugin/bundled.go`.
+  
+  **CRITICAL**: Plugins MUST be compiled with `wasm32-wasip1` target (WASI).
+  `wasm32-unknown-unknown` does NOT work (no filesystem access).
+  
+  10 hooks: `config.validate`, `content.transform`, `image.process`,
+  `build.started`, `build.finished`, `after.build`, `page.render`,
+  `section.render`, `taxonomy.list.render`, `taxonomy.term.render`.
+  
+  CLI + TUI management. See `docs/PLUGINS.md` for full documentation.
+  
+- **Search plugin**: Full-text search with:
+  - Indexes complete HTML content (title, summary, content, tags)
+  - Generates `/search.json`, `/search/index.html`, `/js/search.js`
+  - Header search bar with dropdown results (Nord-styled)
+  - Standalone `/search/` page with extended results
+  - OSGSearch JS class for custom integration
+  - Accent-normalized search, keyboard navigation, excerpt highlighting
+
+- **Image lightbox/gallery**: Click-to-zoom for content images with:
+  - Custom Goldmark renderer wraps standalone `![alt](src)` in `<figure data-lightbox>`
+  - Zero-dependency JS lightbox (~120 lines): fullscreen overlay, keyboard/touch nav
+  - Automatic gallery grouping: consecutive figures -> CSS grid
+  - `lightbox: true` config (default enabled), conditional JS loading
+  - Nord-styled overlay, captions from alt text, counter, `prefers-reduced-motion`
+  - `internal/markdown/figure.go`, `internal/theme/default/static/js/lightbox.js`
+
+- **Wikilinks processing**: `update-content` rewrites Obsidian wikilinks:
+  - Image wikilinks `![[image.png]]` → markdown images
+  - Text wikilinks `[[Note Title]]` → markdown links if page exists, plain text if not
+  - Two-pass algorithm: build page index (including aliases), then resolve links
+  - `internal/wikilink/` package handles both image and text wikilinks
+
+- **WASI filesystem**: `public_dir` in `configView()` is converted to absolute
+  path for plugin compatibility. WASI mount maps host `/` to guest `/`, so
+  relative paths don't resolve correctly.
 - **TUI**: Bubble Tea with 2-panel layout, slash commands, Nord palette
 
 ## Current State (as of last session)
 
-All phases 1-10 complete. Standalone Pages feature complete. `osg new` command complete. i18n in templates complete. Kairos AI summaries complete. AI summary cache, language-aware prompts, and serve isolation complete.
+All phases 1-10 complete. Phase 11 (Plugin ecosystem) in progress: Fase A, B, C, D done.
+Standalone Pages, `osg new`, i18n, Kairos AI summaries, AI cache all complete.
 
 ### Recently completed
-- AI summary cache: `internal/build/ai_cache.go` with `AICache` struct,
-  SHA-256 content hash keys, thread-safe lookup/store, JSON persistence at
-  `.osg/cache/ai-summaries.json`. `--force-ai-summaries` and `--yes` CLI flags.
-  14 unit tests.
-- Language-aware prompts: `buildDefaultPrompt(lang)` injects language into
-  system prompt based on `default_language`. `langDisplayName()` maps BCP-47
-  codes. Custom `system_prompt` bypasses language injection. 10 unit tests.
-- Serve isolation: `RunServe()` sets `SkipAI=true`, all serve builds fall back
-  to auto strategy. `BuildOptions` struct with `SkipAI`/`ForceAISummaries`.
-- Kairos AI summaries: `internal/summary/kairos.go` with `KairosProvider`,
-  `NewKairosProvider()` factory for 5 LLM providers. `AIConfig` in config with
-  provider/model/api_key/base_url/system_prompt/timeout/concurrency. Bounded
-  concurrency in `fillWithAI()` with semaphore channel and per-request timeouts.
-  Graceful fallback to auto strategy on provider creation failure. 20 unit tests.
+- Phase 11-D (SDK Go / TinyGo scaffolds): Go SDK package (`internal/plugin/sdk/`)
+  with Event/Response/PluginMeta types, Plugin struct with On() handlers, ABI
+  helpers. TinyGo scaffold via `osg plugin init --lang=go` (main.go with
+  `//go:wasmexport`, go.mod, build.sh, README). Rust scaffold updated with
+  `plugin_info` export, `bytes_to_wasm` helper, all 10 hooks documented.
+  CLI `--lang` flag (default rust), TUI `/plugin init <name> [dir] [lang]`.
+  Fixed embed issue (go.mod.tmpl renaming, .tmpl stripping, //go:build ignore).
+  29 new tests (17 SDK + 12 scaffold).
+- Image lightbox/gallery: Custom Goldmark renderer wraps standalone images in
+  `<figure data-lightbox>` with `<figcaption>`. Zero-dependency JS lightbox
+  (~120 lines) with fullscreen overlay, keyboard/touch nav, captions, counter.
+  Automatic gallery grouping for consecutive figures via CSS grid. Config
+  `lightbox: true` (default enabled). Nord-styled, accessible, responsive.
+- Phase 11-A (Plugin restructuring): Search plugin moved from `examples/`
+  to `plugins-src/search/` (source) and `internal/plugin/bundled/` (embedded
+  `.wasm`). `EnsureBundledPlugins()` extracts bundled plugins at build time
+  without overwriting user-provided ones. Search enabled by default in
+  `plugins_enabled`. Feed plugin reclassified as reference example.
+- Phase 11-B (Tests and robustness): 26 new tests, WASI filesystem mount fix,
+  per-call timeouts, parallel plugin execution, plugin metadata via `plugin_info`.
+- Phase 11-C (New hooks): `config.validate`, `content.transform`, `image.process`,
+  `after.build` implemented in `internal/build/hooks.go` with 11 new tests.
+- Search plugin enhanced: Full-text indexing, `/js/search.js` module, header
+  search bar with dropdown, standalone `/search/` page, keyboard navigation.
 
 ### Backlog (deferred, not started)
-- Image gallery / lightbox
+- (empty)
 
 ## Key Dependencies
 

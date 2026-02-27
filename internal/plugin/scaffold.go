@@ -12,9 +12,35 @@ import (
 
 //go:embed templates/rust/*
 //go:embed templates/rust/src/*
+//go:embed templates/go/*
+//go:embed templates/go/*.tmpl
 var pluginTemplates embed.FS
 
+// Scaffold creates a new plugin project in baseDir/name using the given
+// language template. Supported languages: "rust" (default), "go".
+func Scaffold(baseDir string, name string, lang string) error {
+	lang = strings.ToLower(strings.TrimSpace(lang))
+	if lang == "" {
+		lang = "rust"
+	}
+
+	switch lang {
+	case "rust":
+		return scaffoldFromTemplate(baseDir, name, "templates/rust", rustReplacements(name))
+	case "go", "tinygo":
+		return scaffoldFromTemplate(baseDir, name, "templates/go", goReplacements(name))
+	default:
+		return fmt.Errorf("unsupported language %q: must be rust or go", lang)
+	}
+}
+
+// ScaffoldRust creates a Rust plugin scaffold. Retained for backward
+// compatibility; new code should use Scaffold(baseDir, name, "rust").
 func ScaffoldRust(baseDir string, name string) error {
+	return Scaffold(baseDir, name, "rust")
+}
+
+func scaffoldFromTemplate(baseDir string, name string, templateDir string, replacements map[string]string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return fmt.Errorf("plugin name is required")
@@ -32,12 +58,6 @@ func ScaffoldRust(baseDir string, name string) error {
 		return err
 	}
 
-	crateName := toCrateName(name)
-	replacements := map[string]string{
-		"{{name}}":       name,
-		"{{crate_name}}": crateName,
-	}
-
 	return fs.WalkDir(pluginTemplates, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -46,10 +66,12 @@ func ScaffoldRust(baseDir string, name string) error {
 			return nil
 		}
 
-		rel := strings.TrimPrefix(path, "templates/rust/")
+		rel := strings.TrimPrefix(path, templateDir+"/")
 		if rel == path {
 			return nil
 		}
+		// Strip .tmpl extension so e.g. "go.mod.tmpl" becomes "go.mod".
+		rel = strings.TrimSuffix(rel, ".tmpl")
 		dest := filepath.Join(target, rel)
 		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 			return err
@@ -67,7 +89,33 @@ func ScaffoldRust(baseDir string, name string) error {
 	})
 }
 
+func rustReplacements(name string) map[string]string {
+	return map[string]string{
+		"{{name}}":       name,
+		"{{crate_name}}": toCrateName(name),
+	}
+}
+
+func goReplacements(name string) map[string]string {
+	return map[string]string{
+		"{{name}}":              name,
+		"{{module_name}}":       toModuleName(name),
+		"//go:build ignore\n\n": "", // strip build tag used to hide template from Go toolchain
+	}
+}
+
 func toCrateName(name string) string {
+	name = strings.ToLower(strings.TrimSpace(name))
+	name = strings.ReplaceAll(name, " ", "-")
+	name = strings.ReplaceAll(name, "_", "-")
+	name = strings.ReplaceAll(name, ".", "-")
+	if strings.HasPrefix(name, "osg-") {
+		return name
+	}
+	return "osg-" + name
+}
+
+func toModuleName(name string) string {
 	name = strings.ToLower(strings.TrimSpace(name))
 	name = strings.ReplaceAll(name, " ", "-")
 	name = strings.ReplaceAll(name, "_", "-")

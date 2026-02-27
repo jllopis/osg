@@ -167,6 +167,56 @@
 - [done] 14 tests para AI cache + 10 tests para language-aware prompts
 - [done] Documentacion: DESIGN, ROADMAP, TASKS, Funcional, AGENTS.md
 
+## Phase 11 - Plugin ecosystem (todo)
+
+### Fase A - Reestructuracion y bundled plugins (done)
+- [done] A1: mover search plugin de examples/plugins/search/ a plugins-src/search/
+- [done] A1: reclasificar examples/plugins/feed/ como ejemplo de referencia (no bundled)
+- [done] A1: actualizar Makefile: target `plugins` compila desde plugins-src/, nuevo target `install-plugins`
+- [done] A2: embeber search.wasm en binario (//go:embed) con EnsureBundledPlugins()
+- [done] A3: habilitar search por defecto en plugins_enabled, link en header, claves i18n
+- [done] A4: limpiar examples/plugins/, actualizar README y .gitignore
+
+### Fase B - Tests y robustez del host (done)
+- [done] B1: tests unitarios para manager.go (Load, Emit, Call, Merge, normalizePluginName)
+- [done] B1: fix WASI filesystem mount (WithFSConfig + WithDirMount) para plugin file I/O
+- [done] B2: timeouts por plugin call (PluginTimeout en config, context.WithTimeout)
+- [done] B3: ejecucion paralela de plugins (WaitGroup, merge determinista en orden original)
+- [done] B4: plugin metadata (export plugin_info, PluginMeta struct, Metadata() en Manager, osg plugin list mejorado)
+
+### Fase C - Nuevos hooks (done)
+- [done] C1: hook config.validate (emitido tras cargar config, errores detienen build)
+- [done] C2: hook content.transform (modifica Markdown antes del render)
+- [done] C3: hook image.process (transformacion de imagenes via WASI filesystem)
+- [done] C4: hook after.build (post-build garantizado, para deploy/notificaciones)
+
+### Fase D - SDK Go (TinyGo) (done)
+- [done] D1: package osg-plugin-sdk-go (tipos Event/Response/PluginMeta, helpers, ABI) en internal/plugin/sdk/
+- [done] D2: scaffold TinyGo (osg plugin init --lang=go, template main.go con wasmexport, build.sh, README)
+- [done] D3: actualizar scaffold Rust con plugin_info, bytes_to_wasm y doc de 10 hooks
+- [done] D4: CLI --lang flag en PluginInitCmd, TUI /plugin init <name> [dir] [lang]
+- [done] D5: fix embed issue (go.mod.tmpl + .tmpl stripping, //go:build ignore en template main.go)
+- [done] D6: 12 tests scaffold (Go+Rust content, .tmpl stripping, tinygo alias, default lang, errors) + 17 tests SDK
+
+### Fase E - Registry e instalacion remota
+- [todo] E1: instalacion desde GitHub (osg plugin install github.com/user/repo[@version])
+- [todo] E2: indice curado (plugins-index.json, osg plugin search, cache local)
+- [todo] E3: versionado de plugins (plugin_info version, osg plugin update, lock file)
+
+### Fase F - Documentacion y templates
+- [todo] F1: actualizar docs/PLUGINS.md (nuevos hooks, SDK Go, registry, plugin_info)
+- [todo] F2: actualizar ROADMAP.md y TASKS.md con Phase 11
+- [todo] F3: templates del tema (link /search/ en header, i18n)
+
+## Image gallery / lightbox (done)
+- [done] Custom Goldmark renderer: `<figure data-lightbox>` con `<figcaption>` para imagenes standalone
+- [done] Lightbox JS: overlay fullscreen, navegacion teclado/touch, captions, counter
+- [done] Galeria automatica: figures consecutivas en CSS grid responsive
+- [done] Config `lightbox: true` (default habilitado)
+- [done] CSS Nord-styled: overlay, botones, transiciones, responsive, prefers-reduced-motion
+- [done] Tests unitarios: 10 tests para figure rendering + test de paragrafos normales
+- [done] Dual-file sync: CSS, JS, templates en internal/theme/ y themes/default/
+
 ## Backlog (deferred)
 - [done] i18n en templates
-- [todo] galeria de imagenes / lightbox
+- (vacio)

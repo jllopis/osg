@@ -3,6 +3,7 @@ package summary
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/jllopis/kairos/pkg/llm"
@@ -15,7 +16,18 @@ import (
 // DefaultSystemPromptTemplate is the default system instruction for AI summary
 // generation when no custom prompt is configured.  The %s placeholder is
 // replaced with a language clause (e.g. "in Spanish") when a language is set.
-const DefaultSystemPromptTemplate = "Summarize the following blog post in 1-2 short sentences (max 120 characters)%s for use as a preview excerpt. Return only the summary text, no labels or prefixes."
+//
+// The prompt is deliberately strict and repetitive because small local models
+// (e.g. Ollama) tend to produce verbose structured output if not firmly
+// constrained.
+const DefaultSystemPromptTemplate = `Write a single short paragraph (2-3 sentences, maximum 200 characters)%s summarizing the following blog post for use as a preview excerpt.
+
+STRICT RULES:
+- Output ONLY the summary paragraph, nothing else.
+- NO titles, headings, labels, prefixes, or section numbers.
+- NO bullet points, numbered lists, or structured formats.
+- NO markdown formatting (no asterisks, underscores, hashes).
+- The summary must be a single continuous paragraph of plain text.`
 
 // buildDefaultPrompt returns the default system prompt, optionally injecting
 // a language instruction.  When lang is empty the prompt is language-neutral.
@@ -98,7 +110,59 @@ func (k *KairosProvider) Summarize(ctx context.Context, title string, rawMarkdow
 		return "", fmt.Errorf("kairos: %w", err)
 	}
 
-	return strings.TrimSpace(resp.Content), nil
+	// Strip any markdown formatting the LLM might have included and enforce
+	// maximum length.  Small local models sometimes ignore length constraints
+	// and produce verbose structured output.
+	summary := PlainText(strings.TrimSpace(resp.Content))
+
+	// Reject structured output (numbered lists, headings, labels) that
+	// small models produce despite explicit instructions.  Fall back to
+	// extracting the first sentences from the original content.
+	if isStructuredOutput(summary) {
+		summary = truncateSentence(PlainText(rawMarkdown), maxSummaryLen)
+	} else {
+		summary = truncateSentence(summary, maxSummaryLen)
+	}
+	return summary, nil
+}
+
+// maxSummaryLen is the hard upper limit (in runes) for AI-generated summaries.
+// Summaries exceeding this are truncated at the nearest sentence or word
+// boundary by truncateSentence.
+const maxSummaryLen = 300
+
+// reStructuredPatterns detects structured output that is NOT a valid
+// single-paragraph summary.
+var reStructuredPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?m)^\d+\.\s`),                                          // numbered list: "1. Foo"
+	regexp.MustCompile(`(?mi)^[A-Z]\.\s`),                                       // lettered list: "A. Foo"
+	regexp.MustCompile(`(?m)^[-*+]\s`),                                          // bullet list
+	regexp.MustCompile(`(?mi)^(resumen|summary|esquema|conclusion|contexto)\b`), // labels/titles
+	regexp.MustCompile(`(?m)^.{0,40}:\s*$`),                                     // heading-like: "Key points:"
+}
+
+// isStructuredOutput returns true if the text contains patterns typical of
+// structured LLM output (numbered lists, headings, labels) rather than a
+// single paragraph summary.
+func isStructuredOutput(text string) bool {
+	matches := 0
+	for _, re := range reStructuredPatterns {
+		if re.MatchString(text) {
+			matches++
+		}
+	}
+	// A single match could be a false positive (e.g. "Resumen:" as first
+	// word then a proper paragraph).  Require 2+ pattern matches or check
+	// for strong indicators.
+	if matches >= 2 {
+		return true
+	}
+	// Also reject if the text has too many newlines (structured output).
+	lines := strings.Count(text, "\n")
+	if lines > 4 {
+		return true
+	}
+	return false
 }
 
 // AIConfig holds the parameters needed to create a KairosProvider.

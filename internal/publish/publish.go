@@ -3,6 +3,7 @@ package publish
 import "strings"
 
 // GetOSGBlock extracts the "osg" map from frontmatter, returning nil if absent or wrong type.
+// It handles both map format and list-of-maps format (YAML with - prefixes).
 func GetOSGBlock(fm map[string]any) map[string]any {
 	if fm == nil {
 		return nil
@@ -11,11 +12,29 @@ func GetOSGBlock(fm map[string]any) map[string]any {
 	if !ok {
 		return nil
 	}
-	m, ok := raw.(map[string]any)
-	if !ok {
-		return nil
+
+	// Direct map format: osg:\n  publish: true
+	if m, ok := raw.(map[string]any); ok {
+		return m
 	}
-	return m
+
+	// List-of-maps format: osg:\n  - publish: true\n  - image: "..."
+	// Merge all list items into a single map.
+	if list, ok := raw.([]any); ok {
+		merged := make(map[string]any)
+		for _, item := range list {
+			if m, ok := item.(map[string]any); ok {
+				for k, v := range m {
+					merged[k] = v
+				}
+			}
+		}
+		if len(merged) > 0 {
+			return merged
+		}
+	}
+
+	return nil
 }
 
 func ShouldPublish(fm map[string]any) (publish bool, draft bool) {

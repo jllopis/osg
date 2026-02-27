@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"osg/internal/config"
 	"osg/internal/content"
@@ -18,6 +19,21 @@ import (
 	"osg/internal/wikilink"
 )
 
+// pageIndexEntry holds computed info for a single note during the first pass.
+type pageIndexEntry struct {
+	sourcePath string
+	outputPath string
+	urlPath    string
+	title      string
+	fm         map[string]any
+	body       []byte
+	isDraft    bool
+	pub        bool
+	dateValue  time.Time
+	slugValue  string
+	osgPath    string
+}
+
 type UpdateStats struct {
 	Total    int
 	Parsed   int
@@ -26,6 +42,7 @@ type UpdateStats struct {
 	Drafts   int
 	Errors   int
 	Images   int
+	Links    int
 }
 
 func RunUpdateContent(_ context.Context, opts CLIOptions) error {
@@ -72,6 +89,10 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 	stats := UpdateStats{Total: len(files)}
 	seen := map[string]string{}
 
+	// First pass: parse all files and build page index for wikilink resolution
+	entries := make([]*pageIndexEntry, 0, len(files))
+	pageIndex := make(map[string]string) // normalized title -> URL path
+
 	for _, path := range files {
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
@@ -107,19 +128,13 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 
 		dateValue := date.Derive(fm, info)
 		slugValue := slug.Derive(fm, info.Name())
-
-		dateISO := date.FormatISO(dateValue)
-		datePath := date.FormatPath(dateValue)
-
-		outputFM := content.NormalizeFrontmatter(fm, slugValue, dateISO, isDraft, info.Name())
-
-		// If osg.path is set, use it as the output path instead of the default content_layout.
-		// This allows standalone pages (e.g. "about") to have custom URL paths.
 		osgPath := publish.GetOSGString(fm, "path")
+
 		var outputPath string
 		if osgPath != "" {
 			outputPath = filepath.Join(cfg.ContentDir, filepath.Clean(osgPath), "index.md")
 		} else {
+			datePath := date.FormatPath(dateValue)
 			outputPath = content.BuildOutputPath(cfg.ContentDir, cfg.ContentLayout, datePath, slugValue)
 		}
 
@@ -130,59 +145,103 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 		}
 		seen[outputPath] = path
 
+		// Compute URL path for this page
 		outputDir := filepath.Dir(outputPath)
+		urlPath := ""
+		if relDir, relErr := filepath.Rel(cfg.ContentDir, outputDir); relErr == nil {
+			urlPath = "/" + filepath.ToSlash(relDir) + "/"
+		}
 
+		// Get title for index
+		title := pickTitle(fm)
+
+		entry := &pageIndexEntry{
+			sourcePath: path,
+			outputPath: outputPath,
+			urlPath:    urlPath,
+			title:      title,
+			fm:         fm,
+			body:       body,
+			isDraft:    isDraft,
+			pub:        pub,
+			dateValue:  dateValue,
+			slugValue:  slugValue,
+			osgPath:    osgPath,
+		}
+		entries = append(entries, entry)
+
+		// Add to page index (normalized title -> URL)
+		if title != "" && urlPath != "" {
+			normalized := wikilink.NormalizeTitle(title)
+			if _, exists := pageIndex[normalized]; !exists {
+				pageIndex[normalized] = urlPath
+			}
+		}
+
+		// Also add aliases to the index
+		if aliases := pickAliases(fm); len(aliases) > 0 && urlPath != "" {
+			for _, alias := range aliases {
+				normalized := wikilink.NormalizeTitle(alias)
+				if normalized != "" {
+					if _, exists := pageIndex[normalized]; !exists {
+						pageIndex[normalized] = urlPath
+					}
+				}
+			}
+		}
+	}
+
+	logger.Info("page index built", "entries", len(pageIndex))
+
+	// Second pass: process and write files with wikilink resolution
+	for _, entry := range entries {
 		if opts.DryRun {
-			logger.Info("dry-run", "source", path, "dest", outputPath)
+			logger.Info("dry-run", "source", entry.sourcePath, "dest", entry.outputPath)
 			stats.Exported++
 			continue
 		}
 
+		outputDir := filepath.Dir(entry.outputPath)
+
 		if err := os.MkdirAll(outputDir, 0o755); err != nil {
-			logger.Warn("failed to create output directory", "path", outputPath, "error", err)
+			logger.Warn("failed to create output directory", "path", entry.outputPath, "error", err)
 			stats.Errors++
 			continue
 		}
 
-		// Compute the URL path prefix for this post (e.g. "/2025/09/16/logos/")
-		// so images can be referenced with absolute paths that work from any page.
-		pageURLDir := ""
-		if relDir, relErr := filepath.Rel(cfg.ContentDir, outputDir); relErr == nil {
-			pageURLDir = "/" + filepath.ToSlash(relDir) + "/"
-		}
+		dateISO := date.FormatISO(entry.dateValue)
+		outputFM := content.NormalizeFrontmatter(entry.fm, entry.slugValue, dateISO, entry.isDraft, filepath.Base(entry.sourcePath))
 
-		// Resolve the frontmatter image (from osg.image or top-level image/cover/banner).
-		// Try to find it in the vault, copy it, and set an absolute URL path.
-		// If it can't be resolved and isn't an external URL, remove it so the
-		// placeholder generator can create one during build.
+		// Resolve the frontmatter image
 		if imgRef, ok := outputFM["image"].(string); ok && imgRef != "" {
 			if isExternalURL(imgRef) {
-				// External URL — leave as-is
-				logger.Info("image is external URL", "url", imgRef, "note", path)
+				logger.Info("image is external URL", "url", imgRef, "note", entry.sourcePath)
 			} else if strings.HasPrefix(imgRef, "/") {
-				// Already absolute path — leave as-is
+				// Already absolute path
 			} else if srcPath, found := imageIndex.Resolve(imgRef); found {
 				destName := filepath.Base(srcPath)
 				destPath := filepath.Join(outputDir, destName)
 				if cpErr := copyFile(srcPath, destPath); cpErr != nil {
 					logger.Warn("failed to copy image", "src", srcPath, "dest", destPath, "error", cpErr)
-					delete(outputFM, "image") // let placeholder handle it
+					delete(outputFM, "image")
 				} else {
-					outputFM["image"] = pageURLDir + destName
+					outputFM["image"] = entry.urlPath + destName
 					stats.Images++
 					logger.Info("copied image", "src", srcPath, "dest", destPath, "url", outputFM["image"])
 				}
 			} else {
-				logger.Warn("image not found in vault, will use placeholder", "ref", imgRef, "note", path)
-				delete(outputFM, "image") // let placeholder handle it
+				logger.Warn("image not found in vault, will use placeholder", "ref", imgRef, "note", entry.sourcePath)
+				delete(outputFM, "image")
 			}
 		}
 
-		// Rewrite wikilink images in body and copy referenced images
+		body := entry.body
+
+		// Rewrite wikilink images in body
 		body = wikilink.RewriteImageLinks(body, func(ref string) (string, bool) {
 			srcPath, found := imageIndex.Resolve(ref)
 			if !found {
-				logger.Warn("wikilink image not found in vault", "ref", ref, "note", path)
+				logger.Warn("wikilink image not found in vault", "ref", ref, "note", entry.sourcePath)
 				return "", false
 			}
 
@@ -198,20 +257,32 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 			return destName, true
 		})
 
+		// Rewrite wikilink text references: [[Note Title]] or [[Note Title|display]]
+		body = wikilink.RewriteTextLinks(body, func(title string) (string, bool) {
+			normalized := wikilink.NormalizeTitle(title)
+			if url, ok := pageIndex[normalized]; ok {
+				stats.Links++
+				return url, true
+			}
+			// Not found: return empty to strip [[ ]]
+			logger.Debug("wikilink not resolved", "title", title, "note", entry.sourcePath)
+			return "", false
+		})
+
 		outputBytes, err := content.RenderMarkdown(outputFM, body)
 		if err != nil {
-			logger.Warn("failed to render output", "path", path, "error", err)
+			logger.Warn("failed to render output", "path", entry.sourcePath, "error", err)
 			stats.Errors++
 			continue
 		}
 
-		if err := os.WriteFile(outputPath, outputBytes, 0o644); err != nil {
-			logger.Warn("failed to write output", "path", outputPath, "error", err)
+		if err := os.WriteFile(entry.outputPath, outputBytes, 0o644); err != nil {
+			logger.Warn("failed to write output", "path", entry.outputPath, "error", err)
 			stats.Errors++
 			continue
 		}
 
-		logger.Info("exported", "source", path, "dest", outputPath)
+		logger.Info("exported", "source", entry.sourcePath, "dest", entry.outputPath)
 		stats.Exported++
 	}
 
@@ -222,11 +293,65 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 		"skipped", stats.Skipped,
 		"drafts", stats.Drafts,
 		"images", stats.Images,
+		"links", stats.Links,
 		"errors", stats.Errors,
 	)
 
 	if stats.Errors > 0 {
 		return fmt.Errorf("completed with %d errors", stats.Errors)
+	}
+
+	return nil
+}
+
+// pickTitle extracts title from frontmatter (title or name field)
+func pickTitle(fm map[string]any) string {
+	if fm == nil {
+		return ""
+	}
+	if title, ok := fm["title"].(string); ok {
+		return strings.TrimSpace(title)
+	}
+	if name, ok := fm["name"].(string); ok {
+		return strings.TrimSpace(name)
+	}
+	return ""
+}
+
+// pickAliases extracts aliases from frontmatter (as string slice)
+func pickAliases(fm map[string]any) []string {
+	if fm == nil {
+		return nil
+	}
+	raw, ok := fm["aliases"]
+	if !ok {
+		return nil
+	}
+
+	// Handle []any (YAML list)
+	if list, ok := raw.([]any); ok {
+		var result []string
+		for _, item := range list {
+			if s, ok := item.(string); ok {
+				s = strings.TrimSpace(s)
+				if s != "" {
+					result = append(result, s)
+				}
+			}
+		}
+		return result
+	}
+
+	// Handle []string
+	if list, ok := raw.([]string); ok {
+		var result []string
+		for _, s := range list {
+			s = strings.TrimSpace(s)
+			if s != "" {
+				result = append(result, s)
+			}
+		}
+		return result
 	}
 
 	return nil
