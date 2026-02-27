@@ -249,3 +249,215 @@ func TestExpandPath(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// getEnv / getEnvOr
+// ---------------------------------------------------------------------------
+
+func TestGetEnv(t *testing.T) {
+	t.Run("found", func(t *testing.T) {
+		t.Setenv("OSG_TEST_KEY", "value")
+		got, err := getEnv("OSG_TEST_KEY")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != "value" {
+			t.Errorf("got %q, want %q", got, "value")
+		}
+	})
+
+	t.Run("missing", func(t *testing.T) {
+		t.Setenv("OSG_TEST_KEY", "")
+		_, err := getEnv("OSG_TEST_KEY")
+		if err == nil {
+			t.Error("expected error for empty env var")
+		}
+	})
+}
+
+func TestGetEnvOr(t *testing.T) {
+	t.Run("found", func(t *testing.T) {
+		t.Setenv("OSG_TEST_KEY", "value")
+		got := getEnvOr("OSG_TEST_KEY", "default")
+		if got != "value" {
+			t.Errorf("got %q, want %q", got, "value")
+		}
+	})
+
+	t.Run("missing uses fallback", func(t *testing.T) {
+		t.Setenv("OSG_TEST_KEY", "")
+		got := getEnvOr("OSG_TEST_KEY", "fallback")
+		if got != "fallback" {
+			t.Errorf("got %q, want %q", got, "fallback")
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// Get happy path
+// ---------------------------------------------------------------------------
+
+func TestGet_Known(t *testing.T) {
+	for _, name := range []string{"rsync", "s3", "cloudflare"} {
+		t.Run(name, func(t *testing.T) {
+			p, err := Get(name, map[string]any{})
+			if err != nil {
+				t.Fatalf("Get(%q) error: %v", name, err)
+			}
+			if p == nil {
+				t.Fatalf("Get(%q) returned nil provider", name)
+			}
+			if p.Name() != name {
+				t.Errorf("Name() = %q, want %q", p.Name(), name)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// newRsync field extraction
+// ---------------------------------------------------------------------------
+
+func TestNewRsync_Defaults(t *testing.T) {
+	p := newRsync(map[string]any{
+		"host": "user@host",
+		"path": "/var/www",
+	}).(*RsyncProvider)
+
+	if p.Port != "22" {
+		t.Errorf("Port = %q, want %q", p.Port, "22")
+	}
+	if !p.Delete {
+		t.Error("Delete should default to true")
+	}
+	if p.KeyFile != "" {
+		t.Errorf("KeyFile should be empty, got %q", p.KeyFile)
+	}
+	if p.ExtraFlags != "" {
+		t.Errorf("ExtraFlags should be empty, got %q", p.ExtraFlags)
+	}
+}
+
+func TestNewRsync_CustomValues(t *testing.T) {
+	p := newRsync(map[string]any{
+		"host":        "user@host",
+		"path":        "/var/www",
+		"port":        "2222",
+		"key_file":    "~/.ssh/deploy",
+		"delete":      false,
+		"exclude":     ".git,*.tmp",
+		"extra_flags": "--dry-run",
+	}).(*RsyncProvider)
+
+	if p.Port != "2222" {
+		t.Errorf("Port = %q, want %q", p.Port, "2222")
+	}
+	if p.Delete {
+		t.Error("Delete should be false")
+	}
+	if p.KeyFile != "~/.ssh/deploy" {
+		t.Errorf("KeyFile = %q", p.KeyFile)
+	}
+	if p.Exclude != ".git,*.tmp" {
+		t.Errorf("Exclude = %q", p.Exclude)
+	}
+	if p.ExtraFlags != "--dry-run" {
+		t.Errorf("ExtraFlags = %q", p.ExtraFlags)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// newS3 field extraction
+// ---------------------------------------------------------------------------
+
+func TestNewS3_Defaults(t *testing.T) {
+	// Clear env to get true defaults
+	t.Setenv("AWS_DEFAULT_REGION", "")
+	t.Setenv("AWS_PROFILE", "")
+
+	p := newS3(map[string]any{
+		"bucket": "my-bucket",
+	}).(*S3Provider)
+
+	if p.Bucket != "my-bucket" {
+		t.Errorf("Bucket = %q", p.Bucket)
+	}
+	if p.ACL != "public-read" {
+		t.Errorf("ACL = %q, want %q", p.ACL, "public-read")
+	}
+	if p.Delete {
+		t.Error("Delete should default to false")
+	}
+	if p.Region != "" {
+		t.Errorf("Region should be empty, got %q", p.Region)
+	}
+}
+
+func TestNewS3_PathTrimming(t *testing.T) {
+	t.Setenv("AWS_DEFAULT_REGION", "")
+	t.Setenv("AWS_PROFILE", "")
+
+	p := newS3(map[string]any{
+		"bucket": "b",
+		"path":   "/blog/site/",
+	}).(*S3Provider)
+
+	if p.Path != "blog/site" {
+		t.Errorf("Path = %q, want %q (trimmed slashes)", p.Path, "blog/site")
+	}
+}
+
+func TestNewS3_EnvDefaults(t *testing.T) {
+	t.Setenv("AWS_DEFAULT_REGION", "eu-west-1")
+	t.Setenv("AWS_PROFILE", "prod")
+
+	p := newS3(map[string]any{
+		"bucket": "b",
+	}).(*S3Provider)
+
+	if p.Region != "eu-west-1" {
+		t.Errorf("Region = %q, want eu-west-1 from env", p.Region)
+	}
+	if p.Profile != "prod" {
+		t.Errorf("Profile = %q, want prod from env", p.Profile)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// newCloudflare field extraction
+// ---------------------------------------------------------------------------
+
+func TestNewCloudflare_Defaults(t *testing.T) {
+	p := newCloudflare(map[string]any{
+		"project": "my-site",
+	}).(*CloudflareProvider)
+
+	if p.Project != "my-site" {
+		t.Errorf("Project = %q", p.Project)
+	}
+	if p.Branch != "main" {
+		t.Errorf("Branch = %q, want %q", p.Branch, "main")
+	}
+	if p.UseWorkers {
+		t.Error("UseWorkers should default to false")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Run error paths (no exec needed)
+// ---------------------------------------------------------------------------
+
+func TestRun_UnknownProvider(t *testing.T) {
+	err := Run(nil, "nonexistent", nil, "/tmp")
+	if err == nil {
+		t.Error("expected error for unknown provider")
+	}
+}
+
+func TestRun_ValidationFailure(t *testing.T) {
+	// rsync without host should fail validation
+	err := Run(nil, "rsync", map[string]any{}, "/tmp")
+	if err == nil {
+		t.Error("expected validation error for rsync without host")
+	}
+}

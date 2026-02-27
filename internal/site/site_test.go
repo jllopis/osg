@@ -375,3 +375,415 @@ func TestSectionView_DefaultFeaturedIsMostRecent(t *testing.T) {
 		t.Errorf("default featured should be most recent, got %v", featured["title"])
 	}
 }
+
+func TestSectionView_EmptyPages(t *testing.T) {
+	s := &Section{Title: "Empty", Path: "/empty/"}
+	v := s.View()
+	// featured_page is a nil map[string]any (typed nil), which appears as map[]
+	fp, _ := v["featured_page"].(map[string]any)
+	if fp != nil {
+		t.Errorf("empty section should have nil featured_page, got %v", fp)
+	}
+	pages := v["pages"].([]map[string]any)
+	if len(pages) != 0 {
+		t.Errorf("expected 0 pages, got %d", len(pages))
+	}
+}
+
+func TestSectionView_HasSource(t *testing.T) {
+	s := &Section{Title: "Blog", Path: "/blog/", SourcePath: "content/blog/_index.md"}
+	v := s.View()
+	if v["has_source"] != true {
+		t.Errorf("has_source should be true when SourcePath is set, got %v", v["has_source"])
+	}
+
+	s2 := &Section{Title: "Auto", Path: "/auto/"}
+	v2 := s2.View()
+	if v2["has_source"] != false {
+		t.Errorf("has_source should be false when SourcePath is empty, got %v", v2["has_source"])
+	}
+}
+
+func TestSectionView_Subsections(t *testing.T) {
+	s := &Section{
+		Title: "Blog",
+		Path:  "/blog/",
+		Subsections: []*Section{
+			{Title: "Tech", Path: "/blog/tech/"},
+			{Title: "Life", Path: "/blog/life/"},
+		},
+	}
+	v := s.View()
+	subs, ok := v["subsections"].([]map[string]any)
+	if !ok {
+		t.Fatal("subsections should be []map[string]any")
+	}
+	if len(subs) != 2 {
+		t.Errorf("expected 2 subsections, got %d", len(subs))
+	}
+}
+
+// ---- Helper functions ----
+
+func TestPathFromRel(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"index.md", "index.md", "/"},
+		{"_index.md", "_index.md", "/"},
+		{"nested index.md", "blog/index.md", "/blog/"},
+		{"nested _index.md", "blog/_index.md", "/blog/"},
+		{"deep index.md", "a/b/index.md", "/a/b/"},
+		{"deep _index.md", "a/b/_index.md", "/a/b/"},
+		{"regular md file", "blog/hello.md", "/blog/hello/"},
+		{"top-level md file", "about.md", "/about/"},
+		{"already has leading slash", "/custom/path", "/custom/path"},
+		{"no extension", "some/file", "/some/file"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := pathFromRel(tt.in)
+			if got != tt.want {
+				t.Errorf("pathFromRel(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParentPath(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"root", "/", "/"},
+		{"top-level section", "/blog/", "/"},
+		{"nested section", "/blog/tech/", "/blog/"},
+		{"deep nested", "/a/b/c/", "/a/b/"},
+		{"empty", "", "/"},
+		{"no trailing slash", "/blog/tech", "/blog/"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parentPath(tt.in)
+			if got != tt.want {
+				t.Errorf("parentPath(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildPermalink(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		path    string
+		want    string
+	}{
+		{"normal", "https://example.com", "/blog/hello/", "https://example.com/blog/hello/"},
+		{"base with trailing slash", "https://example.com/", "/blog/", "https://example.com/blog/"},
+		{"empty base", "", "/blog/", "/blog/"},
+		{"whitespace base", "  ", "/blog/", "/blog/"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildPermalink(tt.baseURL, tt.path)
+			if got != tt.want {
+				t.Errorf("buildPermalink(%q, %q) = %q, want %q", tt.baseURL, tt.path, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPickString(t *testing.T) {
+	fm := map[string]any{
+		"title": "Hello",
+		"num":   42,
+		"empty": "",
+		"space": "  trimmed  ",
+	}
+
+	tests := []struct {
+		name string
+		keys []string
+		want string
+	}{
+		{"found", []string{"title"}, "Hello"},
+		{"not found", []string{"missing"}, ""},
+		{"nil map", []string{"any"}, ""},
+		{"non-string value", []string{"num"}, ""},
+		{"first key missing, second found", []string{"missing", "title"}, "Hello"},
+		{"trims whitespace", []string{"space"}, "trimmed"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := fm
+			if tt.name == "nil map" {
+				input = nil
+			}
+			got := pickString(input, tt.keys...)
+			if got != tt.want {
+				t.Errorf("pickString() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPickBool(t *testing.T) {
+	fm := map[string]any{
+		"yes":    true,
+		"no":     false,
+		"strue":  "true",
+		"sTRUE":  "TRUE",
+		"sfalse": "false",
+		"num":    42,
+	}
+
+	tests := []struct {
+		name string
+		key  string
+		want bool
+	}{
+		{"bool true", "yes", true},
+		{"bool false", "no", false},
+		{"string true", "strue", true},
+		{"string TRUE", "sTRUE", true},
+		{"string false", "sfalse", false},
+		{"missing key", "missing", false},
+		{"non-bool non-string", "num", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := pickBool(fm, tt.key)
+			if got != tt.want {
+				t.Errorf("pickBool(%q) = %v, want %v", tt.key, got, tt.want)
+			}
+		})
+	}
+
+	// nil map
+	if pickBool(nil, "any") {
+		t.Error("pickBool(nil, any) should return false")
+	}
+}
+
+func TestNormalizeTerm(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"plain", "golang", "golang"},
+		{"trimmed", "  golang  ", "golang"},
+		{"hashtag", "#tag", "tag"},
+		{"hashtag with space", "  #tag  ", "tag"},
+		{"wikilink simple", "[[Note]]", "Note"},
+		{"wikilink with alias", "[[Note|Display]]", "Note"},
+		{"wikilink trimmed", "[[ Note ]]", "Note"},
+		{"empty wikilink", "[[ ]]", ""},
+		{"empty string", "", ""},
+		{"just hash", "#", ""},
+		{"just spaces", "   ", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeTerm(tt.in)
+			if got != tt.want {
+				t.Errorf("normalizeTerm(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeTerms(t *testing.T) {
+	in := []string{"#go", "  rust  ", "", "[[Link]]", "  "}
+	got := normalizeTerms(in)
+	expected := []string{"go", "rust", "Link"}
+	if len(got) != len(expected) {
+		t.Fatalf("len = %d, want %d: %v", len(got), len(expected), got)
+	}
+	for i, want := range expected {
+		if got[i] != want {
+			t.Errorf("normalizeTerms[%d] = %q, want %q", i, got[i], want)
+		}
+	}
+}
+
+func TestToStringSlice(t *testing.T) {
+	t.Run("nil", func(t *testing.T) {
+		got := toStringSlice(nil)
+		if got != nil {
+			t.Errorf("expected nil, got %v", got)
+		}
+	})
+
+	t.Run("[]string", func(t *testing.T) {
+		got := toStringSlice([]string{"a", "", "b", "  "})
+		if len(got) != 2 || got[0] != "a" || got[1] != "b" {
+			t.Errorf("got %v", got)
+		}
+	})
+
+	t.Run("[]any", func(t *testing.T) {
+		got := toStringSlice([]any{"x", 42, "y", ""})
+		if len(got) != 2 || got[0] != "x" || got[1] != "y" {
+			t.Errorf("got %v", got)
+		}
+	})
+
+	t.Run("single string", func(t *testing.T) {
+		got := toStringSlice("hello")
+		if len(got) != 1 || got[0] != "hello" {
+			t.Errorf("got %v", got)
+		}
+	})
+
+	t.Run("empty string", func(t *testing.T) {
+		got := toStringSlice("")
+		if got != nil {
+			t.Errorf("expected nil for empty string, got %v", got)
+		}
+	})
+
+	t.Run("unsupported type", func(t *testing.T) {
+		got := toStringSlice(42)
+		if got != nil {
+			t.Errorf("expected nil for int, got %v", got)
+		}
+	})
+}
+
+func TestCompactStrings(t *testing.T) {
+	in := []string{"  a  ", "", "b", "  ", "c"}
+	got := compactStrings(in)
+	if len(got) != 3 || got[0] != "a" || got[1] != "b" || got[2] != "c" {
+		t.Errorf("compactStrings = %v", got)
+	}
+}
+
+func TestUniqueStrings(t *testing.T) {
+	t.Run("deduplicates case-insensitive", func(t *testing.T) {
+		got := uniqueStrings([]string{"Go", "go", "GO", "Rust"})
+		if len(got) != 2 {
+			t.Fatalf("expected 2, got %d: %v", len(got), got)
+		}
+		if got[0] != "Go" {
+			t.Errorf("first should preserve original casing 'Go', got %q", got[0])
+		}
+	})
+
+	t.Run("skips empty", func(t *testing.T) {
+		got := uniqueStrings([]string{"a", "", "  ", "b"})
+		if len(got) != 2 || got[0] != "a" || got[1] != "b" {
+			t.Errorf("got %v", got)
+		}
+	})
+}
+
+func TestIsFeaturedPage(t *testing.T) {
+	tests := []struct {
+		name  string
+		extra map[string]any
+		want  bool
+	}{
+		{"featured true", map[string]any{"featured": true}, true},
+		{"featured false", map[string]any{"featured": false}, false},
+		{"no extra", nil, false},
+		{"no featured key", map[string]any{"other": "x"}, false},
+		{"featured non-bool", map[string]any{"featured": "yes"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Page{Extra: tt.extra}
+			got := isFeaturedPage(p)
+			if got != tt.want {
+				t.Errorf("isFeaturedPage() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPickTaxonomies(t *testing.T) {
+	t.Run("nil map", func(t *testing.T) {
+		got := pickTaxonomies(nil)
+		if len(got) != 0 {
+			t.Errorf("expected empty, got %v", got)
+		}
+	})
+
+	t.Run("from taxonomies key", func(t *testing.T) {
+		fm := map[string]any{
+			"taxonomies": map[string]any{
+				"tags": []any{"go", "rust"},
+			},
+		}
+		got := pickTaxonomies(fm)
+		if len(got["tags"]) != 2 {
+			t.Errorf("expected 2 tags, got %v", got)
+		}
+	})
+
+	t.Run("from top-level tags", func(t *testing.T) {
+		fm := map[string]any{
+			"tags": []any{"go", "rust"},
+		}
+		got := pickTaxonomies(fm)
+		if len(got["tags"]) != 2 {
+			t.Errorf("expected 2 tags from top-level, got %v", got)
+		}
+	})
+
+	t.Run("merge taxonomies and top-level", func(t *testing.T) {
+		fm := map[string]any{
+			"taxonomies": map[string]any{
+				"tags": []any{"go"},
+			},
+			"tags": []any{"rust"},
+		}
+		got := pickTaxonomies(fm)
+		if len(got["tags"]) != 2 {
+			t.Errorf("expected 2 merged tags, got %v", got)
+		}
+	})
+
+	t.Run("deduplicates", func(t *testing.T) {
+		fm := map[string]any{
+			"taxonomies": map[string]any{
+				"tags": []any{"go"},
+			},
+			"tags": []any{"Go"},
+		}
+		got := pickTaxonomies(fm)
+		if len(got["tags"]) != 1 {
+			t.Errorf("expected 1 deduplicated tag, got %v", got)
+		}
+	})
+}
+
+func TestMergeTaxonomy(t *testing.T) {
+	t.Run("adds new key", func(t *testing.T) {
+		out := map[string][]string{}
+		mergeTaxonomy(out, "tags", []string{"go", "rust"})
+		if len(out["tags"]) != 2 {
+			t.Errorf("expected 2 tags, got %v", out["tags"])
+		}
+	})
+
+	t.Run("merges with existing", func(t *testing.T) {
+		out := map[string][]string{"tags": {"go"}}
+		mergeTaxonomy(out, "tags", []string{"rust"})
+		if len(out["tags"]) != 2 {
+			t.Errorf("expected 2 tags after merge, got %v", out["tags"])
+		}
+	})
+
+	t.Run("skips empty values", func(t *testing.T) {
+		out := map[string][]string{}
+		mergeTaxonomy(out, "tags", []string{})
+		if _, ok := out["tags"]; ok {
+			t.Error("should not add key for empty values")
+		}
+	})
+}

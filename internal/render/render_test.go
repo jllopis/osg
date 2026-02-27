@@ -361,3 +361,236 @@ func TestFuncMap_ContainsExpectedFunctions(t *testing.T) {
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------
+// detectFormat
+// ---------------------------------------------------------------------------
+
+func TestDetectFormat(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		override string
+		want     string
+	}{
+		{"override wins", "data.csv", "json", "json"},
+		{"override trimmed", "data.csv", "  JSON  ", "json"},
+		{"from extension", "data.csv", "", "csv"},
+		{"json extension", "file.json", "", "json"},
+		{"xml extension", "feed.xml", "", "xml"},
+		{"no extension", "noext", "", ""},
+		{"empty input", "", "", ""},
+		{"uppercase extension", "FILE.CSV", "", "csv"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := detectFormat(tt.input, tt.override)
+			if got != tt.want {
+				t.Errorf("detectFormat(%q, %q) = %q, want %q", tt.input, tt.override, got, tt.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// parseCSV
+// ---------------------------------------------------------------------------
+
+func TestParseCSV(t *testing.T) {
+	t.Run("normal", func(t *testing.T) {
+		data := []byte("name,age\nAlice,30\nBob,25\n")
+		got, err := parseCSV(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows, ok := got.([]map[string]string)
+		if !ok {
+			t.Fatalf("expected []map[string]string, got %T", got)
+		}
+		if len(rows) != 2 {
+			t.Fatalf("expected 2 rows, got %d", len(rows))
+		}
+		if rows[0]["name"] != "Alice" || rows[0]["age"] != "30" {
+			t.Errorf("row[0] = %v", rows[0])
+		}
+	})
+
+	t.Run("header only", func(t *testing.T) {
+		data := []byte("name,age\n")
+		got, err := parseCSV(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows := got.([]map[string]string)
+		if len(rows) != 0 {
+			t.Errorf("expected 0 rows for header-only, got %d", len(rows))
+		}
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		got, err := parseCSV([]byte(""))
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows := got.([]map[string]string)
+		if len(rows) != 0 {
+			t.Errorf("expected 0 rows for empty, got %d", len(rows))
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// hashBytes
+// ---------------------------------------------------------------------------
+
+func TestHashBytes(t *testing.T) {
+	data := []byte("hello")
+
+	t.Run("sha256 default", func(t *testing.T) {
+		h1, err := hashBytes(data, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		h2, err := hashBytes(data, "sha256")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(h1) != string(h2) {
+			t.Error("empty algo should default to sha256")
+		}
+		if len(h1) != 32 {
+			t.Errorf("sha256 should produce 32 bytes, got %d", len(h1))
+		}
+	})
+
+	t.Run("sha1", func(t *testing.T) {
+		h, err := hashBytes(data, "sha1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(h) != 20 {
+			t.Errorf("sha1 should produce 20 bytes, got %d", len(h))
+		}
+	})
+
+	t.Run("md5", func(t *testing.T) {
+		h, err := hashBytes(data, "md5")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(h) != 16 {
+			t.Errorf("md5 should produce 16 bytes, got %d", len(h))
+		}
+	})
+
+	t.Run("deterministic", func(t *testing.T) {
+		h1, _ := hashBytes(data, "sha256")
+		h2, _ := hashBytes(data, "sha256")
+		if string(h1) != string(h2) {
+			t.Error("same input should produce same hash")
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
+// boolArg / stringArg
+// ---------------------------------------------------------------------------
+
+func TestBoolArg(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []any
+		index    int
+		fallback bool
+		want     bool
+	}{
+		{"bool true", []any{true}, 0, false, true},
+		{"bool false", []any{false}, 0, true, false},
+		{"string true", []any{"true"}, 0, false, true},
+		{"string TRUE", []any{"TRUE"}, 0, false, true},
+		{"string false", []any{"false"}, 0, true, false},
+		{"out of range", []any{}, 0, true, true},
+		{"non-bool fallback", []any{42}, 0, true, true},
+		{"index 1", []any{"x", true}, 1, false, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := boolArg(tt.args, tt.index, tt.fallback)
+			if got != tt.want {
+				t.Errorf("boolArg() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStringArg(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []any
+		index    int
+		fallback string
+		want     string
+	}{
+		{"found", []any{"hello"}, 0, "default", "hello"},
+		{"trimmed", []any{"  hello  "}, 0, "", "hello"},
+		{"out of range", []any{}, 0, "default", "default"},
+		{"non-string fallback", []any{42}, 0, "default", "default"},
+		{"index 1", []any{"a", "b"}, 1, "", "b"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := stringArg(tt.args, tt.index, tt.fallback)
+			if got != tt.want {
+				t.Errorf("stringArg() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// buildURL (render-local version)
+// ---------------------------------------------------------------------------
+
+func TestBuildURL_Render(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		path    string
+		want    string
+	}{
+		{"normal", "https://example.com", "/blog/", "https://example.com/blog/"},
+		{"trailing slash", "https://example.com/", "/blog/", "https://example.com/blog/"},
+		{"empty base", "", "/blog/", "/blog/"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := buildURL(tt.baseURL, tt.path)
+			if got != tt.want {
+				t.Errorf("buildURL(%q, %q) = %q, want %q", tt.baseURL, tt.path, got, tt.want)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ensureTrailingSlash (render-local version)
+// ---------------------------------------------------------------------------
+
+func TestEnsureTrailingSlash_Render(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{"/blog", "/blog/"},
+		{"/blog/", "/blog/"},
+		{"", "/"},
+		{"/", "/"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			got := ensureTrailingSlash(tt.in)
+			if got != tt.want {
+				t.Errorf("ensureTrailingSlash(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
