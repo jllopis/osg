@@ -1,0 +1,83 @@
+/* Syntax highlighting — Chroma CSS classes, Nord-adapted.
+   Generated for use with goldmark-highlighting WithClasses(true).
+   Light mode uses Nord Snow Storm base, dark mode uses Polar Night. */
+
+/* ---- Light mode (default) ---- */
+.chroma { color: var(--ink-secondary); background: var(--bg-subtle); }
+.chroma .err { color: #bf616a; }
+.chroma .lntd { vertical-align: top; padding: 0; margin: 0; border: 0; }
+.chroma .lntable { border-spacing: 0; padding: 0; margin: 0; border: 0; width: auto; overflow: auto; display: block; }
+.chroma .hl { display: block; width: 100%; background-color: rgba(136,192,208,0.15); }
+.chroma .lnt { margin-right: 0.4em; padding: 0 0.4em; color: var(--ink-faint); }
+.chroma .ln { margin-right: 0.4em; padding: 0 0.4em; color: var(--ink-faint); }
+/* Keyword */
+.chroma .k  { color: #5e81ac; font-weight: 600; }
+.chroma .kc { color: #5e81ac; font-weight: 600; }
+.chroma .kd { color: #5e81ac; font-weight: 600; }
+.chroma .kn { color: #5e81ac; font-weight: 600; }
+.chroma .kp { color: #5e81ac; font-weight: 600; }
+.chroma .kr { color: #5e81ac; font-weight: 600; }
+.chroma .kt { color: #81a1c1; }
+/* Name */
+.chroma .n  { color: var(--ink); }
+.chroma .na { color: #8fbcbb; }
+.chroma .nb { color: #88c0d0; }
+.chroma .nc { color: #8fbcbb; font-weight: 600; }
+.chroma .nd { color: #d08770; }
+.chroma .ni { color: var(--ink); }
+.chroma .ne { color: #bf616a; font-weight: 600; }
+.chroma .nf { color: #88c0d0; }
+.chroma .nl { color: var(--ink); }
+.chroma .nn { color: var(--ink); }
+.chroma .no { color: #5e81ac; }
+.chroma .nt { color: #81a1c1; }
+.chroma .nv { color: var(--ink); }
+/* Literal */
+.chroma .l  { color: #b48ead; }
+.chroma .ld { color: #a3be8c; }
+.chroma .s  { color: #a3be8c; }
+.chroma .sa { color: #a3be8c; }
+.chroma .sb { color: #a3be8c; }
+.chroma .sc { color: #a3be8c; }
+.chroma .dl { color: #a3be8c; }
+.chroma .sd { color: #a3be8c; font-style: italic; }
+.chroma .s2 { color: #a3be8c; }
+.chroma .se { color: #ebcb8b; }
+.chroma .sh { color: #a3be8c; }
+.chroma .si { color: #a3be8c; }
+.chroma .sx { color: #a3be8c; }
+.chroma .sr { color: #ebcb8b; }
+.chroma .s1 { color: #a3be8c; }
+.chroma .ss { color: #a3be8c; }
+.chroma .m  { color: #b48ead; }
+.chroma .mb { color: #b48ead; }
+.chroma .mf { color: #b48ead; }
+.chroma .mh { color: #b48ead; }
+.chroma .mi { color: #b48ead; }
+.chroma .il { color: #b48ead; }
+.chroma .mo { color: #b48ead; }
+/* Operator */
+.chroma .o  { color: #81a1c1; }
+.chroma .ow { color: #81a1c1; font-weight: 600; }
+.chroma .p  { color: var(--ink-secondary); }
+/* Comment */
+.chroma .c  { color: #4c566a; font-style: italic; }
+.chroma .ch { color: #4c566a; font-style: italic; }
+.chroma .cm { color: #4c566a; font-style: italic; }
+.chroma .c1 { color: #4c566a; font-style: italic; }
+.chroma .cs { color: #4c566a; font-style: italic; font-weight: 600; }
+.chroma .cp { color: #5e81ac; }
+.chroma .cpf { color: #5e81ac; }
+/* Generic */
+.chroma .gd { color: #bf616a; }
+.chroma .ge { font-style: italic; }
+.chroma .gr { color: #bf616a; }
+.chroma .gh { color: #88c0d0; font-weight: 600; }
+.chroma .gi { color: #a3be8c; }
+.chroma .go { color: var(--ink-muted); }
+.chroma .gp { color: var(--ink-faint); font-weight: 600; }
+.chroma .gs { font-weight: 600; }
+.chroma .gu { color: #88c0d0; }
+.chroma .gt { color: #bf616a; }
+.chroma .gl { text-decoration: underline; }
+.chroma .w  { color: var(--ink-faint); }

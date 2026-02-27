@@ -3,6 +3,7 @@ package build
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"io"
 	"log/slog"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"osg/internal/i18n"
 	imgopt "osg/internal/image"
 	"osg/internal/logging"
+	"osg/internal/markdown"
 	"osg/internal/placeholder"
 	"osg/internal/plugin"
 	"osg/internal/render"
@@ -298,6 +300,16 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	stats.Rendered += notFoundRendered
 	stats.Cached += notFoundCached
 
+	// Post-render: minify HTML, CSS, JS, JSON, SVG, XML files in public/.
+	if cfg.Minify {
+		minified, err := minifyDir(cfg.PublicDir, logger)
+		if err != nil {
+			logger.Warn("minification walk failed", "error", err)
+		} else {
+			logger.Info("minified output files", "count", minified)
+		}
+	}
+
 	if plugins != nil {
 		finishPayload := cloneMap(baseCtx)
 		finishPayload["stats"] = buildStatsView(stats, siteIndex)
@@ -428,6 +440,15 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 			}
 			if idx < len(postPages)-1 {
 				renderCtx["prev_page"] = postPages[idx+1].View() // older
+			}
+		}
+
+		// Table of Contents from rendered HTML headings.
+		if pageView, ok := renderCtx["page"].(map[string]any); ok {
+			if content, ok := pageView["content"].(template.HTML); ok {
+				if tocEntries := markdown.ExtractTOC(string(content)); len(tocEntries) > 0 {
+					renderCtx["toc"] = markdown.TOCView(tocEntries)
+				}
 			}
 		}
 
@@ -621,6 +642,7 @@ func configView(cfg config.Config) map[string]any {
 		"image_quality":      cfg.ImageQuality,
 		"image_widths":       cfg.ImageWidths,
 		"lightbox":           cfg.Lightbox,
+		"minify":             cfg.Minify,
 		"logging": map[string]any{
 			"level":  cfg.Logging.Level,
 			"format": cfg.Logging.Format,

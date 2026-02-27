@@ -74,6 +74,7 @@ type Config struct {
 	ImageQuality      int              `koanf:"image_quality" yaml:"image_quality"`
 	ImageWidths       []int            `koanf:"image_widths" yaml:"image_widths"`
 	Lightbox          bool             `koanf:"lightbox" yaml:"lightbox"`
+	Minify            bool             `koanf:"minify" yaml:"minify"`
 	DefaultLanguage   string           `koanf:"default_language" yaml:"default_language"`
 	DoctorProfile     string           `koanf:"doctor_profile" yaml:"doctor_profile"`
 	AI                AIConfig         `koanf:"ai" yaml:"ai"`
@@ -136,6 +137,7 @@ func Default() Config {
 		ImageQuality:      80,
 		ImageWidths:       []int{640, 1200},
 		Lightbox:          true,
+		Minify:            true,
 		DefaultLanguage:   "es",
 		DoctorProfile:     "dev",
 		AI: AIConfig{
@@ -403,6 +405,14 @@ image_optimization: true
 image_quality: 80
 image_widths: [640, 1200]
 lightbox: true
+
+# -----------------------------------------------------------------------------
+# Minification
+# -----------------------------------------------------------------------------
+# minify: Minify HTML, CSS, JS, JSON, SVG, and XML files in public/ after
+#         rendering. Uses tdewolff/minify for fast, standards-compliant output.
+#         Disable for easier debugging of generated output.
+minify: true
 
 # -----------------------------------------------------------------------------
 # Dev server (osg serve)

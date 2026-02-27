@@ -255,13 +255,24 @@
 - [done] 6 tests unitarios para relatedPages()
 - [done] Tests: all passing
 
-## Phase 12C - Minificacion + TOC + Theme system (todo)
-- [todo] HTML/JS minification (tdewolff/minify)
-- [todo] Table of Contents generation (requiere heading IDs - ya implementado)
-- [todo] Theme system improvements
-- [todo] Syntax highlighting
-- [todo] Shortcodes
+## Phase 12C - Minificacion + TOC + Syntax + Shortcodes (done)
+- [done] HTML/CSS/JS/JSON/SVG/XML minification (tdewolff/minify/v2, post-render batch in-place)
+- [done] Config `minify: true` (default habilitado), campo Minify en Config struct
+- [done] 5 tests unitarios para minificacion (HTML, CSS, skip images, empty, multiple types)
+- [done] Table of Contents: ExtractTOC() regex h2-h6 desde HTML renderizado, TOCView() para templates
+- [done] Partial template `partials/toc.html` con toggle colapsable
+- [done] 7 tests unitarios para TOC (no headings, h1 ignored, basic, HTML in heading, entities, nil view, basic view)
+- [done] Syntax highlighting: goldmark-highlighting/v2 con Chroma Nord style, CSS-class mode
+- [done] css/syntax.css con colores Nord para tokens (CSS custom properties)
+- [done] Shortcodes: `{{< name [args] >}}content{{< /name >}}` expandidos antes de Goldmark
+- [done] 4 shortcodes built-in: note, warning, tip (admonitions), details (collapsible)
+- [done] Per-name compiled regexes (Go regexp no soporta backreferences)
+- [done] 8 tests unitarios para shortcodes (note, warning, tip, details, unknown, no shortcodes, multiple)
+- [done] CSS: estilos TOC (~50 lineas), estilos admonitions (~50 lineas) con colores Nord
+- [done] i18n: claves toc_title, toc_label en en.yaml y es.yaml
+- [done] Dual-file sync: templates, i18n, CSS en internal/theme/ y themes/default/
 
 ## Backlog (deferred)
+- [todo] Theme system improvements (heredar temas, sobrecargar parciales)
 - [done] i18n en templates
 - (vacio)

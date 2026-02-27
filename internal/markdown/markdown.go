@@ -10,10 +10,22 @@ import (
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/renderer/html"
 	"github.com/yuin/goldmark/util"
+
+	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
+	highlighting "github.com/yuin/goldmark-highlighting/v2"
 )
 
 var md = goldmark.New(
-	goldmark.WithExtensions(extension.GFM, extension.Footnote),
+	goldmark.WithExtensions(
+		extension.GFM,
+		extension.Footnote,
+		highlighting.NewHighlighting(
+			highlighting.WithStyle("nord"),
+			highlighting.WithFormatOptions(
+				chromahtml.WithClasses(true),
+			),
+		),
+	),
 	goldmark.WithParserOptions(parser.WithAutoHeadingID()),
 	goldmark.WithRendererOptions(
 		html.WithUnsafe(),
@@ -35,9 +47,12 @@ var orgTableSepRe = regexp.MustCompile(`(?m)^(\|[-:]+)(\+[-:]+)*\|$`)
 var orgTableSepPlus = regexp.MustCompile(`\+`)
 
 func Render(input []byte) (string, error) {
+	// Pre-process: expand shortcodes before Markdown rendering.
+	processed := []byte(ExpandShortcodes(string(input)))
+
 	// Pre-process: convert Org-mode table separators to GFM format
 	// Org-mode uses |---+---| while GFM needs |---|---|
-	processed := orgTableSepRe.ReplaceAllFunc(input, func(match []byte) []byte {
+	processed = orgTableSepRe.ReplaceAllFunc(processed, func(match []byte) []byte {
 		return orgTableSepPlus.ReplaceAll(match, []byte("|"))
 	})
 

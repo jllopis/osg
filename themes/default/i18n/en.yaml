@@ -26,6 +26,10 @@ newer_post: Newer
 older_post: Older
 related_posts: Related posts
 
+# --- Table of Contents ---
+toc_title: Table of Contents
+toc_label: Table of contents
+
 # --- 404 ---
 not_found_title: Not Found
 not_found_text: This page could not be found.

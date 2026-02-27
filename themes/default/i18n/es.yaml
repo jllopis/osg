@@ -26,6 +26,10 @@ newer_post: Mas reciente
 older_post: Anterior
 related_posts: Publicaciones relacionadas
 
+# --- Tabla de contenidos ---
+toc_title: Contenido
+toc_label: Tabla de contenidos
+
 # --- 404 ---
 not_found_title: No encontrado
 not_found_text: Esta pagina no se pudo encontrar.

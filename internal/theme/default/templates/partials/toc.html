@@ -1,0 +1,12 @@
+{{ if .toc }}
+<nav class="toc" aria-label="{{ trans "toc_label" }}">
+  <h2 class="toc-title">{{ trans "toc_title" }}</h2>
+  <ul class="toc-list">
+    {{ range .toc }}
+    <li class="toc-item toc-level-{{ .level }}">
+      <a href="#{{ .id }}">{{ .title }}</a>
+    </li>
+    {{ end }}
+  </ul>
+</nav>
+{{ end }}

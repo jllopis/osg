@@ -1293,6 +1293,100 @@ picture {
 }
 
 /* ============================================================
+   TABLE OF CONTENTS
+   ============================================================ */
+.toc {
+  margin-bottom: var(--sp-8);
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.toc-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  margin-bottom: var(--sp-3);
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-item {
+  line-height: var(--lh-normal);
+}
+
+.toc-item a {
+  display: block;
+  padding: var(--sp-1) 0;
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.toc-item a:hover {
+  color: var(--accent);
+}
+
+.toc-level-3 { padding-left: var(--sp-4); }
+.toc-level-4 { padding-left: var(--sp-8); }
+.toc-level-5 { padding-left: var(--sp-10); }
+.toc-level-6 { padding-left: var(--sp-12); }
+
+/* ============================================================
+   ADMONITIONS (shortcodes: note, warning, tip)
+   ============================================================ */
+.admonition {
+  margin: 2em 0;
+  padding: var(--sp-4) var(--sp-6);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent-subtle);
+}
+
+.admonition-title {
+  font-weight: 700;
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  margin-bottom: var(--sp-2);
+}
+
+.admonition-note {
+  border-left-color: #5e81ac;
+}
+
+.admonition-note .admonition-title {
+  color: #5e81ac;
+}
+
+.admonition-warning {
+  border-left-color: #d08770;
+  background: rgba(208, 135, 112, 0.10);
+}
+
+.admonition-warning .admonition-title {
+  color: #d08770;
+}
+
+.admonition-tip {
+  border-left-color: #a3be8c;
+  background: rgba(163, 190, 140, 0.10);
+}
+
+.admonition-tip .admonition-title {
+  color: #a3be8c;
+}
+
+/* ============================================================
    READING PROGRESS BAR
    ============================================================ */
 .reading-progress-bar {

@@ -189,8 +189,17 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 12B) Dual-file sync: templates, i18n, CSS, JS
 [done] (Phase 12B) 6 tests unitarios relatedPages()
 
-[todo] (Phase 12C) HTML/JS minification (tdewolff/minify)
-[todo] (Phase 12C) Table of Contents generation
-[todo] (Phase 12C) Theme system improvements
-[todo] (Phase 12C) Syntax highlighting
-[todo] (Phase 12C) Shortcodes
+[done] (Phase 12C) HTML/CSS/JS/JSON/SVG/XML minification (tdewolff/minify/v2, batch in-place)
+[done] (Phase 12C) Config minify: true (default habilitado), campo Minify en Config
+[done] (Phase 12C) 5 tests unitarios minificacion
+[done] (Phase 12C) Table of Contents: ExtractTOC() regex h2-h6, TOCView(), partial toc.html
+[done] (Phase 12C) 7 tests unitarios TOC
+[done] (Phase 12C) Syntax highlighting: goldmark-highlighting/v2, Chroma Nord, CSS classes
+[done] (Phase 12C) css/syntax.css con colores Nord para tokens
+[done] (Phase 12C) Shortcodes: note, warning, tip (admonitions), details (collapsible)
+[done] (Phase 12C) Per-name compiled regexes (Go regexp no soporta backreferences)
+[done] (Phase 12C) 8 tests unitarios shortcodes
+[done] (Phase 12C) CSS: estilos TOC y admonitions con colores Nord
+[done] (Phase 12C) i18n: claves toc_title, toc_label (en + es)
+[done] (Phase 12C) Dual-file sync: templates, i18n, CSS
+[todo] (Backlog) Theme system improvements (herencia de temas, override de parciales)
