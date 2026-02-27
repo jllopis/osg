@@ -23,20 +23,42 @@ Plugins bundled actuales:
 
 ### CLI
 ```bash
+# Instalar desde archivo local
 osg plugin install ./dist/my_plugin.wasm --name my-plugin
+
+# Instalar desde GitHub (descarga .wasm de la ultima release)
+osg plugin install github.com/user/osg-analytics
+osg plugin install github.com/user/osg-analytics@v1.2.0
+
+# Gestionar plugins
 osg plugin enable my-plugin
 osg plugin disable my-plugin
 osg plugin list
-osg plugin init my-plugin --dir plugins_src
+
+# Crear un plugin nuevo
+osg plugin init my-plugin --dir plugins_src          # Rust (default)
+osg plugin init my-plugin --dir plugins_src --lang go # TinyGo
+
+# Buscar plugins en el indice curado
+osg plugin search          # lista todos
+osg plugin search analytics
+
+# Actualizar plugins instalados desde GitHub
+osg plugin update           # comprueba todos
+osg plugin update my-plugin # comprueba uno
 ```
 
 ### TUI
 En el prompt de la TUI:
 ```
-plugin enable my-plugin
-plugin disable my-plugin
-plugin toggle my-plugin
-plugin list
+/plugin enable my-plugin
+/plugin disable my-plugin
+/plugin toggle my-plugin
+/plugin list
+/plugin install github.com/user/osg-analytics
+/plugin init my-plugin plugins_src go
+/plugin search analytics
+/plugin update my-plugin
 ```
 
 ## Requisito: target WASI
@@ -288,6 +310,159 @@ cp target/$TARGET/release/osg_feed.wasm feed.wasm
 ```
 
 Nota: OSG ya genera feeds nativamente desde Phase 10. Este plugin es solo referencia.
+
+---
+
+## SDK Go (TinyGo)
+
+OSG incluye un SDK para escribir plugins en Go, compilados con TinyGo a WASM.
+
+### Crear un plugin Go
+
+```bash
+osg plugin init my-plugin --lang go
+cd plugins_src/my-plugin
+```
+
+Esto genera:
+- `main.go` — plugin template con `//go:wasmexport`, plugin_info, handle_event
+- `go.mod` — modulo Go
+- `build.sh` — script de compilacion TinyGo
+- `README.md` — documentacion con tabla de hooks
+
+### Compilar
+
+```bash
+# Requiere TinyGo >= 0.35
+chmod +x build.sh
+./build.sh
+# Genera: my-plugin.wasm
+```
+
+### Estructura del template
+
+```go
+//go:wasmexport plugin_info
+func pluginInfo() uint64 { ... }
+
+//go:wasmexport handle_event
+func handleEvent(ptr int32, size int32) uint64 { ... }
+
+//go:wasmexport alloc
+func alloc(size int32) int32 { ... }
+```
+
+### SDK package (internal/plugin/sdk)
+
+Para plugins mas complejos, el SDK Go proporciona tipos y helpers:
+
+```go
+import "osg/internal/plugin/sdk"
+
+// Tipos
+sdk.Event{Type: "build.finished", Payload: map[string]any{...}}
+sdk.Response{Payload: map[string]any{...}}
+sdk.PluginMeta{Name: "my-plugin", Version: "1.0.0", Hooks: []string{"build.finished"}}
+
+// Plugin con handlers
+p := sdk.NewPlugin("my-plugin", "1.0.0")
+p.On("build.finished", func(payload map[string]any) map[string]any {
+    // logica del plugin
+    return nil
+})
+
+// Helpers
+sdk.GetString(payload, "config", "public_dir")  // acceso seguro a mapas anidados
+sdk.GetBool(payload, "config", "lightbox")
+sdk.PackPtrLen(ptr, length)                      // empaqueta ptr+len en u64
+```
+
+---
+
+## Instalar desde GitHub
+
+OSG puede descargar plugins directamente desde GitHub Releases:
+
+```bash
+osg plugin install github.com/user/osg-analytics
+osg plugin install github.com/user/osg-analytics@v2.0.0
+```
+
+### Como funciona
+
+1. OSG detecta el formato `github.com/owner/repo[@tag]`
+2. Consulta la GitHub Releases API (latest si no se especifica tag)
+3. Busca un asset `.wasm` en la release
+4. Descarga el `.wasm` a `plugins/`
+5. Registra source + version en `.osg/plugins.lock.json`
+
+### GITHUB_TOKEN
+
+Para repos privados o evitar rate limits:
+
+```bash
+export GITHUB_TOKEN=ghp_xxxx
+osg plugin install github.com/private-org/my-plugin
+```
+
+### Lock file
+
+El lock file (`.osg/plugins.lock.json`) registra cada plugin instalado desde GitHub:
+
+```json
+{
+  "plugins": {
+    "osg-analytics": {
+      "source": "github.com/user/osg-analytics",
+      "version": "v2.0.0"
+    }
+  }
+}
+```
+
+### Actualizar plugins
+
+```bash
+osg plugin update                # comprueba todos los plugins del lock file
+osg plugin update osg-analytics  # comprueba uno especifico
+```
+
+Si hay una version mas reciente en GitHub, se descarga automaticamente.
+
+---
+
+## Indice curado de plugins
+
+OSG mantiene un indice curado de plugins (`plugins-index.json`) en el repositorio.
+
+### Buscar plugins
+
+```bash
+osg plugin search            # lista todos
+osg plugin search analytics  # filtra por nombre, descripcion o autor
+```
+
+Ejemplo de salida:
+```
+search (0.1.0) — Full-text search with header bar, standalone page, and keyboard navigation
+  install: osg plugin install github.com/jllopis/osg-search
+```
+
+### Formato del indice
+
+```json
+{
+  "plugins": [
+    {
+      "name": "search",
+      "description": "Full-text search with header bar and keyboard navigation",
+      "author": "jllopis",
+      "repo": "github.com/jllopis/osg-search",
+      "version": "0.1.0"
+    }
+  ]
+}
+```
 
 ---
 

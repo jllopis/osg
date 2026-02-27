@@ -167,7 +167,7 @@
 - [done] 14 tests para AI cache + 10 tests para language-aware prompts
 - [done] Documentacion: DESIGN, ROADMAP, TASKS, Funcional, AGENTS.md
 
-## Phase 11 - Plugin ecosystem (todo)
+## Phase 11 - Plugin ecosystem (done)
 
 ### Fase A - Reestructuracion y bundled plugins (done)
 - [done] A1: mover search plugin de examples/plugins/search/ a plugins-src/search/
@@ -209,10 +209,10 @@
 - [done] E4: CLI --lang flag, TUI /plugin search y /plugin update
 - [done] E5: 15 tests unitarios (GitHub refs, lock file, index search, download, mock server)
 
-### Fase F - Documentacion y templates
-- [todo] F1: actualizar docs/PLUGINS.md (nuevos hooks, SDK Go, registry, plugin_info)
-- [todo] F2: actualizar ROADMAP.md y TASKS.md con Phase 11
-- [todo] F3: templates del tema (link /search/ en header, i18n)
+### Fase F - Documentacion y templates (done)
+- [done] F1: actualizar docs/PLUGINS.md (SDK Go, registry, GitHub install, search, update)
+- [done] F2: actualizar ROADMAP.md y TASKS.md con Phase 11 completo
+- [done] F3: templates del tema ya incluyen link /search/ en header e i18n (desde Fase A)
 
 ## Image gallery / lightbox (done)
 - [done] Custom Goldmark renderer: `<figure data-lightbox>` con `<figcaption>` para imagenes standalone

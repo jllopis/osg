@@ -148,8 +148,9 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 11-E) Comando update: osg plugin update [name], check contra latest release
 [done] (Phase 11-E) TUI: /plugin search [query] y /plugin update [name]
 [done] (Phase 11-E) 15 tests: GitHub refs, lock file CRUD, index search, download, mock server
-[todo] (Phase 11-F) Actualizar docs/PLUGINS.md con nuevos hooks, SDK, registry
-[todo] (Phase 11-F) Templates: link /search/ en header, claves i18n
+[done] (Phase 11-F) Actualizar docs/PLUGINS.md: SDK Go, registry, GitHub install, search, update
+[done] (Phase 11-F) Templates ya incluyen link /search/ en header e i18n (desde Fase A)
+[done] (Phase 11-F) ROADMAP y TASKS sincronizados con Phase 11 completo
 
 [done] (Lightbox) Custom Goldmark renderer: figure[data-lightbox] con figcaption para imagenes standalone
 [done] (Lightbox) Lightbox JS: overlay fullscreen Nord, nav teclado/touch, captions, counter
