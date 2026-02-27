@@ -1,14 +1,57 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="generator" content="OSG" />
-{{ if .config.site_description }}<meta name="description" content="{{ .config.site_description }}" />{{ end }}
-{{ if .page }}
+{{- /* --- Canonical URL --- */ -}}
+{{ if and .config.base_url .current_path }}<link rel="canonical" href="{{ .config.base_url }}{{ .current_path }}" />{{ end }}
+{{- /* --- Meta description: page summary > section content > site description --- */ -}}
+{{ if and .page .page.summary }}<meta name="description" content="{{ .page.summary }}" />
+{{ else if .config.site_description }}<meta name="description" content="{{ .config.site_description }}" />{{ end }}
+{{- /* --- Font preloads (self-hosted) --- */ -}}
+<link rel="preload" href="/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/jetbrains-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin />
+{{- /* --- Open Graph --- */ -}}
+{{ if .config.site_title }}<meta property="og:site_name" content="{{ .config.site_title }}" />{{ end }}
+{{ if .config.default_language }}<meta property="og:locale" content="{{ .config.default_language }}" />{{ end }}
+{{ if .page -}}
 <meta property="og:title" content="{{ .page.title }}" />
 <meta property="og:type" content="article" />
 {{ if .page.summary }}<meta property="og:description" content="{{ .page.summary }}" />{{ end }}
 {{ if .page.permalink }}<meta property="og:url" content="{{ .page.permalink }}" />{{ end }}
 {{ if .page.image }}<meta property="og:image" content="{{ .page.image }}" />{{ end }}
-{{ end }}
+{{ if .page.date }}<meta property="article:published_time" content="{{ .page.date.Format "2006-01-02T15:04:05Z07:00" }}" />{{ end }}
+{{ if .page.updated }}<meta property="article:modified_time" content="{{ .page.updated.Format "2006-01-02T15:04:05Z07:00" }}" />{{ end }}
+{{- else -}}
+{{- /* Section, index, taxonomy list/term pages */ -}}
+<meta property="og:type" content="website" />
+{{ if and .config.base_url .current_path }}<meta property="og:url" content="{{ .config.base_url }}{{ .current_path }}" />{{ end }}
+{{ if .section -}}
+<meta property="og:title" content="{{ .section.title }}" />
+{{ else if .term -}}
+<meta property="og:title" content="{{ .term.name }}" />
+{{ else if .config.site_title -}}
+<meta property="og:title" content="{{ .config.site_title }}" />
+{{ end -}}
+{{ if .config.site_description }}<meta property="og:description" content="{{ .config.site_description }}" />{{ end }}
+{{ end -}}
+{{- /* --- Twitter Card --- */ -}}
+{{ if .page -}}
+<meta name="twitter:card" content="{{ if .page.image }}summary_large_image{{ else }}summary{{ end }}" />
+<meta name="twitter:title" content="{{ .page.title }}" />
+{{ if .page.summary }}<meta name="twitter:description" content="{{ .page.summary }}" />{{ end }}
+{{ if .page.image }}<meta name="twitter:image" content="{{ .page.image }}" />{{ end }}
+{{- else -}}
+<meta name="twitter:card" content="summary" />
+{{ if .section -}}
+<meta name="twitter:title" content="{{ .section.title }}" />
+{{ else if .term -}}
+<meta name="twitter:title" content="{{ .term.name }}" />
+{{ else if .config.site_title -}}
+<meta name="twitter:title" content="{{ .config.site_title }}" />
+{{ end -}}
+{{ if .config.site_description }}<meta name="twitter:description" content="{{ .config.site_description }}" />{{ end }}
+{{ end -}}
+{{- /* --- Feeds --- */ -}}
 {{ if .config.site_feed }}<link rel="alternate" type="application/atom+xml" title="{{ .config.site_title }} — {{ trans "atom_feed" }}" href="{{ get_url "/atom.xml" false false }}" />
 <link rel="alternate" type="application/rss+xml" title="{{ .config.site_title }} — {{ trans "rss_feed" }}" href="{{ get_url "/rss.xml" false false }}" />{{ end }}
+{{- /* --- Stylesheet --- */ -}}
 <link rel="stylesheet" href="{{ get_url "/style.css" true true }}" />

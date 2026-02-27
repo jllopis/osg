@@ -160,3 +160,32 @@ Formato: [todo|doing|done] Tarea
 [done] (Lightbox) 10 tests unitarios figure rendering + test paragrafos normales
 [done] (Lightbox) Dual-file sync: CSS, JS, templates en internal/theme/ y themes/default/
 [done] (Lightbox) Documentacion: ROADMAP, TASKS, DESIGN, AGENTS.md
+
+[done] (Phase 12A) LICENSE file Apache 2.0
+[done] (Phase 12A) .editorconfig
+[done] (Phase 12A) .golangci.yml
+[done] (Phase 12A) SEO: canonical URL en head.html
+[done] (Phase 12A) SEO: meta description con page.summary (fallback site_description)
+[done] (Phase 12A) SEO: Twitter Card meta tags
+[done] (Phase 12A) SEO: OG tags en todos los templates (index, section, taxonomy)
+[done] (Phase 12A) SEO: og:site_name, og:locale, og:type article vs website
+[done] (Phase 12A) SEO: article:published_time y article:modified_time
+[done] (Phase 12A) Sass: --style compressed para CSS minificado
+[done] (Phase 12A) Goldmark: heading IDs automaticos (AutoHeadingID)
+[done] (Phase 12A) Goldmark: extension Footnote
+[done] (Phase 12A) Font preload: Inter y JetBrains Mono (woff2)
+[done] (Phase 12A) Dual-file sync: head.html
+
+[todo] (Phase 12B) GitHub Actions CI/CD pipeline
+[todo] (Phase 12B) README profesional (features, install, badges, quickstart)
+[todo] (Phase 12B) Shell completions (Kong nativo)
+[todo] (Phase 12B) .goreleaser.yml
+[todo] (Phase 12B) Related posts feature
+[todo] (Phase 12B) Prev/next navigation
+[todo] (Phase 12B) Reading progress bar
+
+[todo] (Phase 12C) HTML/JS minification (tdewolff/minify)
+[todo] (Phase 12C) Table of Contents generation
+[todo] (Phase 12C) Theme system improvements
+[todo] (Phase 12C) Syntax highlighting
+[todo] (Phase 12C) Shortcodes

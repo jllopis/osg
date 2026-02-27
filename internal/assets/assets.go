@@ -251,7 +251,7 @@ func sassConflicts(root string) ([]string, error) {
 }
 
 func runSass(input string, output string, loadPaths ...string) error {
-	args := []string{"--no-source-map"}
+	args := []string{"--no-source-map", "--style", "compressed"}
 	for _, loadPath := range loadPaths {
 		if strings.TrimSpace(loadPath) == "" {
 			continue

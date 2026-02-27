@@ -223,6 +223,39 @@
 - [done] Tests unitarios: 10 tests para figure rendering + test de paragrafos normales
 - [done] Dual-file sync: CSS, JS, templates en internal/theme/ y themes/default/
 
+## Phase 12A - DX critico + SEO quick wins (done)
+- [done] LICENSE file (Apache 2.0)
+- [done] .editorconfig
+- [done] .golangci.yml
+- [done] SEO: canonical URL en head.html (<link rel="canonical">)
+- [done] SEO: meta description con page.summary (fallback a site_description)
+- [done] SEO: Twitter Card meta tags (twitter:card, twitter:title, twitter:description, twitter:image)
+- [done] SEO: OG tags en todos los templates (index, section, taxonomy), og:site_name, og:locale
+- [done] SEO: og:type article vs website segun tipo de pagina
+- [done] SEO: article:published_time y article:modified_time para paginas
+- [done] Sass: --style compressed para CSS minificado
+- [done] Goldmark: heading IDs automaticos (parser.WithAutoHeadingID)
+- [done] Goldmark: extension Footnote habilitada
+- [done] Font preload: <link rel="preload"> para Inter y JetBrains Mono (woff2)
+- [done] Dual-file sync: head.html en internal/theme/ y themes/default/
+- [done] Tests: all passing
+
+## Phase 12B - CI/CD + README + Content features (todo)
+- [todo] GitHub Actions CI/CD pipeline
+- [todo] README profesional (features, install, badges, quickstart)
+- [todo] Shell completions (Kong nativo)
+- [todo] .goreleaser.yml
+- [todo] Related posts feature
+- [todo] Prev/next navigation (series/collections)
+- [todo] Reading progress bar
+
+## Phase 12C - Minificacion + TOC + Theme system (todo)
+- [todo] HTML/JS minification (tdewolff/minify)
+- [todo] Table of Contents generation (requiere heading IDs - ya implementado)
+- [todo] Theme system improvements
+- [todo] Syntax highlighting
+- [todo] Shortcodes
+
 ## Backlog (deferred)
 - [done] i18n en templates
 - (vacio)
