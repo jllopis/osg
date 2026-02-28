@@ -1264,8 +1264,8 @@ picture {
 .prose {
   max-width: 65ch;
   color: var(--ink-secondary);
-  font-size: var(--text-lg);
-  line-height: var(--lh-relaxed);
+  font-size: var(--text-xl);     /* 20px — matches long-form editorial sites */
+  line-height: 1.8;
 }
 
 /* Article hero image: match prose width, not full page width */
