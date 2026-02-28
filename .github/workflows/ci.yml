@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [master]
+    tags: ["v*"]
   pull_request:
     branches: [master]
 
@@ -50,6 +51,8 @@ jobs:
             goarch: arm64
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -67,13 +70,15 @@ jobs:
           LDFLAGS="-X osg/internal/app.Version=${VERSION} -X osg/internal/app.Commit=${COMMIT} -X osg/internal/app.Date=${DATE}"
           EXT=""
           if [ "$GOOS" = "windows" ]; then EXT=".exe"; fi
-          go build -ldflags "${LDFLAGS}" -o "build/osg-${GOOS}-${GOARCH}${EXT}" ./cmd/osg
+          BINARY="osg-${GOOS}-${GOARCH}${EXT}"
+          go build -ldflags "${LDFLAGS}" -o "build/${BINARY}" ./cmd/osg
+          cd build && tar czf "${BINARY}.tar.gz" "${BINARY}"
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: osg-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: build/osg-*
+          path: build/*.tar.gz
 
   lint:
     name: Lint
@@ -107,3 +112,67 @@ jobs:
           # Run vet on all packages except plugin/sdk which uses intentional
           # unsafe.Pointer conversions for WASM linear memory access.
           go vet $(go list ./... | grep -v /plugin/sdk)
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [build, lint, vet]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: osg-*
+
+      - name: Collect release assets
+        run: |
+          mkdir -p release
+          find artifacts -name '*.tar.gz' -exec cp {} release/ \;
+          cd release && sha256sum *.tar.gz > checksums.txt
+          ls -la release/
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          PREV_TAG=$(git tag --sort=-v:refname | grep -A1 "^${TAG}$" | tail -1)
+          if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "$TAG" ]; then
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          {
+            echo "notes<<NOTES_EOF"
+            echo "## Changes"
+            echo ""
+            git log --oneline "${PREV_TAG}..${TAG}" | head -50
+            echo ""
+            echo "## Binaries"
+            echo ""
+            echo "| Platform | Architecture | File |"
+            echo "|----------|-------------|------|"
+            echo "| Linux | amd64 | osg-linux-amd64.tar.gz |"
+            echo "| Linux | arm64 | osg-linux-arm64.tar.gz |"
+            echo "| macOS | amd64 | osg-darwin-amd64.tar.gz |"
+            echo "| macOS | arm64 | osg-darwin-arm64.tar.gz |"
+            echo "| Windows | amd64 | osg-windows-amd64.exe.tar.gz |"
+            echo ""
+            echo "Verify checksums with: \`sha256sum -c checksums.txt\`"
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.notes.outputs.tag }}
+          name: ${{ steps.notes.outputs.tag }}
+          body: ${{ steps.notes.outputs.notes }}
+          files: release/*
+          draft: false
+          prerelease: false
