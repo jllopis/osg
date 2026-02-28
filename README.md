@@ -12,6 +12,7 @@ A fast, opinionated static site generator that turns your [Obsidian](https://obs
 - **Image pipeline** — WebP optimization, srcset, lazy loading, lightbox gallery
 - **AI summaries** — auto/manual/AI strategies via Kairos (Gemini, Anthropic, OpenAI, etc.)
 - **WASM plugins** — 10 hooks, Rust/Go SDKs, GitHub registry, hot-reload in TUI
+- **Shortcodes** — YouTube, Twitter, CodePen embeds; admonitions; tabs; figures; collapsible details
 - **i18n** — English and Spanish built-in, extensible translation system
 - **SEO** — canonical URLs, Open Graph, Twitter Cards, sitemaps, RSS/Atom feeds
 - **Sass compilation** — compressed output, theme overrides
@@ -233,6 +234,7 @@ make build-all         # Cross-compile for all platforms
 - [TAXONOMIES.md](docs/TAXONOMIES.md) — Taxonomy configuration
 - [THEMES.md](docs/THEMES.md) — Theme structure, Nord palette
 - [PLUGINS.md](docs/PLUGINS.md) — Plugin system, WASM SDK, hooks
+- [SHORTCODES.md](docs/SHORTCODES.md) — Shortcode reference and examples
 - [QUICKSTART.md](docs/QUICKSTART.md) — Getting started guide
 - [ROADMAP.md](docs/ROADMAP.md) — Project roadmap
 
