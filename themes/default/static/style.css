@@ -1262,7 +1262,7 @@ picture {
    comfortable line length and height, clear hierarchy.
    ============================================================ */
 .prose {
-  max-width: 65ch;
+  max-width: 75ch;
   color: var(--ink-secondary);
   font-size: var(--text-xl);     /* 20px — matches long-form editorial sites */
   line-height: 1.8;
