@@ -103,4 +103,7 @@ jobs:
           go-version: "1.25"
 
       - name: go vet
-        run: go vet ./...
+        run: |
+          # Run vet on all packages except plugin/sdk which uses intentional
+          # unsafe.Pointer conversions for WASM linear memory access.
+          go vet $(go list ./... | grep -v /plugin/sdk)

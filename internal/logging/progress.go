@@ -86,10 +86,9 @@ func (p *CLIProgress) Stop() {
 	}
 	p.running = false
 	close(p.done)
-	p.mu.Unlock()
-
-	// Clear the spinner line.
+	// Clear the spinner line while holding the lock to avoid racing with loop().
 	_, _ = fmt.Fprintf(p.w, "\r%s\r", strings.Repeat(" ", 80))
+	p.mu.Unlock()
 }
 
 func (p *CLIProgress) loop() {
@@ -105,9 +104,9 @@ func (p *CLIProgress) loop() {
 			frame := spinnerFrames[p.frame%len(spinnerFrames)]
 			msg := p.msg
 			p.frame++
-			p.mu.Unlock()
-			// \r moves cursor to column 0; \033[K clears to end of line.
+			// Write while holding the lock to avoid racing with ProgressWriter.Write.
 			_, _ = fmt.Fprintf(p.w, "\r\033[K  %s %s", frame, msg)
+			p.mu.Unlock()
 		}
 	}
 }
