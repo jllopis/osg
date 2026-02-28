@@ -133,10 +133,14 @@ jobs:
 
       - name: Collect release assets
         run: |
+          echo "=== Downloaded artifacts ==="
+          find artifacts -type f -ls
           mkdir -p release
           find artifacts -name '*.tar.gz' -exec cp {} release/ \;
-          cd release && sha256sum *.tar.gz > checksums.txt
-          ls -la release/
+          cd release
+          sha256sum *.tar.gz > checksums.txt
+          echo "=== Release assets ==="
+          ls -la
 
       - name: Generate release notes
         id: notes
