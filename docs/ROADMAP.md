@@ -328,11 +328,14 @@
 - [todo] Selector de idioma en header
 - [todo] Feeds y sitemap por idioma
 
-### Phase 16 - Performance y benchmarks (todo)
-- [todo] Benchmark suite con vaults de distintos tamanos (10, 100, 1000+ notas)
-- [todo] Profiling de build pipeline (render, imagenes, plugins, minificacion)
-- [todo] Optimizacion de cuellos de botella identificados
-- [todo] CI check de regresion de rendimiento (opcional)
+### Phase 16 - Performance y benchmarks (done)
+- [done] Build timing: instrumentacion por stages (plan, theme, assets, plugins, parse, transform, images, taxonomy, templates, render, minify) con log estructurado
+- [done] CPU profiling: `osg build --profile=cpu.prof` escribe perfil pprof analizable con `go tool pprof`
+- [done] Paralelizacion de image optimization: worker pool con `runtime.NumCPU()` goroutines, fase discover + fase process
+- [done] Paralelizacion de minification: worker pool con `runtime.NumCPU()` goroutines, `sync/atomic` counter
+- [done] Paralelizacion de content parsing: worker pool para ParseFile + Markdown render, merge secuencial en siteIndex
+- [done] Benchmark suite: 18 benchmarks en 5 packages (markdown, summary, build, frontmatter, slug)
+- [done] 4 tests unitarios para BuildTimings (stage, multiple stages, log, log empty)
 
 ### Paginated archives (todo, repo externo)
 - [todo] Plugin WASM en repositorio propio (no parte del core)

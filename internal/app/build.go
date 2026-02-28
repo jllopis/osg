@@ -27,6 +27,7 @@ func RunBuild(ctx context.Context, opts CLIOptions) error {
 		SkipAI:           opts.SkipAI,
 		ForceAISummaries: opts.ForceAISummaries,
 		Progress:         opts.Progress,
+		Profile:          opts.Profile,
 	}
 
 	return build.Run(ctx, cfg, buildOpts, opts.Verbose, opts.LogWriter)

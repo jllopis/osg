@@ -200,9 +200,27 @@ Phase 13 (Draft preview) and Phase 14 (Additional shortcodes) complete.
   (embeds, figure, details, tabs). `tabs.js` zero-dependency script.
   33 tests (8 existing + 25 new). Dual-file sync.
 
+### Recently completed (Phase 16)
+- **Build timing**: Every `osg build` logs per-stage timing breakdown
+  (plan, theme, assets, plugins, parse, transform, images, taxonomy,
+  templates, render, minify) with total elapsed time.
+- **CPU profiling**: `osg build --profile=cpu.prof` writes a pprof CPU
+  profile. Analyze with `go tool pprof cpu.prof`.
+- **Parallel image optimization**: Worker pool sized to `runtime.NumCPU()`.
+  Two-phase: discover files (fast walk), then process in parallel.
+- **Parallel minification**: Worker pool with `sync/atomic` counter.
+  `tdewolff/minify.M` is safe for concurrent use.
+- **Parallel content parsing**: ParseFile + Markdown render run in a
+  worker pool; results merged sequentially into siteIndex.
+- **Benchmark suite**: 18 benchmarks across 5 packages: markdown (Render,
+  ExpandShortcodes, ExtractTOC), summary (PlainText, ExtractProvider,
+  truncateSentence), build (MinifyDir, MinifyFile, TimingStage),
+  frontmatter (SplitFrontmatter), slug (Slugify, Derive).
+  Run with `go test -bench=. -benchmem ./internal/...`
+- **4 tests** for BuildTimings (stage, multiple stages, log, log empty).
+
 ### Backlog (planned, not started)
 - Phase 15: Multi-idioma real (contenido en `/en/`, `/es/`, hreflang alternates)
-- Phase 16: Performance y benchmarks (profiling, benchmark suite, optimizacion)
 - Paginated archives plugin (repo externo, no parte del core)
 
 ## Key Dependencies

@@ -10,9 +10,12 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"runtime"
+	"runtime/pprof"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"osg/internal/assets"
@@ -53,6 +56,9 @@ type BuildOptions struct {
 	// Progress is an optional user-facing progress indicator (spinner).
 	// When non-nil, long operations like AI summary generation update it.
 	Progress logging.Progress
+	// Profile is an optional filesystem path for a CPU profile output.
+	// When non-empty, a pprof CPU profile is written to this path.
+	Profile string
 }
 
 func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool, logWriter io.Writer) error {
@@ -61,6 +67,23 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	}
 
 	logger := logging.NewWithWriter(cfg.Logging, verbose, logWriter)
+
+	// CPU profiling (--profile flag).
+	if opts.Profile != "" {
+		f, err := os.Create(opts.Profile)
+		if err != nil {
+			return fmt.Errorf("create profile: %w", err)
+		}
+		defer func() { _ = f.Close() }()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			return fmt.Errorf("start CPU profile: %w", err)
+		}
+		defer pprof.StopCPUProfile()
+		logger.Info("CPU profiling enabled", "output", opts.Profile)
+	}
+
+	buildStart := time.Now()
+	timings := &BuildTimings{}
 
 	files, err := vault.ListMarkdownFiles(cfg.ContentDir)
 	if err != nil {
@@ -72,6 +95,8 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		return nil
 	}
 
+	// --- Stage: plan ---
+	done := timings.stage("plan")
 	plan, cacheToSave := buildPlanFromCache(cfg, files, logger)
 	if plan.incremental {
 		if plan.full {
@@ -98,7 +123,10 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	if err := os.MkdirAll(cfg.PublicDir, 0o755); err != nil {
 		return fmt.Errorf("create public dir: %w", err)
 	}
+	done()
 
+	// --- Stage: theme + i18n ---
+	done = timings.stage("theme")
 	if err := theme.EnsureDefaultTheme(cfg.ThemesDir); err != nil {
 		return fmt.Errorf("ensure default theme: %w", err)
 	}
@@ -121,11 +149,17 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	if err := i18nBundle.LoadDir(userI18nDir); err != nil {
 		return fmt.Errorf("load user translations: %w", err)
 	}
+	done()
 
+	// --- Stage: assets ---
+	done = timings.stage("assets")
 	if err := assets.PrepareWithChain(cfg, themeChain, logger); err != nil {
 		return err
 	}
+	done()
 
+	// --- Stage: plugins ---
+	done = timings.stage("plugins")
 	// Load plugins early so they are available for all pipeline phases.
 	if err := plugin.EnsureBundledPlugins(cfg.PluginsDir); err != nil {
 		logger.Warn("failed to extract bundled plugins", "error", err)
@@ -142,33 +176,76 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 			}
 		}()
 	}
+	done()
 
+	// --- Stage: parse ---
+	done = timings.stage("parse")
 	siteIndex := site.New()
 	stats := Stats{Total: len(files)}
 
-	for _, filePath := range files {
-		page, section, err := site.ParseFile(cfg.ContentDir, cfg.BaseURL, filePath)
-		if err != nil {
-			logger.Warn("failed to parse content", "path", filePath, "error", err)
+	// Parse content files in parallel.  Each ParseFile reads a single
+	// file and renders its Markdown, producing independent Page/Section
+	// values.  Results are collected into a channel and merged into the
+	// (non-thread-safe) siteIndex sequentially.
+	type parseResult struct {
+		page    *site.Page
+		section *site.Section
+		err     error
+		path    string
+	}
+
+	parseCh := make(chan parseResult, len(files))
+	parseWorkers := runtime.NumCPU()
+	if parseWorkers > len(files) {
+		parseWorkers = len(files)
+	}
+
+	var parseWG sync.WaitGroup
+	parseJobs := make(chan string, len(files))
+	for range parseWorkers {
+		parseWG.Add(1)
+		go func() {
+			defer parseWG.Done()
+			for fp := range parseJobs {
+				page, section, err := site.ParseFile(cfg.ContentDir, cfg.BaseURL, fp)
+				parseCh <- parseResult{page: page, section: section, err: err, path: fp}
+			}
+		}()
+	}
+	for _, fp := range files {
+		parseJobs <- fp
+	}
+	close(parseJobs)
+	go func() {
+		parseWG.Wait()
+		close(parseCh)
+	}()
+
+	for res := range parseCh {
+		if res.err != nil {
+			logger.Warn("failed to parse content", "path", res.path, "error", res.err)
 			stats.Errors++
 			continue
 		}
 
-		if page != nil {
-			if page.Draft && !cfg.IncludeDrafts {
+		if res.page != nil {
+			if res.page.Draft && !cfg.IncludeDrafts {
 				stats.Skipped++
 				continue
 			}
-			siteIndex.AddPage(page)
+			siteIndex.AddPage(res.page)
 		}
 
-		if section != nil {
-			siteIndex.AddSection(section)
+		if res.section != nil {
+			siteIndex.AddSection(res.section)
 		}
 	}
 
 	siteIndex.BuildHierarchy()
+	done()
 
+	// --- Stage: transform ---
+	done = timings.stage("transform")
 	// content.transform: let plugins modify Markdown before rendering.
 	applyContentTransform(ctx, plugins, cfg, siteIndex, logger)
 
@@ -186,7 +263,10 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		}
 		plan.contentChanged = true
 	}
+	done()
 
+	// --- Stage: images ---
+	done = timings.stage("images")
 	// Generate placeholder SVGs for pages without an image.
 	if err := generatePlaceholders(siteIndex, cfg.PublicDir, logger); err != nil {
 		return fmt.Errorf("generate placeholders: %w", err)
@@ -195,19 +275,19 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	// Optimize images: generate responsive variants (resized JPEG + WebP).
 	var imageResults map[string]*imgopt.Result
 	if cfg.ImageOptimization {
-		opts := imgopt.Options{
+		imgOpts := imgopt.Options{
 			Quality: cfg.ImageQuality,
 			Widths:  cfg.ImageWidths,
 			WebP:    true,
 		}
-		if opts.Quality <= 0 || opts.Quality > 100 {
-			opts.Quality = 80
+		if imgOpts.Quality <= 0 || imgOpts.Quality > 100 {
+			imgOpts.Quality = 80
 		}
-		if len(opts.Widths) == 0 {
-			opts.Widths = []int{640, 1200}
+		if len(imgOpts.Widths) == 0 {
+			imgOpts.Widths = []int{640, 1200}
 		}
 		var err error
-		imageResults, err = imgopt.Optimize(cfg.PublicDir, opts, logger)
+		imageResults, err = imgopt.Optimize(cfg.PublicDir, imgOpts, logger)
 		if err != nil {
 			logger.Warn("image optimization failed", "error", err)
 			// Non-fatal: continue with no optimized variants.
@@ -216,7 +296,10 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 
 	// image.process: let plugins transform images via WASI filesystem.
 	emitImageProcess(ctx, plugins, cfg, imageResults, logger)
+	done()
 
+	// --- Stage: taxonomy ---
+	done = timings.stage("taxonomy")
 	indices := taxonomy.Build(cfg.Taxonomies, siteIndex.Pages, cfg.BaseURL)
 	// Strip excluded terms from each page's Taxonomies so templates
 	// ("Publicado en:", card pills, etc.) never display them.
@@ -236,7 +319,10 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 			plugin.Merge(baseCtx, overrides)
 		}
 	}
+	done()
 
+	// --- Stage: templates ---
+	done = timings.stage("templates")
 	// Build template directories from the theme chain.
 	var templateChain []string
 	for _, dir := range themeChain {
@@ -256,7 +342,10 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	if err != nil {
 		return err
 	}
+	done()
 
+	// --- Stage: render ---
+	done = timings.stage("render")
 	renderedSections, cachedSections, err := renderSections(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
 	if err != nil {
 		stats.Errors++
@@ -313,7 +402,10 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	}
 	stats.Rendered += notFoundRendered
 	stats.Cached += notFoundCached
+	done()
 
+	// --- Stage: minify ---
+	done = timings.stage("minify")
 	// Post-render: minify HTML, CSS, JS, JSON, SVG, XML files in public/.
 	if cfg.Minify {
 		minified, err := minifyDir(cfg.PublicDir, logger)
@@ -323,12 +415,17 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 			logger.Info("minified output files", "count", minified)
 		}
 	}
+	done()
 
 	if plugins != nil {
 		finishPayload := cloneMap(baseCtx)
 		finishPayload["stats"] = buildStatsView(stats, siteIndex)
 		_ = plugins.Emit(ctx, "build.finished", finishPayload)
 	}
+
+	// Record total build time and log stage breakdown.
+	timings.Total = time.Since(buildStart)
+	timings.Log(logger)
 
 	logger.Info("build summary",
 		"total", stats.Total,

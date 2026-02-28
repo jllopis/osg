@@ -23,4 +23,5 @@ type CLIOptions struct {
 	ForceAISummaries bool
 	SkipAI           bool
 	Progress         logging.Progress
+	Profile          string
 }

@@ -41,8 +41,9 @@ type CompletionCmd struct {
 }
 
 type BuildCmd struct {
-	ForceAISummaries bool `help:"Regenerate all AI summaries (bypasses cache)" name:"force-ai-summaries"`
-	Yes              bool `help:"Skip confirmation prompts" short:"y"`
+	ForceAISummaries bool   `help:"Regenerate all AI summaries (bypasses cache)" name:"force-ai-summaries"`
+	Yes              bool   `help:"Skip confirmation prompts" short:"y"`
+	Profile          string `help:"Write CPU profile to file" name:"profile" default:""`
 }
 
 type DeployCmd struct {
@@ -154,6 +155,7 @@ func main() {
 		ServeReload:      cli.Serve.LiveReload,
 		ServeDebounce:    cli.Serve.DebounceMs,
 		ForceAISummaries: cli.Build.ForceAISummaries,
+		Profile:          cli.Build.Profile,
 		LogWriter:        logWriter,
 		Progress:         progress,
 	}

@@ -259,10 +259,13 @@ Formato: [todo|doing|done] Tarea
 [todo] (Phase 15) Selector de idioma en header
 [todo] (Phase 15) Feeds y sitemap por idioma
 
-[todo] (Phase 16) Benchmark suite con vaults de distintos tamanos
-[todo] (Phase 16) Profiling de build pipeline
-[todo] (Phase 16) Optimizacion de cuellos de botella
-[todo] (Phase 16) CI check de regresion de rendimiento (opcional)
+[done] (Phase 16) Build timing: instrumentacion por stages con log estructurado al final de cada build
+[done] (Phase 16) CPU profiling: `osg build --profile=cpu.prof`, pprof compatible
+[done] (Phase 16) Paralelizacion de image optimization: worker pool NumCPU goroutines
+[done] (Phase 16) Paralelizacion de minification: worker pool NumCPU goroutines, atomic counter
+[done] (Phase 16) Paralelizacion de content parsing + markdown rendering: worker pool, merge secuencial
+[done] (Phase 16) Benchmark suite: 18 benchmarks en 5 packages (markdown, summary, build, frontmatter, slug)
+[done] (Phase 16) 4 tests unitarios para BuildTimings
 
 [todo] (Archives - repo externo) Plugin WASM en repositorio propio (no core)
 [todo] (Archives - repo externo) Genera /archive/ cronologico por ano/mes

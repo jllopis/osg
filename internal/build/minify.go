@@ -6,7 +6,10 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/tdewolff/minify/v2"
 	"github.com/tdewolff/minify/v2/css"
@@ -39,12 +42,19 @@ func newMinifier() *minify.M {
 	return m
 }
 
-// minifyDir walks dir and minifies all supported files in-place.
-// Returns the number of files minified and any error.
+// minifyJob is a unit of work for the parallel minifier.
+type minifyJob struct {
+	path string
+	mime string
+}
+
+// minifyDir walks dir and minifies all supported files in-place using a
+// parallel worker pool.  Returns the number of files minified and any error.
 func minifyDir(dir string, logger *slog.Logger) (int, error) {
 	m := newMinifier()
-	count := 0
 
+	// Phase 1: discover all minifiable files.
+	var jobs []minifyJob
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -59,17 +69,48 @@ func minifyDir(dir string, logger *slog.Logger) (int, error) {
 			return nil
 		}
 
-		if err := minifyFile(m, path, mime); err != nil {
-			logger.Warn("minify failed", "file", path, "error", err)
-			// Non-fatal: skip and continue.
-			return nil
-		}
-
-		count++
+		jobs = append(jobs, minifyJob{path: path, mime: mime})
 		return nil
 	})
+	if err != nil {
+		return 0, err
+	}
 
-	return count, err
+	if len(jobs) == 0 {
+		return 0, nil
+	}
+
+	// Phase 2: minify in parallel.
+	workers := runtime.NumCPU()
+	if workers > len(jobs) {
+		workers = len(jobs)
+	}
+
+	var count atomic.Int64
+	jobCh := make(chan minifyJob, len(jobs))
+	var wg sync.WaitGroup
+
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := range jobCh {
+				if err := minifyFile(m, j.path, j.mime); err != nil {
+					logger.Warn("minify failed", "file", j.path, "error", err)
+					continue
+				}
+				count.Add(1)
+			}
+		}()
+	}
+
+	for _, j := range jobs {
+		jobCh <- j
+	}
+	close(jobCh)
+	wg.Wait()
+
+	return int(count.Load()), nil
 }
 
 // minifyFile reads a file, minifies its content, and writes it back.

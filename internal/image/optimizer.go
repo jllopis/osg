@@ -9,7 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 
 	_ "image/gif"
 
@@ -52,9 +54,25 @@ type Variant struct {
 	Format  string // "jpeg", "webp", "png"
 }
 
+// imageJob is a unit of work for the parallel image optimizer.
+type imageJob struct {
+	path    string
+	urlPath string
+}
+
+// imageResult collects the output of a single image optimization job.
+type imageResult struct {
+	urlPath string
+	result  *Result
+	count   int
+}
+
 // Optimize walks publicDir looking for raster images that were copied from
 // content, generates resized JPEG and optional WebP variants, and returns a
 // map from original URL path ("/2025/01/hero.jpg") to its Result.
+//
+// Image processing runs in parallel using a worker pool sized to the number
+// of available CPUs.
 func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*Result, error) {
 	if logger == nil {
 		logger = slog.Default()
@@ -69,9 +87,8 @@ func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*
 		}
 	}
 
-	results := map[string]*Result{}
-	generated := 0
-
+	// Phase 1: discover all optimizable images (fast filesystem walk).
+	var jobs []imageJob
 	err := filepath.WalkDir(publicDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -87,29 +104,72 @@ func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*
 			return nil
 		}
 
-		rel, err := filepath.Rel(publicDir, path)
-		if err != nil {
-			return err
+		rel, relErr := filepath.Rel(publicDir, path)
+		if relErr != nil {
+			return relErr
 		}
-		urlPath := "/" + filepath.ToSlash(rel)
-
-		res, n, err := optimizeFile(path, urlPath, opts, hasWebP, logger)
-		if err != nil {
-			logger.Warn("image optimize failed", "path", path, "error", err)
-			return nil // non-fatal
-		}
-		if res != nil {
-			results[urlPath] = res
-			generated += n
-		}
+		jobs = append(jobs, imageJob{
+			path:    path,
+			urlPath: "/" + filepath.ToSlash(rel),
+		})
 		return nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("walk public dir for images: %w", err)
 	}
 
+	if len(jobs) == 0 {
+		return map[string]*Result{}, nil
+	}
+
+	// Phase 2: process images in parallel.
+	workers := runtime.NumCPU()
+	if workers > len(jobs) {
+		workers = len(jobs)
+	}
+
+	jobCh := make(chan imageJob, len(jobs))
+	resCh := make(chan imageResult, len(jobs))
+	var wg sync.WaitGroup
+
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := range jobCh {
+				res, n, err := optimizeFile(j.path, j.urlPath, opts, hasWebP, logger)
+				if err != nil {
+					logger.Warn("image optimize failed", "path", j.path, "error", err)
+					continue
+				}
+				if res != nil {
+					resCh <- imageResult{urlPath: j.urlPath, result: res, count: n}
+				}
+			}
+		}()
+	}
+
+	for _, j := range jobs {
+		jobCh <- j
+	}
+	close(jobCh)
+
+	// Wait for workers, then close results channel.
+	go func() {
+		wg.Wait()
+		close(resCh)
+	}()
+
+	// Phase 3: collect results.
+	results := make(map[string]*Result, len(jobs))
+	generated := 0
+	for r := range resCh {
+		results[r.urlPath] = r.result
+		generated += r.count
+	}
+
 	if generated > 0 {
-		logger.Info("images optimized", "sources", len(results), "variants", generated)
+		logger.Info("images optimized", "sources", len(results), "variants", generated, "workers", workers)
 	}
 
 	return results, nil
