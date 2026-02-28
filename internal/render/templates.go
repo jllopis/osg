@@ -12,7 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"html/template"
+	htmltpl "html/template"
+	texttpl "text/template"
 )
 
 //go:embed builtins/*
@@ -68,17 +69,22 @@ type TemplateLoader struct {
 	// Templates are loaded root-ancestor-first so that child themes
 	// override parent templates.
 	ThemeChain []string
-	Funcs      template.FuncMap
+	Funcs      htmltpl.FuncMap
 }
 
-func (l TemplateLoader) Load() (*template.Template, error) {
-	root := template.New("root")
+// Load returns two template trees: one html/template (for .html files with
+// auto-escaping) and one text/template (for .xml and .txt files without
+// escaping).  Both trees share the same FuncMap.
+func (l TemplateLoader) Load() (*htmltpl.Template, *texttpl.Template, error) {
+	htmlRoot := htmltpl.New("root")
+	textRoot := texttpl.New("root")
 	if len(l.Funcs) > 0 {
-		root = root.Funcs(l.Funcs)
+		htmlRoot = htmlRoot.Funcs(l.Funcs)
+		textRoot = textRoot.Funcs(texttpl.FuncMap(l.Funcs))
 	}
 
-	if err := parseEmbedded(root, builtinFS); err != nil {
-		return nil, err
+	if err := parseEmbedded(htmlRoot, textRoot, builtinFS); err != nil {
+		return nil, nil, err
 	}
 
 	// Load theme templates.  When a chain is provided, iterate from
@@ -86,19 +92,19 @@ func (l TemplateLoader) Load() (*template.Template, error) {
 	themeDirs := l.themeTemplateDirs()
 	for _, dir := range themeDirs {
 		if dir != "" {
-			if err := parseDir(root, dir); err != nil {
-				return nil, err
+			if err := parseDir(htmlRoot, textRoot, dir); err != nil {
+				return nil, nil, err
 			}
 		}
 	}
 
 	if l.UserDir != "" {
-		if err := parseDir(root, l.UserDir); err != nil {
-			return nil, err
+		if err := parseDir(htmlRoot, textRoot, l.UserDir); err != nil {
+			return nil, nil, err
 		}
 	}
 
-	return root, nil
+	return htmlRoot, textRoot, nil
 }
 
 // themeTemplateDirs returns theme template directories in load order
@@ -119,7 +125,7 @@ func (l TemplateLoader) themeTemplateDirs() []string {
 	return nil
 }
 
-func parseDir(root *template.Template, dir string) error {
+func parseDir(htmlRoot *htmltpl.Template, textRoot *texttpl.Template, dir string) error {
 	info, err := os.Stat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -153,12 +159,16 @@ func parseDir(root *template.Template, dir string) error {
 			return err
 		}
 
-		_, err = root.New(rel).Parse(string(data))
+		if isTextTemplate(rel) {
+			_, err = textRoot.New(rel).Parse(string(data))
+		} else {
+			_, err = htmlRoot.New(rel).Parse(string(data))
+		}
 		return err
 	})
 }
 
-func parseEmbedded(root *template.Template, fsys embed.FS) error {
+func parseEmbedded(htmlRoot *htmltpl.Template, textRoot *texttpl.Template, fsys embed.FS) error {
 	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -175,7 +185,11 @@ func parseEmbedded(root *template.Template, fsys embed.FS) error {
 		if err != nil {
 			return err
 		}
-		_, err = root.New(name).Parse(string(data))
+		if isTextTemplate(name) {
+			_, err = textRoot.New(name).Parse(string(data))
+		} else {
+			_, err = htmlRoot.New(name).Parse(string(data))
+		}
 		return err
 	})
 }

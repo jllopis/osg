@@ -44,49 +44,67 @@
         {{ end }}
 
         {{ block "index-posts" . }}
-        {{/* ---- Recent posts ---- */}}
-        {{ if .section.pages }}
-        <section class="recent-posts" aria-label="{{ trans "aria_recent_posts" }}">
-          <h2 class="section-heading">{{ trans "recent_posts" }}</h2>
-          <div class="post-list">
-            {{ range .section.pages }}
-            <article class="post-item">
-              {{ if .image }}
-              <a class="post-item-thumb" href="{{ .permalink }}">
-                {{ picture .image .title "lazy" }}
+        {{/* ---- 2-column grid: feed + sidebar ---- */}}
+        <div class="home-grid">
+
+          {{/* ---- Main feed (left column) ---- */}}
+          {{ if .section.pages }}
+          <section class="main-feed" aria-label="{{ trans "aria_recent_posts" }}">
+            <h2 class="section-heading">{{ trans "recent_posts" }}</h2>
+            <div class="post-list">
+              {{ range .section.pages }}
+              <a class="post-item" href="{{ .permalink }}">
+                {{ if .image }}
+                <div class="post-item-thumb">
+                  {{ picture .image .title "lazy" }}
+                </div>
+                {{ end }}
+                <div class="post-item-body">
+                  <time class="post-item-date" datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short") }}</time>
+                  <h3 class="post-item-title">{{ .title }}</h3>
+                  {{ if .summary }}<p class="post-item-summary">{{ .summary }}</p>{{ end }}
+                  {{ if .reading_time }}<span class="post-item-reading">{{ .reading_time }} {{ trans "min_read" }}</span>{{ end }}
+                </div>
               </a>
               {{ end }}
-              <div class="post-item-body">
-                <h3 class="post-item-title"><a href="{{ .permalink }}">{{ .title }}</a></h3>
-                <time class="post-item-date" datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short") }}</time>
-                {{ if .summary }}<p class="post-item-summary">{{ .summary }}</p>{{ end }}
-              </div>
-            </article>
-            {{ end }}
-          </div>
-        </section>
-        {{ end }}
-        {{ end }}
+            </div>
+          </section>
+          {{ end }}
 
-        {{ block "index-sections" . }}
-        {{/* ---- Subsections / topic areas ---- */}}
-        {{/* Only show subsections backed by _index.md (has_source), not
-             auto-generated date scaffolding sections. */}}
-        {{ $hasReal := false }}
-        {{ range .section.subsections }}{{ if .has_source }}{{ $hasReal = true }}{{ end }}{{ end }}
-        {{ if $hasReal }}
-        <section class="topic-areas" aria-label="{{ trans "aria_sections" }}">
-          <h2 class="section-heading">{{ trans "sections" }}</h2>
-          <div class="term-grid">
-            {{ range .section.subsections }}{{ if .has_source }}
-            <a class="term-card" href="{{ .permalink }}">
-              <span class="term-name">{{ .title }}</span>
-              {{ if .pages }}<span class="term-count">{{ len .pages }}</span>{{ end }}
-            </a>
-            {{ end }}{{ end }}
-          </div>
-        </section>
-        {{ end }}
+          {{ block "index-sidebar" . }}
+          {{/* ---- Sidebar (right column) ---- */}}
+          <aside class="sidebar">
+            {{ $tags := get_taxonomy "tags" }}
+            {{ if $tags }}
+            <div class="sidebar-section">
+              <h3 class="sidebar-heading">{{ trans "recommended_topics" }}</h3>
+              <div class="topic-pills">
+                {{ range $tags.terms }}
+                <a class="topic-pill" href="{{ .permalink }}">{{ .name }}</a>
+                {{ end }}
+              </div>
+            </div>
+            {{ end }}
+
+            {{ block "index-sections" . }}
+            {{/* ---- Subsections / topic areas ---- */}}
+            {{ $hasReal := false }}
+            {{ range .section.subsections }}{{ if .has_source }}{{ $hasReal = true }}{{ end }}{{ end }}
+            {{ if $hasReal }}
+            <div class="sidebar-section">
+              <h3 class="sidebar-heading">{{ trans "sections" }}</h3>
+              <div class="topic-pills">
+                {{ range .section.subsections }}{{ if .has_source }}
+                <a class="topic-pill" href="{{ .permalink }}">{{ .title }}{{ if .pages }} <span class="pill-count">{{ len .pages }}</span>{{ end }}</a>
+                {{ end }}{{ end }}
+              </div>
+            </div>
+            {{ end }}
+            {{ end }}
+          </aside>
+          {{ end }}
+
+        </div>
         {{ end }}
 
       </main>

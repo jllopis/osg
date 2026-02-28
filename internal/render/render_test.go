@@ -190,25 +190,21 @@ func TestNormalizePath(t *testing.T) {
 func TestTemplateLoaderBuiltins(t *testing.T) {
 	t.Parallel()
 	loader := TemplateLoader{Funcs: FuncMap(Context{})}
-	tmpl, err := loader.Load()
+	htmlTmpl, textTmpl, err := loader.Load()
 	if err != nil {
 		t.Fatalf("Load builtins failed: %v", err)
 	}
 
-	// Check that expected builtin templates exist
-	expectedTemplates := []string{
-		"page.html",
-		"index.html",
-		"section.html",
-		"404.html",
-		"sitemap.xml",
-		"rss.xml",
-		"atom.xml",
-		"robots.txt",
+	// Check that expected builtin HTML templates exist
+	for _, name := range []string{"page.html", "index.html", "section.html", "404.html"} {
+		if htmlTmpl.Lookup(name) == nil {
+			t.Errorf("expected builtin html template %q to be loaded", name)
+		}
 	}
-	for _, name := range expectedTemplates {
-		if tmpl.Lookup(name) == nil {
-			t.Errorf("expected builtin template %q to be loaded", name)
+	// Check that expected builtin text templates exist (XML, TXT)
+	for _, name := range []string{"sitemap.xml", "rss.xml", "atom.xml", "robots.txt"} {
+		if textTmpl.Lookup(name) == nil {
+			t.Errorf("expected builtin text template %q to be loaded", name)
 		}
 	}
 }
@@ -226,12 +222,12 @@ func TestTemplateLoaderUserOverride(t *testing.T) {
 	}
 
 	loader := TemplateLoader{UserDir: userDir, Funcs: FuncMap(Context{})}
-	tmpl, err := loader.Load()
+	htmlTmpl, _, err := loader.Load()
 	if err != nil {
 		t.Fatalf("Load with user dir failed: %v", err)
 	}
 
-	if tmpl.Lookup("custom.html") == nil {
+	if htmlTmpl.Lookup("custom.html") == nil {
 		t.Error("expected custom.html template to be loaded from user dir")
 	}
 }
@@ -252,12 +248,12 @@ func TestTemplateLoaderThemeOverride(t *testing.T) {
 	}
 
 	loader := TemplateLoader{ThemeDir: themeDir, Funcs: FuncMap(Context{})}
-	tmpl, err := loader.Load()
+	htmlTmpl, _, err := loader.Load()
 	if err != nil {
 		t.Fatalf("Load with theme dir failed: %v", err)
 	}
 
-	if tmpl.Lookup("partials/footer.html") == nil {
+	if htmlTmpl.Lookup("partials/footer.html") == nil {
 		t.Error("expected partials/footer.html from theme dir")
 	}
 }

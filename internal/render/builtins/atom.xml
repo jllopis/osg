@@ -5,16 +5,14 @@
   <link href="{{ .feed_url }}" rel="self" />
   <updated>{{ .last_updated }}</updated>
   {{ if .feed_description }}<subtitle>{{ .feed_description }}</subtitle>{{ end }}
-  {{ if .pages }}
   {{ range .pages }}
   <entry>
     <title>{{ .title }}</title>
     <id>{{ .permalink }}</id>
     <link href="{{ .permalink }}" />
     <updated>{{ .date }}</updated>
-    {{ if .summary }}<summary type="html">{{ .summary }}</summary>{{ end }}
-    <content type="html">{{ .content }}</content>
+    {{ if .summary }}<summary type="html"><![CDATA[{{ .summary }}]]></summary>{{ end }}
+    <content type="html"><![CDATA[{{ .content }}]]></content>
   </entry>
-  {{ end }}
   {{ end }}
 </feed>

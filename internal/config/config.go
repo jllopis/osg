@@ -41,46 +41,49 @@ type AIConfig struct {
 }
 
 type Config struct {
-	BaseURL           string           `koanf:"base_url" yaml:"base_url"`
-	SiteTitle         string           `koanf:"site_title" yaml:"site_title"`
-	SiteDescription   string           `koanf:"site_description" yaml:"site_description"`
-	Theme             string           `koanf:"theme" yaml:"theme"`
-	ColorScheme       string           `koanf:"color_scheme" yaml:"color_scheme"`
-	VaultPath         string           `koanf:"vault_path" yaml:"vault_path"`
-	ContentDir        string           `koanf:"content_dir" yaml:"content_dir"`
-	PublicDir         string           `koanf:"public_dir" yaml:"public_dir"`
-	TemplatesDir      string           `koanf:"templates_dir" yaml:"templates_dir"`
-	StaticDir         string           `koanf:"static_dir" yaml:"static_dir"`
-	ThemesDir         string           `koanf:"themes_dir" yaml:"themes_dir"`
-	PluginsDir        string           `koanf:"plugins_dir" yaml:"plugins_dir"`
-	PluginsEnabled    []string         `koanf:"plugins_enabled" yaml:"plugins_enabled"`
-	PluginTimeout     int              `koanf:"plugin_timeout" yaml:"plugin_timeout"`
-	SassDir           string           `koanf:"sass_dir" yaml:"sass_dir"`
-	ContentLayout     string           `koanf:"content_layout" yaml:"content_layout"`
-	IncludeDrafts     bool             `koanf:"include_drafts" yaml:"include_drafts"`
-	CompileSass       bool             `koanf:"compile_sass" yaml:"compile_sass"`
-	TUIPrefix         string           `koanf:"tui_prefix" yaml:"tui_prefix"`
-	TUIPrefixMs       int              `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
-	ServeWatch        bool             `koanf:"serve_watch" yaml:"serve_watch"`
-	ServeReload       bool             `koanf:"serve_live_reload" yaml:"serve_live_reload"`
-	ServeDebounce     int              `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
-	BuildIncremental  bool             `koanf:"build_incremental" yaml:"build_incremental"`
-	BuildCacheDir     string           `koanf:"build_cache_dir" yaml:"build_cache_dir"`
-	CleanPublic       bool             `koanf:"clean_public" yaml:"clean_public"`
-	SummaryStrategy   string           `koanf:"summary_strategy" yaml:"summary_strategy"`
-	SiteFeed          bool             `koanf:"site_feed" yaml:"site_feed"`
-	SiteFeedLimit     int              `koanf:"site_feed_limit" yaml:"site_feed_limit"`
-	ImageOptimization bool             `koanf:"image_optimization" yaml:"image_optimization"`
-	ImageQuality      int              `koanf:"image_quality" yaml:"image_quality"`
-	ImageWidths       []int            `koanf:"image_widths" yaml:"image_widths"`
-	Lightbox          bool             `koanf:"lightbox" yaml:"lightbox"`
-	Minify            bool             `koanf:"minify" yaml:"minify"`
-	DefaultLanguage   string           `koanf:"default_language" yaml:"default_language"`
-	DoctorProfile     string           `koanf:"doctor_profile" yaml:"doctor_profile"`
-	AI                AIConfig         `koanf:"ai" yaml:"ai"`
-	Logging           LoggingConfig    `koanf:"logging" yaml:"logging"`
-	Taxonomies        []TaxonomyConfig `koanf:"taxonomies" yaml:"taxonomies"`
-	Deploy            DeployConfig     `koanf:"deploy" yaml:"deploy"`
+	BaseURL           string            `koanf:"base_url" yaml:"base_url"`
+	SiteTitle         string            `koanf:"site_title" yaml:"site_title"`
+	SiteDescription   string            `koanf:"site_description" yaml:"site_description"`
+	Theme             string            `koanf:"theme" yaml:"theme"`
+	ColorScheme       string            `koanf:"color_scheme" yaml:"color_scheme"`
+	VaultPath         string            `koanf:"vault_path" yaml:"vault_path"`
+	ContentDir        string            `koanf:"content_dir" yaml:"content_dir"`
+	PublicDir         string            `koanf:"public_dir" yaml:"public_dir"`
+	TemplatesDir      string            `koanf:"templates_dir" yaml:"templates_dir"`
+	StaticDir         string            `koanf:"static_dir" yaml:"static_dir"`
+	ThemesDir         string            `koanf:"themes_dir" yaml:"themes_dir"`
+	PluginsDir        string            `koanf:"plugins_dir" yaml:"plugins_dir"`
+	PluginsEnabled    []string          `koanf:"plugins_enabled" yaml:"plugins_enabled"`
+	PluginTimeout     int               `koanf:"plugin_timeout" yaml:"plugin_timeout"`
+	SassDir           string            `koanf:"sass_dir" yaml:"sass_dir"`
+	ContentLayout     string            `koanf:"content_layout" yaml:"content_layout"`
+	IncludeDrafts     bool              `koanf:"include_drafts" yaml:"include_drafts"`
+	CompileSass       bool              `koanf:"compile_sass" yaml:"compile_sass"`
+	TUIPrefix         string            `koanf:"tui_prefix" yaml:"tui_prefix"`
+	TUIPrefixMs       int               `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
+	ServeWatch        bool              `koanf:"serve_watch" yaml:"serve_watch"`
+	ServeReload       bool              `koanf:"serve_live_reload" yaml:"serve_live_reload"`
+	ServeDebounce     int               `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
+	BuildIncremental  bool              `koanf:"build_incremental" yaml:"build_incremental"`
+	BuildCacheDir     string            `koanf:"build_cache_dir" yaml:"build_cache_dir"`
+	CleanPublic       bool              `koanf:"clean_public" yaml:"clean_public"`
+	SummaryStrategy   string            `koanf:"summary_strategy" yaml:"summary_strategy"`
+	SiteFeed          bool              `koanf:"site_feed" yaml:"site_feed"`
+	SiteFeedLimit     int               `koanf:"site_feed_limit" yaml:"site_feed_limit"`
+	ImageOptimization bool              `koanf:"image_optimization" yaml:"image_optimization"`
+	ImageQuality      int               `koanf:"image_quality" yaml:"image_quality"`
+	ImageWidths       []int             `koanf:"image_widths" yaml:"image_widths"`
+	Lightbox          bool              `koanf:"lightbox" yaml:"lightbox"`
+	Minify            bool              `koanf:"minify" yaml:"minify"`
+	NavTaxonomy       string            `koanf:"nav_taxonomy" yaml:"nav_taxonomy"`
+	DefaultLanguage   string            `koanf:"default_language" yaml:"default_language"`
+	DoctorProfile     string            `koanf:"doctor_profile" yaml:"doctor_profile"`
+	Social            map[string]string `koanf:"social" yaml:"social"`
+	Copyright         string            `koanf:"copyright" yaml:"copyright"`
+	AI                AIConfig          `koanf:"ai" yaml:"ai"`
+	Logging           LoggingConfig     `koanf:"logging" yaml:"logging"`
+	Taxonomies        []TaxonomyConfig  `koanf:"taxonomies" yaml:"taxonomies"`
+	Deploy            DeployConfig      `koanf:"deploy" yaml:"deploy"`
 }
 
 type TaxonomyConfig struct {
@@ -288,6 +291,15 @@ themes_dir: themes
 color_scheme: auto
 
 # -----------------------------------------------------------------------------
+# Navigation
+# -----------------------------------------------------------------------------
+# nav_taxonomy: Name of the taxonomy whose terms should appear as links in
+#               the header navigation bar (e.g. "area", "tags").
+#               When empty (default), the header shows taxonomy index links
+#               (the taxonomy names themselves) instead of individual terms.
+nav_taxonomy: ""
+
+# -----------------------------------------------------------------------------
 # Output
 # -----------------------------------------------------------------------------
 # public_dir: Directory where the generated site is written.
@@ -438,6 +450,25 @@ tui_prefix_ms: 600
 # -----------------------------------------------------------------------------
 # doctor_profile: Profile for "osg doctor" checks ("dev" or "prod").
 doctor_profile: dev
+
+# -----------------------------------------------------------------------------
+# Social links & copyright
+# -----------------------------------------------------------------------------
+# social: Map of social network handles shown as icons in the footer.
+#   Only configured networks appear. Supported keys:
+#   x, github, mastodon, linkedin, bluesky, email
+#   For email use the address directly (mailto: is added automatically).
+# copyright: Copyright notice shown in the footer bar.
+#   Use {year} as a placeholder for the current year.
+#   If empty, defaults to "(c) {year} {site_title}".
+# social:
+#   x: "https://x.com/your_handle"
+#   github: "https://github.com/your_user"
+#   mastodon: "https://mastodon.social/@your_handle"
+#   linkedin: "https://linkedin.com/in/your_profile"
+#   bluesky: "https://bsky.app/profile/your_handle"
+#   email: "you@example.com"
+# copyright: ""
 
 # -----------------------------------------------------------------------------
 # Logging

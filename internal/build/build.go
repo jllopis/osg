@@ -595,8 +595,9 @@ func sectionContext(baseCtx map[string]any, section *site.Section) map[string]an
 
 func baseContext(cfg config.Config, siteView map[string]any, indices map[string]*taxonomy.Index, menuPages []*site.Page) map[string]any {
 	ctx := map[string]any{
-		"config": configView(cfg),
-		"site":   siteView,
+		"config":       configView(cfg),
+		"site":         siteView,
+		"current_year": time.Now().Year(),
 	}
 	if len(indices) > 0 {
 		ctx["taxonomies"] = taxonomiesView(indices)
@@ -607,6 +608,20 @@ func baseContext(cfg config.Config, siteView map[string]any, indices map[string]
 			views = append(views, p.View())
 		}
 		ctx["menu_pages"] = views
+	}
+	// If nav_taxonomy is set, expose its terms as nav_terms for header nav.
+	if cfg.NavTaxonomy != "" {
+		if index, ok := indices[cfg.NavTaxonomy]; ok {
+			terms := index.TermsSorted()
+			navTerms := make([]map[string]any, 0, len(terms))
+			for _, t := range terms {
+				navTerms = append(navTerms, map[string]any{
+					"name":      t.Name,
+					"permalink": t.Permalink,
+				})
+			}
+			ctx["nav_terms"] = navTerms
+		}
 	}
 	return ctx
 }
@@ -654,6 +669,9 @@ func configView(cfg config.Config) map[string]any {
 		"image_widths":       cfg.ImageWidths,
 		"lightbox":           cfg.Lightbox,
 		"minify":             cfg.Minify,
+		"nav_taxonomy":       cfg.NavTaxonomy,
+		"social":             cfg.Social,
+		"copyright":          cfg.Copyright,
 		"logging": map[string]any{
 			"level":  cfg.Logging.Level,
 			"format": cfg.Logging.Format,

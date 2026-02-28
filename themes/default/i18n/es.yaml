@@ -8,6 +8,7 @@ sections: Secciones
 
 # --- Comun ---
 min_read: min de lectura
+recommended_topics: Temas recomendados
 home: Inicio
 posts: Publicaciones
 subsections: Subsecciones
@@ -51,6 +52,12 @@ nav.search: Buscar
 # --- Parciales ---
 skip_to_content: Ir al contenido
 generated_by: Generado con
+
+# --- Footer ---
+footer_nav: Navegacion
+footer_connect: Conectar
+footer_sitemap: Mapa del sitio
+footer_theme: Tema
 
 # --- Feeds ---
 atom_feed: Feed Atom

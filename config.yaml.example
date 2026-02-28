@@ -49,6 +49,15 @@ themes_dir: themes
 color_scheme: auto
 
 # -----------------------------------------------------------------------------
+# Navigation
+# -----------------------------------------------------------------------------
+# nav_taxonomy: Name of the taxonomy whose terms should appear as links in
+#               the header navigation bar (e.g. "area", "tags").
+#               When empty (default), the header shows taxonomy index links
+#               (the taxonomy names themselves) instead of individual terms.
+nav_taxonomy: ""
+
+# -----------------------------------------------------------------------------
 # Output
 # -----------------------------------------------------------------------------
 # public_dir: Directory where the generated site is written.
@@ -174,6 +183,14 @@ build_cache_dir: .osg/cache
 lightbox: true
 
 # -----------------------------------------------------------------------------
+# Minification
+# -----------------------------------------------------------------------------
+# minify: Minify HTML, CSS, JS, JSON, SVG, and XML files in public/ after
+#         rendering. Uses tdewolff/minify for fast, standards-compliant output.
+#         Disable for easier debugging of generated output.
+minify: true
+
+# -----------------------------------------------------------------------------
 # Image optimization
 # -----------------------------------------------------------------------------
 # image_optimization: Generate responsive image variants (resized JPEG + WebP).
@@ -269,6 +286,25 @@ tui_prefix_ms: 600
 # -----------------------------------------------------------------------------
 # doctor_profile: Profile for "osg doctor" checks ("dev" or "prod").
 doctor_profile: dev
+
+# -----------------------------------------------------------------------------
+# Social links & copyright
+# -----------------------------------------------------------------------------
+# social: Map of social network handles shown as icons in the footer.
+#   Only configured networks appear. Supported keys:
+#   x, github, mastodon, linkedin, bluesky, email
+#   For email use the address directly (mailto: is added automatically).
+# copyright: Copyright notice shown in the footer bar.
+#   Use {year} as a placeholder for the current year.
+#   If empty, defaults to "(c) {year} {site_title}".
+# social:
+#   x: "https://x.com/your_handle"
+#   github: "https://github.com/your_user"
+#   mastodon: "https://mastodon.social/@your_handle"
+#   linkedin: "https://linkedin.com/in/your_profile"
+#   bluesky: "https://bsky.app/profile/your_handle"
+#   email: "you@example.com"
+# copyright: ""
 
 # -----------------------------------------------------------------------------
 # Logging

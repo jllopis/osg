@@ -2,10 +2,16 @@
 <header class="site-header" role="banner">
   <div class="container">
     <a class="brand" href="{{ get_url "/" true false }}">{{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}</a>
-    {{ if or .taxonomies .menu_pages }}
+    {{ if or .nav_terms .taxonomies .menu_pages }}
     <nav class="nav" aria-label="{{ trans "aria_main_nav" }}">
-      {{ range $name, $data := .taxonomies }}
-      <a href="{{ get_url (printf "/%s/" $name) true false }}">{{ $name }}</a>
+      {{ if .nav_terms }}
+        {{ range .nav_terms }}
+        <a href="{{ .permalink }}">{{ .name }}</a>
+        {{ end }}
+      {{ else }}
+        {{ range $name, $data := .taxonomies }}
+        <a href="{{ get_url (printf "/%s/" $name) true false }}">{{ $name }}</a>
+        {{ end }}
       {{ end }}
       {{ range .menu_pages }}
       <a href="{{ .path }}">{{ .title }}</a>

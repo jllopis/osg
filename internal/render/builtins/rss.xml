@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0">
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>{{ if .feed_title }}{{ .feed_title }}{{ else }}{{ .taxonomy.name }}: {{ .term.name }}{{ end }}</title>
-    <link>{{ .feed_url }}</link>
+    <link>{{ if .feed_title }}{{ with .config }}{{ .base_url }}{{ end }}{{ else }}{{ .feed_url }}{{ end }}</link>
     <description>{{ if .feed_description }}{{ .feed_description }}{{ else }}{{ .taxonomy.name }} {{ trans "feed_description_suffix" }}{{ end }}</description>
+    <atom:link href="{{ .feed_url }}" rel="self" type="application/rss+xml" />
     <lastBuildDate>{{ .last_updated }}</lastBuildDate>
-    {{ if .pages }}
     {{ range .pages }}
     <item>
       <title>{{ .title }}</title>
       <link>{{ .permalink }}</link>
       <guid>{{ .permalink }}</guid>
       <pubDate>{{ .date }}</pubDate>
-      {{ if .summary }}<description>{{ .summary }}</description>{{ end }}
+      {{ if .summary }}<description><![CDATA[{{ .summary }}]]></description>{{ end }}
     </item>
-    {{ end }}
     {{ end }}
   </channel>
 </rss>
