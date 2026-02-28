@@ -13,57 +13,49 @@ func init() {
 	Register("cloudflare", newCloudflare)
 }
 
-// CloudflareProvider deploys to Cloudflare Pages or Workers using Wrangler.
+// CloudflareProvider deploys to Cloudflare Workers (Static Assets) using Wrangler.
 // Requires wrangler CLI installed and CLOUDFLARE_API_TOKEN set.
+//
+// Workers Static Assets is the current Cloudflare recommendation for static
+// sites (Cloudflare Pages has been merged into Workers). The provider generates
+// a temporary wrangler.toml pointing at the public directory and runs
+// "wrangler deploy".
 type CloudflareProvider struct {
-	// Project is the Cloudflare Pages project name.
-	Project string
-	// Branch is the git branch for Pages (default: main).
-	Branch string
+	// WorkerName is the Worker name in Cloudflare (required).
+	WorkerName string
 	// AccountID is the Cloudflare account ID (optional if wrangler is configured).
 	AccountID string
-	// UseWorkers deploys as a Worker instead of Pages.
-	UseWorkers bool
-	// WorkerName is the Worker name (required if UseWorkers is true).
-	WorkerName string
+	// CompatibilityDate for the Worker runtime (default: 2024-09-01).
+	CompatibilityDate string
+	// NotFoundHandling controls 404 behavior: "none", "single-page-application",
+	// or "404-page" (default: "404-page").
+	NotFoundHandling string
 	// ExtraFlags passes additional flags to wrangler.
 	ExtraFlags string
 }
 
 func newCloudflare(cfg map[string]any) Provider {
 	return &CloudflareProvider{
-		Project:    getString(cfg, "project", ""),
-		Branch:     getString(cfg, "branch", "main"),
-		AccountID:  getString(cfg, "account_id", ""),
-		UseWorkers: getBool(cfg, "workers", false),
-		WorkerName: getString(cfg, "worker_name", ""),
-		ExtraFlags: getString(cfg, "extra_flags", ""),
+		WorkerName:        getString(cfg, "worker_name", getString(cfg, "project", "")),
+		AccountID:         getString(cfg, "account_id", ""),
+		CompatibilityDate: getString(cfg, "compatibility_date", "2024-09-01"),
+		NotFoundHandling:  getString(cfg, "not_found_handling", "404-page"),
+		ExtraFlags:        getString(cfg, "extra_flags", ""),
 	}
 }
 
 func (p *CloudflareProvider) Name() string { return "cloudflare" }
 
 func (p *CloudflareProvider) Validate() error {
-	// Check for API token
 	if os.Getenv("CLOUDFLARE_API_TOKEN") == "" {
 		return fmt.Errorf("cloudflare: CLOUDFLARE_API_TOKEN not set")
 	}
-
-	if p.UseWorkers {
-		if p.WorkerName == "" {
-			return fmt.Errorf("cloudflare: worker_name is required when workers=true")
-		}
-	} else {
-		if p.Project == "" {
-			return fmt.Errorf("cloudflare: project is required (Cloudflare Pages project name)")
-		}
+	if p.WorkerName == "" {
+		return fmt.Errorf("cloudflare: worker_name (or project) is required")
 	}
-
-	// Check wrangler is installed
 	if _, err := exec.LookPath("wrangler"); err != nil {
 		return fmt.Errorf("cloudflare: wrangler CLI not found (install with: npm install -g wrangler)")
 	}
-
 	return nil
 }
 
@@ -73,115 +65,60 @@ func (p *CloudflareProvider) Deploy(ctx context.Context, publicDir string) error
 		return fmt.Errorf("cloudflare: resolving public dir: %w", err)
 	}
 
+	// Verify public dir exists and has content.
+	entries, err := os.ReadDir(absPublic)
+	if err != nil {
+		return fmt.Errorf("cloudflare: reading public dir: %w", err)
+	}
+	if len(entries) == 0 {
+		return fmt.Errorf("cloudflare: public dir %q is empty (run 'osg build' first)", absPublic)
+	}
+
+	// Generate a temporary wrangler.toml that points [assets] at the public dir.
+	tmpDir, err := os.MkdirTemp("", "osg-cf-deploy-*")
+	if err != nil {
+		return fmt.Errorf("cloudflare: creating temp dir: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	toml := fmt.Sprintf(`name = %q
+compatibility_date = %q
+
+[vars]
+ENVIRONMENT = "production"
+
+[assets]
+directory = %q
+not_found_handling = %q
+`, p.WorkerName, p.CompatibilityDate, absPublic, p.NotFoundHandling)
+
+	tomlPath := filepath.Join(tmpDir, "wrangler.toml")
+	if err := os.WriteFile(tomlPath, []byte(toml), 0644); err != nil {
+		return fmt.Errorf("cloudflare: writing wrangler.toml: %w", err)
+	}
+
+	// Build wrangler args.
+	args := []string{"deploy", "--config", tomlPath}
+	if p.ExtraFlags != "" {
+		args = append(args, strings.Fields(p.ExtraFlags)...)
+	}
+
+	// Build environment.
 	env := os.Environ()
 	if p.AccountID != "" {
 		env = append(env, "CLOUDFLARE_ACCOUNT_ID="+p.AccountID)
 	}
 
-	if p.UseWorkers {
-		return p.deployWorkers(ctx, absPublic, env)
-	}
-	return p.deployPages(ctx, absPublic, env)
-}
-
-func (p *CloudflareProvider) deployPages(ctx context.Context, publicDir string, env []string) error {
-	args := []string{"pages", "deploy", publicDir, "--project-name", p.Project, "--branch", p.Branch}
-
-	if p.ExtraFlags != "" {
-		args = append(args, strings.Fields(p.ExtraFlags)...)
-	}
-
-	fmt.Printf("Deploying to Cloudflare Pages: %s (branch: %s) ...\n", p.Project, p.Branch)
-	cmd := exec.CommandContext(ctx, "wrangler", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = env
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("cloudflare pages: %w", err)
-	}
-
-	fmt.Printf("Deployed to Cloudflare Pages: https://%s.pages.dev\n", p.Project)
-	return nil
-}
-
-func (p *CloudflareProvider) deployWorkers(ctx context.Context, publicDir string, env []string) error {
-	// Workers require a wrangler.toml or we pass all config via flags
-	// For static sites, we deploy as a Worker with static assets
-	args := []string{
-		"deploy",
-		"--name", p.WorkerName,
-		"--compatibility-date", "2024-01-01",
-	}
-
-	if p.AccountID != "" {
-		args = append(args, "--account-id", p.AccountID)
-	}
-
-	// For Workers serving static files, we need to create a minimal worker script
-	// that serves from the public directory. This is more complex than Pages.
-	// For simplicity, we'll use wrangler's static asset serving feature.
-
-	// Create a minimal worker script
-	workerScript := `
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    const path = url.pathname;
-    
-    // Try to serve static file
-    const key = path === '/' ? 'index.html' : path.slice(1);
-    const object = await env.BUCKET.get(key);
-    
-    if (object) {
-      const headers = new Headers();
-      object.writeHttpMetadata(headers);
-      headers.set('etag', object.httpEtag);
-      return new Response(object.body, { headers });
-    }
-    
-    // Try with .html extension for SPA-style routing
-    const htmlKey = key + '.html';
-    const htmlObject = await env.BUCKET.get(htmlKey);
-    if (htmlObject) {
-      const headers = new Headers();
-      htmlObject.writeHttpMetadata(headers);
-      return new Response(htmlObject.body, { headers });
-    }
-    
-    return new Response('Not Found', { status: 404 });
-  }
-};
-`
-
-	// Write temporary worker script
-	tmpDir, err := os.MkdirTemp("", "osg-cloudflare-worker-*")
-	if err != nil {
-		return fmt.Errorf("cloudflare workers: creating temp dir: %w", err)
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	workerFile := filepath.Join(tmpDir, "worker.js")
-	if err := os.WriteFile(workerFile, []byte(workerScript), 0644); err != nil {
-		return fmt.Errorf("cloudflare workers: writing worker script: %w", err)
-	}
-
-	args = append(args, workerFile)
-
-	if p.ExtraFlags != "" {
-		args = append(args, strings.Fields(p.ExtraFlags)...)
-	}
-
 	fmt.Printf("Deploying to Cloudflare Workers: %s ...\n", p.WorkerName)
-	fmt.Println("Note: For static sites, Cloudflare Pages is recommended over Workers.")
 	cmd := exec.CommandContext(ctx, "wrangler", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Env = env
+	cmd.Dir = tmpDir
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("cloudflare workers: %w", err)
+		return fmt.Errorf("cloudflare: wrangler deploy failed: %w", err)
 	}
 
 	fmt.Printf("Deployed to Cloudflare Workers: %s\n", p.WorkerName)
-	fmt.Println("Check the wrangler output above for the full deployment URL.")
 	return nil
 }

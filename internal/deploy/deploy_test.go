@@ -137,36 +137,25 @@ func TestCloudflare_Validate(t *testing.T) {
 	}{
 		{
 			name:    "missing API token",
-			cfg:     map[string]any{"project": "my-blog"},
+			cfg:     map[string]any{"worker_name": "my-blog"},
 			env:     map[string]string{},
 			wantErr: true,
 		},
 		{
-			name:    "missing project",
+			name:    "missing worker_name",
 			cfg:     map[string]any{},
 			env:     map[string]string{"CLOUDFLARE_API_TOKEN": "test"},
 			wantErr: true,
 		},
 		{
-			name:    "valid pages config",
-			cfg:     map[string]any{"project": "my-blog"},
+			name:    "valid config with worker_name",
+			cfg:     map[string]any{"worker_name": "my-blog"},
 			env:     map[string]string{"CLOUDFLARE_API_TOKEN": "test"},
 			wantErr: false, // Will fail on wrangler check but validation passes
 		},
 		{
-			name: "workers without name",
-			cfg: map[string]any{
-				"workers": true,
-			},
-			env:     map[string]string{"CLOUDFLARE_API_TOKEN": "test"},
-			wantErr: true,
-		},
-		{
-			name: "workers with name",
-			cfg: map[string]any{
-				"workers":     true,
-				"worker_name": "my-worker",
-			},
+			name:    "project falls back to worker_name",
+			cfg:     map[string]any{"project": "my-blog"},
 			env:     map[string]string{"CLOUDFLARE_API_TOKEN": "test"},
 			wantErr: false, // Will fail on wrangler check but validation passes
 		},
@@ -430,17 +419,28 @@ func TestNewS3_EnvDefaults(t *testing.T) {
 
 func TestNewCloudflare_Defaults(t *testing.T) {
 	p := newCloudflare(map[string]any{
-		"project": "my-site",
+		"worker_name": "my-site",
 	}).(*CloudflareProvider)
 
-	if p.Project != "my-site" {
-		t.Errorf("Project = %q", p.Project)
+	if p.WorkerName != "my-site" {
+		t.Errorf("WorkerName = %q, want %q", p.WorkerName, "my-site")
 	}
-	if p.Branch != "main" {
-		t.Errorf("Branch = %q, want %q", p.Branch, "main")
+	if p.CompatibilityDate != "2024-09-01" {
+		t.Errorf("CompatibilityDate = %q, want %q", p.CompatibilityDate, "2024-09-01")
 	}
-	if p.UseWorkers {
-		t.Error("UseWorkers should default to false")
+	if p.NotFoundHandling != "404-page" {
+		t.Errorf("NotFoundHandling = %q, want %q", p.NotFoundHandling, "404-page")
+	}
+}
+
+func TestNewCloudflare_ProjectFallback(t *testing.T) {
+	// "project" should fall back to worker_name for backward compat
+	p := newCloudflare(map[string]any{
+		"project": "my-blog",
+	}).(*CloudflareProvider)
+
+	if p.WorkerName != "my-blog" {
+		t.Errorf("WorkerName = %q, want %q (from project fallback)", p.WorkerName, "my-blog")
 	}
 }
 

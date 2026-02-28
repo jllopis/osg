@@ -241,18 +241,13 @@ serve_debounce_ms: 300
 # deploy:
 #   provider: cloudflare
 #
-#   # Cloudflare Pages (recommended for static sites)
+#   # Cloudflare Workers Static Assets (recommended for static sites)
 #   cloudflare:
-#     project: "my-blog"           # Pages project name (required)
-#     branch: "main"               # Git branch (default: main)
+#     worker_name: "my-blog"       # Worker name in Cloudflare (required)
+#     not_found_handling: "404-page"  # "none", "single-page-application", or "404-page"
+#     compatibility_date: "2024-09-01"  # Worker runtime version
 #     account_id: ""               # Optional, for multi-account
 #     # CLOUDFLARE_API_TOKEN env var required
-#
-#   # Cloudflare Workers (for dynamic sites, not recommended for static)
-#   # cloudflare:
-#   #   workers: true
-#   #   worker_name: "my-worker"
-#   #   account_id: ""
 #
 #   # rsync over SSH (any VPS/server)
 #   rsync:
