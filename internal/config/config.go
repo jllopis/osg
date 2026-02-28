@@ -45,6 +45,7 @@ type Config struct {
 	SiteTitle         string            `koanf:"site_title" yaml:"site_title"`
 	SiteDescription   string            `koanf:"site_description" yaml:"site_description"`
 	Theme             string            `koanf:"theme" yaml:"theme"`
+	Logo              string            `koanf:"logo" yaml:"logo"`
 	ColorScheme       string            `koanf:"color_scheme" yaml:"color_scheme"`
 	VaultPath         string            `koanf:"vault_path" yaml:"vault_path"`
 	ContentDir        string            `koanf:"content_dir" yaml:"content_dir"`
@@ -87,11 +88,12 @@ type Config struct {
 }
 
 type TaxonomyConfig struct {
-	Name         string `koanf:"name" yaml:"name"`
-	PaginateBy   int    `koanf:"paginate_by" yaml:"paginate_by"`
-	PaginatePath string `koanf:"paginate_path" yaml:"paginate_path"`
-	Feed         bool   `koanf:"feed" yaml:"feed"`
-	Render       bool   `koanf:"render" yaml:"render"`
+	Name         string   `koanf:"name" yaml:"name"`
+	PaginateBy   int      `koanf:"paginate_by" yaml:"paginate_by"`
+	PaginatePath string   `koanf:"paginate_path" yaml:"paginate_path"`
+	Feed         bool     `koanf:"feed" yaml:"feed"`
+	Render       bool     `koanf:"render" yaml:"render"`
+	ExcludeTerms []string `koanf:"exclude_terms" yaml:"exclude_terms"`
 }
 
 // DeployConfig holds deployment settings.
@@ -236,9 +238,21 @@ func Load(path string) (Config, error) {
 
 func ResolveVaultPath(cfg Config) (string, error) {
 	if cfg.VaultPath != "" {
-		return cfg.VaultPath, nil
+		return ExpandTilde(cfg.VaultPath), nil
 	}
 	return "", fmt.Errorf("vault path not configured (use --vault-path)")
+}
+
+// ExpandTilde replaces a leading ~ with the user's home directory.
+func ExpandTilde(path string) string {
+	if path == "~" || strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return path
+		}
+		return home + path[1:]
+	}
+	return path
 }
 
 func DefaultConfigYAML() string {
@@ -491,11 +505,13 @@ logging:
 #     paginate_path: page   # URL segment for paginated pages
 #     feed: true            # generate RSS/Atom feed for this taxonomy
 #     render: true          # generate HTML pages
-#   - name: area
-#     paginate_by: 10
-#     paginate_path: page
+#   - name: type
+#     paginate_by: 0
 #     feed: false
 #     render: true
+#     exclude_terms:         # terms to exclude from this taxonomy
+#       - fuente
+#       - template
 `) + "\n"
 }
 

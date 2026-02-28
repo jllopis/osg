@@ -1,6 +1,7 @@
 package theme
 
 import (
+	"bytes"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -137,6 +138,14 @@ func installTheme(themesDir string, name string, overwrite bool) error {
 		data, err := defaultThemeFS.ReadFile(path)
 		if err != nil {
 			return err
+		}
+
+		// Skip write when on-disk content is already identical.
+		// This avoids touching the mtime, which would trigger
+		// the file watcher and cause an infinite rebuild loop
+		// in "osg serve".
+		if existing, readErr := os.ReadFile(destPath); readErr == nil && bytes.Equal(existing, data) {
+			return nil
 		}
 
 		return os.WriteFile(destPath, data, 0o644)

@@ -27,6 +27,7 @@ type Page struct {
 	Updated     time.Time
 	Draft       bool
 	Menu        bool
+	Author      string
 	Image       string
 	Summary     string
 	Content     string
@@ -305,6 +306,24 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		}
 	}
 
+	// Resolve summary: osg.abstract > top-level summary/description/excerpt
+	pageSummary := ""
+	if osg != nil {
+		pageSummary = pickString(osg, "abstract")
+	}
+	if pageSummary == "" {
+		pageSummary = pickString(fm, "summary", "description", "excerpt")
+	}
+
+	// Resolve author: osg.author > top-level author
+	pageAuthor := ""
+	if osg != nil {
+		pageAuthor = pickString(osg, "author")
+	}
+	if pageAuthor == "" {
+		pageAuthor = pickString(fm, "author")
+	}
+
 	page := &Page{
 		Title:      title,
 		Slug:       slug,
@@ -314,8 +333,9 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		Date:       fileDate,
 		Draft:      pickBool(fm, "draft"),
 		Menu:       pickBool(fm, "menu"),
+		Author:     pageAuthor,
 		Image:      pageImage,
-		Summary:    pickString(fm, "summary", "description", "excerpt"),
+		Summary:    pageSummary,
 		Content:    contentHTML,
 		RawContent: string(body),
 		Template:   pickString(fm, "template"),
@@ -351,6 +371,7 @@ func (p *Page) View() map[string]any {
 		"updated":      p.Updated,
 		"draft":        p.Draft,
 		"menu":         p.Menu,
+		"author":       p.Author,
 		"image":        p.Image,
 		"summary":      p.Summary,
 		"content":      template.HTML(p.Content),

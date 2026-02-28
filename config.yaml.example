@@ -47,6 +47,10 @@ include_drafts: false
 theme: default
 themes_dir: themes
 color_scheme: auto
+# logo: Path or URL to a logo image shown in the header next to the site title.
+#       Supported formats: SVG, PNG, WebP. Recommended size: ~36px square.
+#       When empty, a default geometric icon is displayed.
+# logo: "/images/logo.svg"
 
 # -----------------------------------------------------------------------------
 # Navigation

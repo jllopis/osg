@@ -56,6 +56,7 @@ type ServeCmd struct {
 	Watch      *bool  `help:"Watch files and rebuild"`
 	LiveReload *bool  `help:"Enable live reload (requires watch)"`
 	DebounceMs *int   `help:"Debounce watch events in ms"`
+	Drafts     bool   `help:"Include draft posts in preview"`
 }
 
 type NewCmd struct {
@@ -190,6 +191,10 @@ func main() {
 		}
 		runErr = app.RunNew(context.Background(), opts, postOpts)
 	case command == "serve":
+		if cli.Serve.Drafts {
+			t := true
+			opts.IncludeDrafts = &t
+		}
 		runErr = app.RunServe(context.Background(), opts)
 	case command == "tui":
 		runErr = app.RunTUI(context.Background(), opts)

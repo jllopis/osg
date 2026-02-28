@@ -216,6 +216,173 @@ func TestTermViews(t *testing.T) {
 	}
 }
 
+func TestBuild_ExcludeTerms(t *testing.T) {
+	t.Parallel()
+	cfgs := []config.TaxonomyConfig{{
+		Name:         "type",
+		ExcludeTerms: []string{"fuente", "template"},
+	}}
+	pages := []*site.Page{
+		makePage("post-1", time.Now(), map[string][]string{"type": {"articulo"}}),
+		makePage("post-2", time.Now(), map[string][]string{"type": {"fuente"}}),
+		makePage("post-3", time.Now(), map[string][]string{"type": {"template"}}),
+		makePage("post-4", time.Now(), map[string][]string{"type": {"articulo", "fuente"}}),
+	}
+
+	result := Build(cfgs, pages, "")
+	idx := result["type"]
+	if idx == nil {
+		t.Fatal("expected 'type' index")
+	}
+
+	// Only "articulo" should exist; "fuente" and "template" are excluded
+	if len(idx.Terms) != 1 {
+		t.Fatalf("expected 1 term (articulo), got %d: %v", len(idx.Terms), termNames(idx))
+	}
+	art := idx.Terms["articulo"]
+	if art == nil {
+		t.Fatal("expected 'articulo' term")
+	}
+	// post-1 and post-4 both have "articulo"
+	if len(art.Pages) != 2 {
+		t.Errorf("expected 2 pages for 'articulo', got %d", len(art.Pages))
+	}
+}
+
+func TestBuild_ExcludeTermsCaseInsensitive(t *testing.T) {
+	t.Parallel()
+	cfgs := []config.TaxonomyConfig{{
+		Name:         "tags",
+		ExcludeTerms: []string{"Draft"},
+	}}
+	pages := []*site.Page{
+		makePage("post-1", time.Now(), map[string][]string{"tags": {"draft", "go"}}),
+		makePage("post-2", time.Now(), map[string][]string{"tags": {"DRAFT"}}),
+	}
+
+	result := Build(cfgs, pages, "")
+	idx := result["tags"]
+	if idx.Terms["draft"] != nil || idx.Terms["DRAFT"] != nil {
+		t.Error("expected 'draft' term to be excluded (case insensitive)")
+	}
+	if idx.Terms["go"] == nil {
+		t.Error("expected 'go' term to exist")
+	}
+}
+
+func TestBuild_ExcludeTermsEmpty(t *testing.T) {
+	t.Parallel()
+	cfgs := []config.TaxonomyConfig{{
+		Name:         "tags",
+		ExcludeTerms: nil,
+	}}
+	pages := []*site.Page{
+		makePage("post-1", time.Now(), map[string][]string{"tags": {"go", "rust"}}),
+	}
+
+	result := Build(cfgs, pages, "")
+	if len(result["tags"].Terms) != 2 {
+		t.Errorf("expected 2 terms with no exclusions, got %d", len(result["tags"].Terms))
+	}
+}
+
+func TestFilterPageTaxonomies(t *testing.T) {
+	t.Parallel()
+	cfgs := []config.TaxonomyConfig{
+		{Name: "type", ExcludeTerms: []string{"fuente", "template"}},
+		{Name: "tags"},
+	}
+	pages := []*site.Page{
+		makePage("post-1", time.Now(), map[string][]string{
+			"type": {"articulo", "fuente"},
+			"tags": {"go", "rust"},
+		}),
+		makePage("post-2", time.Now(), map[string][]string{
+			"type": {"fuente"},
+			"tags": {"go"},
+		}),
+		makePage("post-3", time.Now(), map[string][]string{
+			"type": {"template"},
+		}),
+		makePage("post-4", time.Now(), map[string][]string{
+			"tags": {"rust"},
+		}),
+	}
+
+	FilterPageTaxonomies(cfgs, pages)
+
+	// post-1: "fuente" removed from type, "articulo" stays; tags untouched
+	if got := pages[0].Taxonomies["type"]; len(got) != 1 || got[0] != "articulo" {
+		t.Errorf("post-1 type: expected [articulo], got %v", got)
+	}
+	if got := pages[0].Taxonomies["tags"]; len(got) != 2 {
+		t.Errorf("post-1 tags: expected 2 terms, got %v", got)
+	}
+
+	// post-2: only had "fuente" in type -> key removed entirely
+	if _, ok := pages[1].Taxonomies["type"]; ok {
+		t.Error("post-2: expected 'type' key to be deleted (all terms excluded)")
+	}
+	if got := pages[1].Taxonomies["tags"]; len(got) != 1 || got[0] != "go" {
+		t.Errorf("post-2 tags: expected [go], got %v", got)
+	}
+
+	// post-3: only had "template" in type -> key removed
+	if _, ok := pages[2].Taxonomies["type"]; ok {
+		t.Error("post-3: expected 'type' key to be deleted")
+	}
+
+	// post-4: no type at all, tags untouched
+	if got := pages[3].Taxonomies["tags"]; len(got) != 1 || got[0] != "rust" {
+		t.Errorf("post-4 tags: expected [rust], got %v", got)
+	}
+}
+
+func TestFilterPageTaxonomies_CaseInsensitive(t *testing.T) {
+	t.Parallel()
+	cfgs := []config.TaxonomyConfig{
+		{Name: "tags", ExcludeTerms: []string{"Draft"}},
+	}
+	pages := []*site.Page{
+		makePage("post-1", time.Now(), map[string][]string{
+			"tags": {"draft", "go", "DRAFT"},
+		}),
+	}
+
+	FilterPageTaxonomies(cfgs, pages)
+
+	got := pages[0].Taxonomies["tags"]
+	if len(got) != 1 || got[0] != "go" {
+		t.Errorf("expected [go], got %v", got)
+	}
+}
+
+func TestFilterPageTaxonomies_NoExclusions(t *testing.T) {
+	t.Parallel()
+	cfgs := []config.TaxonomyConfig{
+		{Name: "tags"},
+	}
+	pages := []*site.Page{
+		makePage("post-1", time.Now(), map[string][]string{
+			"tags": {"go", "rust"},
+		}),
+	}
+
+	FilterPageTaxonomies(cfgs, pages)
+
+	if got := pages[0].Taxonomies["tags"]; len(got) != 2 {
+		t.Errorf("expected 2 terms (no exclusions), got %v", got)
+	}
+}
+
+func termNames(idx *Index) []string {
+	names := make([]string, 0, len(idx.Terms))
+	for _, t := range idx.Terms {
+		names = append(names, t.Name)
+	}
+	return names
+}
+
 // ---- Pagination Tests ----
 
 func TestBuildPaginator_NoPagination(t *testing.T) {

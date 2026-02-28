@@ -49,9 +49,19 @@ aria_paginated_posts: Publicaciones paginadas
 # --- Navegacion ---
 nav.search: Buscar
 
+# --- Pie de post ---
+published_in: "Publicado en:"
+
+# --- Selector de tema ---
+theme_label: Esquema de color
+theme_auto: Sistema
+theme_light: Claro
+theme_dark: Oscuro
+
 # --- Parciales ---
 skip_to_content: Ir al contenido
 generated_by: Generado con
+and: y
 
 # --- Footer ---
 footer_nav: Navegacion
@@ -63,6 +73,10 @@ footer_theme: Tema
 atom_feed: Feed Atom
 rss_feed: Feed RSS
 feed_description_suffix: feed
+
+# --- Vista previa de borradores ---
+draft: Borrador
+draft_banner: "Estas viendo un borrador. Esta pagina no esta publicada."
 
 # --- Formatos de fecha ---
 # Cadenas de formato de fecha de Go usadas por la funcion date_format.

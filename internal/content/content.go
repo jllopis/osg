@@ -41,12 +41,22 @@ func NormalizeFrontmatter(fm map[string]any, slug string, dateISO string, isDraf
 		out["template"] = template
 	}
 
-	if summary := pickString(fm, "summary", "description", "excerpt"); summary != "" {
+	// Summary: osg.abstract takes precedence, then top-level summary/description/excerpt
+	if abstract := pickString(osg, "abstract"); abstract != "" {
+		out["summary"] = abstract
+	} else if summary := pickString(fm, "summary", "description", "excerpt"); summary != "" {
 		out["summary"] = summary
 	}
 
 	if lang := pickString(fm, "lang", "language"); lang != "" {
 		out["lang"] = lang
+	}
+
+	// Author: osg.author takes precedence, then top-level author
+	if author := pickString(osg, "author"); author != "" {
+		out["author"] = author
+	} else if author := pickString(fm, "author"); author != "" {
+		out["author"] = author
 	}
 
 	// Image: osg.image takes precedence, then top-level image/cover/banner

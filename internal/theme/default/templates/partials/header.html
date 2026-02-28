@@ -1,26 +1,55 @@
 <a class="skip-link" href="#main-content">{{ trans "skip_to_content" }}</a>
 <header class="site-header" role="banner">
-  <div class="container">
-    <a class="brand" href="{{ get_url "/" true false }}">{{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}</a>
-    {{ if or .nav_terms .taxonomies .menu_pages }}
-    <nav class="nav" aria-label="{{ trans "aria_main_nav" }}">
-      {{ if .nav_terms }}
-        {{ range .nav_terms }}
-        <a href="{{ .permalink }}">{{ .name }}</a>
+  {{/* ---- Expanded brand row (hidden on scroll) ---- */}}
+  <div class="header-expanded">
+    <div class="container">
+      <a class="brand-lg" href="{{ get_url "/" true false }}">
+        <span class="brand-logo">{{ if .config.logo }}<img src="{{ .config.logo }}" alt="" />{{ else }}<svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 7 C12 7, 10 11, 10 16 C10 22, 14 26, 21 26 C28 26, 32 22, 32 16 C32 11, 29 7.5, 24 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/><line x1="1" y1="16" x2="44" y2="16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polygon points="44,16 39,12.5 39,19.5" fill="currentColor"/><line x1="5" y1="16" x2="1.5" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="5" y1="16" x2="1.5" y2="20" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="7.5" y1="16" x2="4" y2="11.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="7.5" y1="16" x2="4" y2="20.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="10" y1="16" x2="7" y2="12.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><line x1="10" y1="16" x2="7" y2="19.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>{{ end }}</span>
+        <span class="brand-text">{{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}</span>
+      </a>
+    </div>
+  </div>
+
+  {{/* ---- Compact nav bar (always visible, becomes the only row on scroll) ---- */}}
+  <div class="header-compact">
+    <div class="container">
+      <a class="brand-sm" href="{{ get_url "/" true false }}">
+        <span class="brand-logo brand-logo-sm">{{ if .config.logo }}<img src="{{ .config.logo }}" alt="" />{{ else }}<svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 7 C12 7, 10 11, 10 16 C10 22, 14 26, 21 26 C28 26, 32 22, 32 16 C32 11, 29 7.5, 24 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/><line x1="1" y1="16" x2="44" y2="16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polygon points="44,16 39,12.5 39,19.5" fill="currentColor"/><line x1="5" y1="16" x2="1.5" y2="12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="5" y1="16" x2="1.5" y2="20" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><line x1="7.5" y1="16" x2="4" y2="11.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="7.5" y1="16" x2="4" y2="20.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="10" y1="16" x2="7" y2="12.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><line x1="10" y1="16" x2="7" y2="19.5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>{{ end }}</span>
+        <span class="brand-text">{{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}</span>
+      </a>
+
+      {{ if or .nav_terms .taxonomies .menu_pages }}
+      <nav class="nav" aria-label="{{ trans "aria_main_nav" }}">
+        {{ if .nav_terms }}
+          {{ range .nav_terms }}
+          <a href="{{ .permalink }}">{{ .name }}</a>
+          {{ end }}
+        {{ else }}
+          {{ range $name, $data := .taxonomies }}
+          <a href="{{ get_url (printf "/%s/" $name) true false }}">{{ $name }}</a>
+          {{ end }}
         {{ end }}
-      {{ else }}
-        {{ range $name, $data := .taxonomies }}
-        <a href="{{ get_url (printf "/%s/" $name) true false }}">{{ $name }}</a>
+        {{ range .menu_pages }}
+        <a href="{{ .path }}">{{ .title }}</a>
         {{ end }}
+      </nav>
       {{ end }}
-      {{ range .menu_pages }}
-      <a href="{{ .path }}">{{ .title }}</a>
-      {{ end }}
-    </nav>
-    {{ end }}
-    <div class="header-search">
-      <input type="search" id="header-search-input" placeholder="{{ trans "nav.search" }}..." autocomplete="off" aria-label="{{ trans "nav.search" }}" />
-      <div id="header-search-results" class="search-dropdown" aria-expanded="false"></div>
+
+      <div class="header-actions">
+        {{/* Search toggle button (magnifying glass) */}}
+        <button class="search-toggle" type="button" aria-label="{{ trans "nav.search" }}" title="{{ trans "nav.search" }}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+
+        {{/* Inline search field (hidden by default, shown on toggle) */}}
+        <div class="header-search" id="header-search-wrapper">
+          <input type="search" id="header-search-input" placeholder="{{ trans "nav.search" }}..." autocomplete="off" aria-label="{{ trans "nav.search" }}" />
+          <button class="search-close" type="button" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <div id="header-search-results" class="search-dropdown" aria-expanded="false"></div>
+        </div>
+      </div>
     </div>
   </div>
 </header>
@@ -28,6 +57,59 @@
 <script src="/js/search.js" defer></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // --- Compact header on scroll ---
+    // The nav bar is always visible. Only the large title row
+    // collapses once the user scrolls past the threshold.
+    // Hysteresis (compact at 80px, expand below 10px) prevents
+    // rapid toggling when hovering near the boundary.
+    var header = document.querySelector('.site-header');
+    var isCompact = false;
+    var ticking = false;
+
+    function updateHeader() {
+      var y = window.scrollY;
+      if (!isCompact && y > 80) {
+        header.classList.add('header-compact-mode');
+        isCompact = true;
+      } else if (isCompact && y < 10) {
+        header.classList.remove('header-compact-mode');
+        isCompact = false;
+      }
+      ticking = false;
+    }
+
+    window.addEventListener('scroll', function() {
+      if (!ticking) {
+        window.requestAnimationFrame(updateHeader);
+        ticking = true;
+      }
+    }, { passive: true });
+
+    // --- Search toggle ---
+    var searchToggle = document.querySelector('.search-toggle');
+    var searchWrapper = document.getElementById('header-search-wrapper');
+    var searchInput = document.getElementById('header-search-input');
+    var searchClose = document.querySelector('.search-close');
+
+    if (searchToggle && searchWrapper) {
+      searchToggle.addEventListener('click', function() {
+        searchWrapper.classList.add('open');
+        searchInput.focus();
+      });
+      searchClose.addEventListener('click', function() {
+        searchWrapper.classList.remove('open');
+        searchInput.value = '';
+        // Hide dropdown
+        var dropdown = document.getElementById('header-search-results');
+        if (dropdown) dropdown.classList.remove('visible');
+      });
+      // Close on Escape
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') searchClose.click();
+      });
+    }
+
+    // --- OSGSearch init ---
     if (typeof OSGSearch !== 'undefined') {
       new OSGSearch({
         inputSelector: '#header-search-input',

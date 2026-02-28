@@ -24,6 +24,8 @@
               <span class="featured-label">{{ trans "featured" }}</span>
               <h2 class="featured-title">{{ .title }}</h2>
               <div class="featured-meta">
+                {{ if .draft }}<span class="draft-badge draft-badge--featured">{{ trans "draft" }}</span>{{ end }}
+                {{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}
                 <time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short") }}</time>
                 {{ if .reading_time }}<span class="reading-badge">{{ .reading_time }} {{ trans "min_read" }}</span>{{ end }}
               </div>
@@ -38,8 +40,6 @@
         {{/* ---- Section intro (from _index.md) ---- */}}
         {{ if .section.content }}
         <div class="prose home-intro">{{ .section.content }}</div>
-        {{ else if .config.site_description }}
-        <p class="home-description">{{ .config.site_description }}</p>
         {{ end }}
         {{ end }}
 
@@ -60,7 +60,7 @@
                 </div>
                 {{ end }}
                 <div class="post-item-body">
-                  <time class="post-item-date" datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short") }}</time>
+                  <div class="post-item-date">{{ if .draft }}<span class="draft-badge">{{ trans "draft" }}</span>{{ end }}{{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}<time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short") }}</time></div>
                   <h3 class="post-item-title">{{ .title }}</h3>
                   {{ if .summary }}<p class="post-item-summary">{{ .summary }}</p>{{ end }}
                   {{ if .reading_time }}<span class="post-item-reading">{{ .reading_time }} {{ trans "min_read" }}</span>{{ end }}

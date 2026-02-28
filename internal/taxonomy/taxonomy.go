@@ -37,6 +37,19 @@ func Build(cfgs []config.TaxonomyConfig, pages []*site.Page, baseURL string) map
 		return indices
 	}
 
+	// Pre-compute excluded terms per taxonomy (lowercased for
+	// case-insensitive matching).
+	excluded := map[string]map[string]bool{}
+	for name, index := range indices {
+		if len(index.Config.ExcludeTerms) > 0 {
+			set := make(map[string]bool, len(index.Config.ExcludeTerms))
+			for _, t := range index.Config.ExcludeTerms {
+				set[strings.ToLower(strings.TrimSpace(t))] = true
+			}
+			excluded[name] = set
+		}
+	}
+
 	for _, page := range pages {
 		for kind, terms := range page.Taxonomies {
 			index, ok := indices[kind]
@@ -46,6 +59,9 @@ func Build(cfgs []config.TaxonomyConfig, pages []*site.Page, baseURL string) map
 			for _, termName := range terms {
 				termName = strings.TrimSpace(termName)
 				if termName == "" {
+					continue
+				}
+				if ex, ok := excluded[kind]; ok && ex[strings.ToLower(termName)] {
 					continue
 				}
 
@@ -105,6 +121,7 @@ func ConfigView(cfg config.TaxonomyConfig) map[string]any {
 		"paginate_path": cfg.PaginatePath,
 		"feed":          cfg.Feed,
 		"render":        cfg.Render,
+		"exclude_terms": cfg.ExcludeTerms,
 	}
 }
 
@@ -130,6 +147,47 @@ func TermViews(terms []*Term) []map[string]any {
 		out = append(out, TermView(term))
 	}
 	return out
+}
+
+// FilterPageTaxonomies removes excluded terms from every page's Taxonomies
+// map so that templates (e.g. "Publicado en:", card pills) never show them.
+// Call this right after Build().
+func FilterPageTaxonomies(cfgs []config.TaxonomyConfig, pages []*site.Page) {
+	// Build the same excluded-terms sets used in Build().
+	excluded := map[string]map[string]bool{}
+	for _, cfg := range cfgs {
+		if len(cfg.ExcludeTerms) == 0 {
+			continue
+		}
+		set := make(map[string]bool, len(cfg.ExcludeTerms))
+		for _, t := range cfg.ExcludeTerms {
+			set[strings.ToLower(strings.TrimSpace(t))] = true
+		}
+		excluded[cfg.Name] = set
+	}
+	if len(excluded) == 0 {
+		return
+	}
+
+	for _, page := range pages {
+		for kind, terms := range page.Taxonomies {
+			ex, ok := excluded[kind]
+			if !ok {
+				continue
+			}
+			filtered := make([]string, 0, len(terms))
+			for _, t := range terms {
+				if !ex[strings.ToLower(strings.TrimSpace(t))] {
+					filtered = append(filtered, t)
+				}
+			}
+			if len(filtered) == 0 {
+				delete(page.Taxonomies, kind)
+			} else {
+				page.Taxonomies[kind] = filtered
+			}
+		}
+	}
 }
 
 func sortPages(pages []*site.Page) {

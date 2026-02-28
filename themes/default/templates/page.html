@@ -12,16 +12,12 @@
       <main id="main-content" role="main">
         <article class="article">
           {{ block "page-header" . }}
+          {{ if .page.draft }}<div class="draft-banner" role="alert">{{ trans "draft_banner" }}</div>{{ end }}
           <header class="article-header container-narrow">
-            <nav class="breadcrumbs" aria-label="{{ trans "aria_breadcrumb" }}">
-              <a href="{{ get_url "/" true false }}">{{ trans "home" }}</a>
-              <span class="sep" aria-hidden="true">/</span>
-              <span aria-current="page">{{ .page.title }}</span>
-            </nav>
-
             <h1>{{ .page.title }}</h1>
 
             <div class="meta">
+              {{ if .page.author }}<span class="author">{{ .page.author }}</span><span class="meta-sep">&bull;</span>{{ end }}
               <time datetime="{{ .page.date.Format "2006-01-02" }}">{{ date_format .page.date (trans "date_format_long") }}</time>
               {{ if .page.reading_time }}<span class="reading-badge">{{ .page.reading_time }} {{ trans "min_read" }}</span>{{ end }}
             </div>
@@ -49,16 +45,22 @@
 
           {{ block "page-taxonomies" . }}
           {{ if .page.taxonomies }}
-          <footer class="article-footer container-narrow">
-            {{ range $kind, $terms := .page.taxonomies }}
-            <div class="taxo">
-              <span class="label">{{ $kind }}</span>
-              {{ range $terms }}
-              <a class="pill {{ if eq $kind "tags" }}pill--tag{{ else }}pill--default{{ end }}" href="{{ get_taxonomy_url $kind . }}">{{ . }}</a>
-              {{ end }}
-            </div>
-            {{ end }}
-          </footer>
+          <div class="published-in container-narrow">
+            <span class="published-in-label">{{ trans "published_in" }}</span>
+            {{- $first := true -}}
+            {{- range $kind, $terms := .page.taxonomies -}}
+              {{- /* Limit tags to 3 items max */ -}}
+              {{- $limited := $terms -}}
+              {{- if and (eq $kind "tags") (gt (len $terms) 3) -}}
+                {{- $limited = slice $terms 0 3 -}}
+              {{- end -}}
+              {{- range $i, $term := $limited -}}
+                {{- if not $first }}, {{ end -}}
+                <a href="{{ get_taxonomy_url $kind $term }}">{{ $term }}</a>
+                {{- $first = false -}}
+              {{- end -}}
+            {{- end -}}
+          </div>
           {{ end }}
           {{ end }}
 
@@ -117,6 +119,7 @@
     </div>
     {{ block "page-scripts" . }}
     {{ if .config.lightbox }}<script src="{{ get_url "/js/lightbox.js" false true }}"></script>{{ end }}
+    <script src="{{ get_url "/js/tabs.js" false true }}"></script>
     <script src="{{ get_url "/js/progress.js" false true }}"></script>
     {{ end }}
   </body>

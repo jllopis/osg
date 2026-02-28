@@ -108,7 +108,7 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
 ## Architecture Highlights
 
 - **osg frontmatter block**: Notes can have an `osg:` block in YAML frontmatter
-  with fields: `publish`, `featured`, `image`, `path`, `menu`
+  with fields: `publish`, `featured`, `image`, `path`, `menu`, `abstract`, `author`
 - **Standalone pages**: `osg.path` overrides the date-based content layout;
   `osg.menu: true` adds the page to nav and excludes it from post listings
 - **Summary strategies**: `summary_strategy` in config (auto/manual/ai);
@@ -160,44 +160,50 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
 
 ## Current State (as of last session)
 
-All phases 1-11 complete. Phase 11 (Plugin ecosystem) fully done: Fase A, B, C, D, E, F.
+All phases 1-14 complete plus stability/bugfix round.
+Phase 11 (Plugin ecosystem) fully done: Fase A, B, C, D, E, F.
 Standalone Pages, `osg new`, i18n, Kairos AI summaries, AI cache all complete.
+Phase 13 (Draft preview) and Phase 14 (Additional shortcodes) complete.
 
-### Recently completed
-- Phase 11-E (Registry and remote install): `osg plugin install github.com/user/repo[@tag]`
-  downloads .wasm from GitHub Releases API. Curated plugin index
-  (`plugins-index.json`) with `osg plugin search [query]`. Lock file
-  (`.osg/plugins.lock.json`) tracks source + version. `osg plugin update [name]`
-  checks latest release and re-downloads. GITHUB_TOKEN support for private
-  repos. TUI `/plugin search` and `/plugin update` commands.
-  15 new tests (GitHub refs, lock file, index search, download, mock server).
-- Phase 11-D (SDK Go / TinyGo scaffolds): Go SDK package (`internal/plugin/sdk/`)
-  with Event/Response/PluginMeta types, Plugin struct with On() handlers, ABI
-  helpers. TinyGo scaffold via `osg plugin init --lang=go` (main.go with
-  `//go:wasmexport`, go.mod, build.sh, README). Rust scaffold updated with
-  `plugin_info` export, `bytes_to_wasm` helper, all 10 hooks documented.
-  CLI `--lang` flag (default rust), TUI `/plugin init <name> [dir] [lang]`.
-  Fixed embed issue (go.mod.tmpl renaming, .tmpl stripping, //go:build ignore).
-  29 new tests (17 SDK + 12 scaffold).
-- Image lightbox/gallery: Custom Goldmark renderer wraps standalone images in
-  `<figure data-lightbox>` with `<figcaption>`. Zero-dependency JS lightbox
-  (~120 lines) with fullscreen overlay, keyboard/touch nav, captions, counter.
-  Automatic gallery grouping for consecutive figures via CSS grid. Config
-  `lightbox: true` (default enabled). Nord-styled, accessible, responsive.
-- Phase 11-A (Plugin restructuring): Search plugin moved from `examples/`
-  to `plugins-src/search/` (source) and `internal/plugin/bundled/` (embedded
-  `.wasm`). `EnsureBundledPlugins()` extracts bundled plugins at build time
-  without overwriting user-provided ones. Search enabled by default in
-  `plugins_enabled`. Feed plugin reclassified as reference example.
-- Phase 11-B (Tests and robustness): 26 new tests, WASI filesystem mount fix,
-  per-call timeouts, parallel plugin execution, plugin metadata via `plugin_info`.
-- Phase 11-C (New hooks): `config.validate`, `content.transform`, `image.process`,
-  `after.build` implemented in `internal/build/hooks.go` with 11 new tests.
-- Search plugin enhanced: Full-text indexing, `/js/search.js` module, header
-  search bar with dropdown, standalone `/search/` page, keyboard navigation.
+### Recently completed (v0.99)
+- **exclude_terms in page templates**: `FilterPageTaxonomies()` strips excluded
+  terms from `page.Taxonomies` before any `View()` call, so "Publicado en:",
+  card pills, related pages, and prev/next never show excluded terms.
+  `config.ExcludeTerms` was already filtering taxonomy index pages; now it
+  also filters per-page display. 3 new tests.
+- **Tilde expansion in watcher**: `config.ExpandTilde()` exported; called in
+  `normalizePath()` in `serve_watch.go` so `vault_path: "~/..."` resolves
+  correctly for file watching (was concatenating `~` as relative path).
+- **Header scroll compaction**: Replaced direction-aware hide/show with simple
+  always-visible nav bar. Only the large title row collapses via CSS
+  `grid-template-rows` animation. Hysteresis (compact >80px, expand <10px)
+  prevents rapid toggling. All transitions use same cubic-bezier timing.
+  `brand-sm` uses `max-width` (animable) instead of `width` (not animable).
+- **Stale content cleanup**: `removeStaleContent()` in `update_content.go`
+  walks `content/` after export and removes directories whose `index.md`
+  was not produced in the current run. Prevents duplicate pages from
+  renamed/moved vault notes. 4 new tests.
+- **Watch rebuild loop fix**: `EnsureDefaultTheme()` in `internal/theme/default.go`
+  now compares on-disk content with embedded before writing. If identical,
+  skips the write, preventing mtime changes that triggered the watcher
+  into an infinite rebuild loop during `osg serve`.
+- **Dual-file sync**: `themes/default/` fully synchronized with
+  `internal/theme/default/` (CSS shortcode styles and tabs.js were missing).
+- Phase 13: Draft preview mode (`--drafts` en `osg serve`): banner rojo en paginas draft,
+  badge en listados, exclusion de feeds/sitemap, i18n draft/draft_banner
+- Phase 14: Shortcodes adicionales: refactored engine (block + inline types),
+  `parseArgs()` with key=value and positional args. New shortcodes: `youtube`
+  (responsive 16:9, youtube-nocookie.com, extractVideoID), `twitter`/`x`
+  (oEmbed + widgets.js, x.com normalization), `codepen` (iframe embed with
+  height/theme/tab args, fallback link), `figure` (src/caption/alt/class/width/link),
+  `tabs`+`tab` (JS tab switching, keyboard nav, a11y). CSS for all new shortcodes
+  (embeds, figure, details, tabs). `tabs.js` zero-dependency script.
+  33 tests (8 existing + 25 new). Dual-file sync.
 
-### Backlog (deferred, not started)
-- (empty)
+### Backlog (planned, not started)
+- Phase 15: Multi-idioma real (contenido en `/en/`, `/es/`, hreflang alternates)
+- Phase 16: Performance y benchmarks (profiling, benchmark suite, optimizacion)
+- Paginated archives plugin (repo externo, no parte del core)
 
 ## Key Dependencies
 

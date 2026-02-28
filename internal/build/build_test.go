@@ -447,6 +447,23 @@ func TestFeedPages(t *testing.T) {
 			t.Errorf("feedPages(nil) returned %d views; want 0", len(views))
 		}
 	})
+
+	t.Run("excludes draft pages", func(t *testing.T) {
+		pages := []*site.Page{
+			{Title: "Published", Permalink: "https://example.com/pub/", Date: ts, Draft: false},
+			{Title: "Draft Post", Permalink: "https://example.com/draft/", Date: ts, Draft: true},
+			{Title: "Another Published", Permalink: "https://example.com/pub2/", Date: ts, Draft: false},
+		}
+		views := feedPages(pages)
+		if len(views) != 2 {
+			t.Fatalf("expected 2 non-draft feed entries, got %d", len(views))
+		}
+		for _, v := range views {
+			if v["title"] == "Draft Post" {
+				t.Error("draft page should not appear in feed")
+			}
+		}
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -1498,6 +1515,25 @@ func TestCollectSitemapEntries(t *testing.T) {
 		// Should have: /tags/ (list) + /tags/go/ (term) = 2
 		if len(entries) < 2 {
 			t.Errorf("expected at least 2 entries (list + term), got %d", len(entries))
+		}
+	})
+
+	t.Run("excludes draft pages", func(t *testing.T) {
+		cfg := config.Config{BaseURL: "http://example.com"}
+		s := &site.Site{
+			Pages: []*site.Page{
+				{Permalink: "http://example.com/published/", Date: now, Draft: false},
+				{Permalink: "http://example.com/draft/", Date: now, Draft: true},
+			},
+		}
+		entries := collectSitemapEntries(cfg, s, nil)
+		if len(entries) != 1 {
+			t.Errorf("expected 1 non-draft entry, got %d", len(entries))
+		}
+		for _, e := range entries {
+			if e.Permalink == "http://example.com/draft/" {
+				t.Error("draft page should not appear in sitemap")
+			}
 		}
 	})
 

@@ -9,13 +9,7 @@
       {{ template "partials/header.html" . }}
 
       <main id="main-content" class="container" role="main">
-        <nav class="breadcrumbs" aria-label="{{ trans "aria_breadcrumb" }}">
-          <a href="{{ get_url "/" true false }}">{{ trans "home" }}</a>
-          <span class="sep" aria-hidden="true">/</span>
-          <span aria-current="page">{{ .taxonomy.name }}</span>
-        </nav>
-
-        <section class="hero">
+        <section class="hero hero-compact">
           <h1>{{ .taxonomy.name }}</h1>
           <p class="lead">{{ printf (trans "browse_all_terms") .taxonomy.name }}</p>
         </section>

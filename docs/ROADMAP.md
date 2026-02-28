@@ -286,6 +286,56 @@
 - [done] Dual-file sync: theme.yaml, templates en internal/theme/ y themes/default/
 - [done] Documentacion THEMES.md actualizada con herencia, bloques, child themes
 
-## Backlog (deferred)
+## Backlog
+
 - [done] i18n en templates
-- (vacio)
+
+### Phase 13 - Draft preview mode (done)
+- [done] Flag `--drafts` en `osg serve` para incluir notas con `publish: "draft"`
+- [done] Banner visual en paginas draft (fondo rojo, texto "borrador / draft")
+- [done] Badge "Draft" en listados (card, post-item, featured)
+- [done] Excluir drafts de feeds RSS/Atom y sitemap incluso en preview
+- [done] Claves i18n: `draft`, `draft_banner` (en + es)
+- [done] CSS: `.draft-banner` (pagina), `.draft-badge` (listados), Nord red (#bf616a)
+- [done] Tests: feedPages excluye drafts, collectSitemapEntries excluye drafts
+- [done] Dual-file sync: templates, CSS, i18n
+
+### Phase 14 - Shortcodes adicionales (done)
+- [done] Refactor shortcode engine: block (paired) + inline (self-closing) types
+- [done] `parseArgs()`: key="value", key='value', key=value, bare positional args
+- [done] `youtube` shortcode: responsive 16:9 embed, youtube-nocookie.com, extractVideoID (bare ID, full URL, short URL, embed URL)
+- [done] `twitter`/`x` shortcode: oEmbed blockquote + widgets.js, x.com → twitter.com normalization
+- [done] `codepen` shortcode: iframe embed with height/theme/tab args, fallback link for invalid URLs
+- [done] `figure` avanzado: src, caption, alt, class, width, link args; figcaption from inner content or caption arg
+- [done] `tabs` + `tab` shortcodes: container with data-tab-title, JS tab switching with keyboard nav (arrows, Home, End)
+- [done] CSS: embeds (responsive youtube, centered twitter, codepen), figure (.figure, .figure.wide), details, tabs (.tabs-nav, .tab-btn, .tab-content)
+- [done] JS: tabs.js (zero-dependency, a11y: role=tablist/tab, aria-selected, keyboard nav)
+- [done] 33 tests unitarios (8 existentes + 25 nuevos)
+- [done] Dual-file sync: CSS, JS, templates
+
+### Bugfixes and stability (done)
+- [done] exclude_terms filtering in page templates ("Publicado en:", card pills, related pages)
+- [done] Tilde expansion (~) in vault_path for file watcher in `osg serve`
+- [done] Header scroll compaction: flicker-free, always-visible nav bar with smooth title collapse
+- [done] Stale content cleanup: `update-content` removes orphaned content/ directories automatically
+- [done] Watch loop fix: EnsureDefaultTheme skips writes when on-disk content is identical (prevents infinite rebuild)
+- [done] Dual-file sync: themes/default/ fully synchronized with internal/theme/default/
+
+### Phase 15 - Multi-idioma real (todo)
+- [todo] Contenido en multiples idiomas: `/en/post-x/`, `/es/post-x/`
+- [todo] Deteccion de idioma por sufijo de archivo o carpeta (ej. `post.en.md`, `en/post.md`)
+- [todo] `hreflang` alternates en head.html para SEO
+- [todo] Selector de idioma en header
+- [todo] Feeds y sitemap por idioma
+
+### Phase 16 - Performance y benchmarks (todo)
+- [todo] Benchmark suite con vaults de distintos tamanos (10, 100, 1000+ notas)
+- [todo] Profiling de build pipeline (render, imagenes, plugins, minificacion)
+- [todo] Optimizacion de cuellos de botella identificados
+- [todo] CI check de regresion de rendimiento (opcional)
+
+### Paginated archives (todo, repo externo)
+- [todo] Plugin WASM en repositorio propio (no parte del core)
+- [todo] Genera `/archive/` con listado cronologico por ano/mes
+- [todo] Paginacion configurable
+- [todo] Template overridable desde el tema

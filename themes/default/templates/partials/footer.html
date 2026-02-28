@@ -72,9 +72,46 @@
       <span class="footer-copyright">
         {{ if .config.copyright }}{{ .config.copyright }}{{ else }}&copy; {{ .current_year }} {{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}{{ end }}
       </span>
-      <span class="footer-powered">{{ trans "generated_by" }} <a href="https://github.com/jllopis/osg">OSG</a></span>
-      <span class="footer-theme">{{ trans "footer_theme" }}: {{ .config.theme }}</span>
+      <span class="footer-powered">{{ trans "generated_by" }} ❤️ {{ trans "and" }} <a href="https://github.com/jllopis/osg">OSG</a></span>
+
+      {{/* ---- Color scheme switcher ---- */}}
+      <div class="theme-switcher" role="radiogroup" aria-label="{{ trans "theme_label" }}">
+        <button class="theme-btn" data-scheme="auto" title="{{ trans "theme_auto" }}" aria-label="{{ trans "theme_auto" }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </button>
+        <button class="theme-btn" data-scheme="light" title="{{ trans "theme_light" }}" aria-label="{{ trans "theme_light" }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+        <button class="theme-btn" data-scheme="dark" title="{{ trans "theme_dark" }}" aria-label="{{ trans "theme_dark" }}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
     </div>
+    <script>
+    (function() {
+      var root = document.documentElement;
+      var stored = localStorage.getItem('osg-color-scheme');
+      if (stored) root.setAttribute('data-color-scheme', stored);
+
+      var btns = document.querySelectorAll('.theme-btn');
+      function setActive(scheme) {
+        btns.forEach(function(b) {
+          b.classList.toggle('active', b.dataset.scheme === scheme);
+          b.setAttribute('aria-checked', b.dataset.scheme === scheme);
+        });
+      }
+      setActive(stored || root.getAttribute('data-color-scheme') || 'auto');
+
+      btns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var scheme = btn.dataset.scheme;
+          root.setAttribute('data-color-scheme', scheme);
+          localStorage.setItem('osg-color-scheme', scheme);
+          setActive(scheme);
+        });
+      });
+    })();
+    </script>
 
   </div>
 </footer>

@@ -227,6 +227,7 @@ func normalizePath(path string) string {
 	if strings.TrimSpace(path) == "" {
 		return ""
 	}
+	path = config.ExpandTilde(path)
 	abs, err := filepath.Abs(path)
 	if err == nil {
 		return abs

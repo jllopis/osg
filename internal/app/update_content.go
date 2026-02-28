@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,6 +44,7 @@ type UpdateStats struct {
 	Errors   int
 	Images   int
 	Links    int
+	Cleaned  int
 }
 
 func RunUpdateContent(_ context.Context, opts CLIOptions) error {
@@ -286,6 +288,14 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 		stats.Exported++
 	}
 
+	// Remove stale content directories that no longer correspond to
+	// any vault note.  We walk content/ looking for index.md files
+	// whose path is not in the "seen" map (the set of valid outputs
+	// produced in this run).
+	if !opts.DryRun {
+		stats.Cleaned = removeStaleContent(cfg.ContentDir, seen, logger)
+	}
+
 	logger.Info("update-content summary",
 		"total", stats.Total,
 		"parsed", stats.Parsed,
@@ -294,6 +304,7 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 		"drafts", stats.Drafts,
 		"images", stats.Images,
 		"links", stats.Links,
+		"cleaned", stats.Cleaned,
 		"errors", stats.Errors,
 	)
 
@@ -302,6 +313,50 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 	}
 
 	return nil
+}
+
+// removeStaleContent walks contentDir looking for index.md files that were
+// not produced in the current run (not present in validPaths).  For each
+// stale file it removes the entire parent directory (which also removes
+// co-located images).  Section index files (_index.md) are left untouched.
+func removeStaleContent(contentDir string, validPaths map[string]string, logger *slog.Logger) int {
+	cleaned := 0
+
+	_ = filepath.WalkDir(contentDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil // best-effort
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if d.Name() != "index.md" {
+			return nil // skip images and other assets
+		}
+		// Never touch section index files.
+		if d.Name() == "_index.md" {
+			return nil
+		}
+
+		if _, ok := validPaths[path]; ok {
+			return nil // this file was just written
+		}
+
+		// Stale: remove the entire directory (index.md + co-located images).
+		dir := filepath.Dir(path)
+		if logger != nil {
+			logger.Info("removing stale content", "path", dir)
+		}
+		if rmErr := os.RemoveAll(dir); rmErr != nil {
+			if logger != nil {
+				logger.Warn("failed to remove stale content", "path", dir, "error", rmErr)
+			}
+		} else {
+			cleaned++
+		}
+		return filepath.SkipDir
+	})
+
+	return cleaned
 }
 
 // pickTitle extracts title from frontmatter (title or name field)

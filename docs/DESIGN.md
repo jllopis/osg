@@ -73,6 +73,8 @@ osg:
   image: "foto.jpg"   # imagen de cabecera (nombre o path relativo en vault)
   path: "about"       # override de content_layout -> /about/ en vez de /YYYY/MM/DD/slug/
   menu: true          # incluir como enlace en la navegacion del sitio
+  abstract: "Resumen escrito a mano que aparece en listados, meta description y OG tags."
+  author: "Joan Llopis"  # autor del post, mostrado junto a la fecha
 ---
 ```
 
@@ -80,6 +82,8 @@ osg:
 - **publish**: `osg.publish` > `publish` top-level
 - **image**: `osg.image` > `image` > `cover` > `banner` top-level
 - **featured**: `osg.featured` > `featured` top-level
+- **abstract**: `osg.abstract` > `summary` > `description` > `excerpt` top-level. Si ninguno esta presente, se aplica la estrategia configurada en `summary_strategy` (auto/ai)
+- **author**: `osg.author` > `author` top-level. Se muestra en formato **Autor** &bull; fecha en articulos y listados
 - **path**: solo `osg.path` (sin fallback top-level)
 - **menu**: solo `osg.menu` (sin fallback top-level)
 
@@ -94,8 +98,24 @@ Si ademas tiene `osg.menu: true`, la pagina:
 
 ### Valores de publish
 - `true` (bool) o `"true"` (string): publicar normalmente
-- `"draft"` (string, case-insensitive): publicar como borrador
+- `"draft"` (string, case-insensitive): publicar como borrador (visible solo con `--drafts`)
 - Cualquier otro valor: no publicar
+
+### Draft preview mode
+
+El flag `--drafts` en `osg serve` permite previsualizar borradores sin publicarlos:
+
+```bash
+osg serve --drafts
+```
+
+Comportamiento:
+- Las notas con `publish: "draft"` se incluyen en el build y son navegables
+- Cada pagina draft muestra un **banner rojo** indicando que es un borrador
+- En listados (homepage, secciones, cards) aparece un **badge "Draft"** junto a la fecha
+- Los drafts se **excluyen** de feeds RSS/Atom y sitemap (no se filtran al exterior)
+- El search index puede contener drafts (son visibles en preview, es intencional)
+- `page.draft` esta disponible en templates como boolean para logica condicional
 
 ## Image pipeline
 
@@ -514,6 +534,51 @@ Planificado (Phase 10):
 - Optimizacion de imagenes: WebP, srcset, `<picture>` (Step 6).
 - Global site feed RSS/Atom (Step 2).
 - Doctor improvements con diagnosticos accionables (Step 3).
+
+## Shortcodes
+
+Los shortcodes se expanden ANTES de que Goldmark procese el Markdown.
+Dos tipos: block (pares) e inline (auto-cerrados).
+
+### Block shortcodes (pares)
+
+```
+{{< name [args] >}}contenido{{< /name >}}
+```
+
+| Shortcode | Descripcion | Argumentos |
+|-----------|-------------|------------|
+| `note` | Admonicion informativa (azul Nord #5e81ac) | Titulo opcional (bare) |
+| `warning` | Admonicion de aviso (naranja Nord #d08770) | Titulo opcional (bare) |
+| `tip` | Admonicion consejo (verde Nord #a3be8c) | Titulo opcional (bare) |
+| `details` | Bloque colapsable `<details>` | Texto del summary (bare) |
+| `figure` | Figura con imagen, caption, enlace | `src`, `caption`, `alt`, `class`, `width`, `link` |
+| `tabs` | Contenedor de pestanas | Ninguno |
+| `tab` | Pestana individual (dentro de `tabs`) | Titulo (bare) |
+
+### Inline shortcodes (auto-cerrados)
+
+```
+{{< name args />}}
+```
+
+| Shortcode | Descripcion | Argumentos |
+|-----------|-------------|------------|
+| `youtube` | Embed 16:9 responsive (youtube-nocookie.com) | ID de video o URL completa |
+| `twitter` | Embed tweet via oEmbed + widgets.js | URL del tweet (x.com se normaliza a twitter.com) |
+| `codepen` | Embed CodePen iframe | URL, `height`, `theme`, `tab` |
+
+### parseArgs
+
+Soporta: `key="value"`, `key='value'`, `key=value`, argumentos posicionales bare.
+El primer argumento posicional se asigna a `_pos`.
+
+### Archivos
+
+- Motor: `internal/markdown/shortcode.go`
+- Tests: `internal/markdown/shortcode_test.go` (33 tests)
+- CSS: `style.css` (secciones ADMONITIONS, DETAILS, FIGURE, EMBEDS, TABS)
+- JS: `static/js/tabs.js` (zero-dependency, a11y, keyboard nav)
 
 ## Open questions
 - (ninguna pendiente)

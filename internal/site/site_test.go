@@ -1,6 +1,8 @@
 package site
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -786,4 +788,141 @@ func TestMergeTaxonomy(t *testing.T) {
 			t.Error("should not add key for empty values")
 		}
 	})
+}
+
+func writeTestFile(t *testing.T, dir, relPath, content string) string {
+	t.Helper()
+	p := filepath.Join(dir, relPath)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestParseFile_OSGAbstractTakesPrecedence(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: My Post
+summary: auto generated summary
+osg:
+  abstract: Hand-written abstract.
+---
+Body text here.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Summary != "Hand-written abstract." {
+		t.Fatalf("expected osg.abstract to win, got %q", page.Summary)
+	}
+}
+
+func TestParseFile_FallbackSummaryWhenNoAbstract(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: My Post
+summary: fallback summary
+osg:
+  publish: true
+---
+Body text here.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Summary != "fallback summary" {
+		t.Fatalf("expected fallback summary, got %q", page.Summary)
+	}
+}
+
+func TestParseFile_NoSummaryWhenNeitherSet(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: My Post
+---
+Body text here.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Summary != "" {
+		t.Fatalf("expected empty summary, got %q", page.Summary)
+	}
+}
+
+func TestParseFile_OSGAuthorTakesPrecedence(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: My Post
+author: Top Level Author
+osg:
+  author: Joan Llopis
+---
+Body text.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Author != "Joan Llopis" {
+		t.Fatalf("expected osg.author to win, got %q", page.Author)
+	}
+}
+
+func TestParseFile_FallbackAuthor(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: My Post
+author: Fallback Author
+---
+Body text.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Author != "Fallback Author" {
+		t.Fatalf("expected fallback author, got %q", page.Author)
+	}
+}
+
+func TestParseFile_NoAuthor(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: My Post
+---
+Body text.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Author != "" {
+		t.Fatalf("expected empty author, got %q", page.Author)
+	}
+}
+
+func TestParseFile_AuthorExposedInView(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: My Post
+osg:
+  author: Joan Llopis
+---
+Body text.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v := page.View()
+	if v["author"] != "Joan Llopis" {
+		t.Fatalf("expected author in View(), got %v", v["author"])
+	}
 }

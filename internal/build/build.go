@@ -218,6 +218,9 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	emitImageProcess(ctx, plugins, cfg, imageResults, logger)
 
 	indices := taxonomy.Build(cfg.Taxonomies, siteIndex.Pages, cfg.BaseURL)
+	// Strip excluded terms from each page's Taxonomies so templates
+	// ("Publicado en:", card pills, etc.) never display them.
+	taxonomy.FilterPageTaxonomies(cfg.Taxonomies, siteIndex.Pages)
 	siteView := siteIndex.View()
 	baseCtx := baseContext(cfg, siteView, indices, siteIndex.MenuPages())
 
@@ -639,6 +642,7 @@ func configView(cfg config.Config) map[string]any {
 		"site_title":         cfg.SiteTitle,
 		"site_description":   cfg.SiteDescription,
 		"theme":              cfg.Theme,
+		"logo":               cfg.Logo,
 		"color_scheme":       cfg.ColorScheme,
 		"default_language":   cfg.DefaultLanguage,
 		"vault_path":         cfg.VaultPath,
@@ -671,7 +675,7 @@ func configView(cfg config.Config) map[string]any {
 		"minify":             cfg.Minify,
 		"nav_taxonomy":       cfg.NavTaxonomy,
 		"social":             cfg.Social,
-		"copyright":          cfg.Copyright,
+		"copyright":          strings.ReplaceAll(cfg.Copyright, "{year}", fmt.Sprintf("%d", time.Now().Year())),
 		"logging": map[string]any{
 			"level":  cfg.Logging.Level,
 			"format": cfg.Logging.Format,
@@ -961,6 +965,9 @@ func feedContext(baseCtx map[string]any, cfg config.Config, taxCfg config.Taxono
 func feedPages(pages []*site.Page) []map[string]any {
 	out := make([]map[string]any, 0, len(pages))
 	for _, page := range pages {
+		if page.Draft {
+			continue
+		}
 		out = append(out, map[string]any{
 			"title":     page.Title,
 			"permalink": page.Permalink,
@@ -1181,6 +1188,9 @@ func collectSitemapEntries(cfg config.Config, siteIndex *site.Site, indices map[
 	}
 
 	for _, page := range siteIndex.Pages {
+		if page.Draft {
+			continue
+		}
 		addEntry(page.Permalink, page.Date)
 	}
 

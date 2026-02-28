@@ -9,17 +9,8 @@
       {{ template "partials/header.html" . }}
 
       <main id="main-content" class="container" role="main">
-        <nav class="breadcrumbs" aria-label="{{ trans "aria_breadcrumb" }}">
-          <a href="{{ get_url "/" true false }}">{{ trans "home" }}</a>
-          <span class="sep" aria-hidden="true">/</span>
-          <a href="{{ get_url (printf "/%s/" .taxonomy.name) true false }}">{{ .taxonomy.name }}</a>
-          <span class="sep" aria-hidden="true">/</span>
-          <span aria-current="page">{{ .term.name }}</span>
-        </nav>
-
-        <section class="hero">
-          <h1>{{ .term.name }}</h1>
-          <p class="lead">{{ .taxonomy.name }} &mdash; {{ .term.page_count }} {{ trans "posts" }}</p>
+        <section class="hero hero-compact">
+          <h1>{{ .term.name }} <span class="hero-count">({{ .term.page_count }} {{ trans "posts" }})</span></h1>
         </section>
 
         {{ if .paginator }}

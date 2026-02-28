@@ -217,3 +217,53 @@ Formato: [todo|doing|done] Tarea
 [done] (Theme System) 19 tests unitarios (meta, chain, scaffold, list, cycle, edge cases)
 [done] (Theme System) Dual-file sync: theme.yaml, templates
 [done] (Theme System) Documentacion THEMES.md actualizada
+
+[done] (Phase 13) Flag --drafts en osg serve (ServeCmd.Drafts, wiring a IncludeDrafts)
+[done] (Phase 13) Banner visual en paginas draft (draft-banner en page.html)
+[done] (Phase 13) Badge draft en listados (card.html, index.html featured + post-item)
+[done] (Phase 13) Excluir drafts de feeds RSS/Atom (feedPages filtra page.Draft)
+[done] (Phase 13) Excluir drafts de sitemap (collectSitemapEntries filtra page.Draft)
+[done] (Phase 13) CSS: draft-banner, draft-badge, draft-badge--featured (Nord red)
+[done] (Phase 13) i18n: claves draft, draft_banner en en.yaml y es.yaml
+[done] (Phase 13) Tests: feedPages excludes drafts, collectSitemapEntries excludes drafts
+[done] (Phase 13) Dual-file sync: templates, CSS, i18n
+
+[done] (Phase 14) Refactor shortcode engine: block (paired) + inline (self-closing) types
+[done] (Phase 14) parseArgs(): key="value", key='value', key=value, bare positional
+[done] (Phase 14) youtube shortcode: responsive 16:9 embed, youtube-nocookie.com, extractVideoID
+[done] (Phase 14) twitter/x shortcode: oEmbed blockquote + widgets.js, x.com normalization
+[done] (Phase 14) codepen shortcode: iframe embed, height/theme/tab args, fallback link
+[done] (Phase 14) figure avanzado: src, caption, alt, class, width, link args
+[done] (Phase 14) tabs + tab shortcodes: container with data-tab-title, JS tab switching
+[done] (Phase 14) CSS: embeds, figure, details, tabs (Nord-styled)
+[done] (Phase 14) JS: tabs.js (zero-dependency, a11y keyboard nav)
+[done] (Phase 14) 33 tests unitarios (8 existentes + 25 nuevos)
+[done] (Phase 14) Dual-file sync: CSS, JS, templates
+
+[done] (Bugfix) exclude_terms: filtrar terms excluidos de page.Taxonomies antes de pasar a templates
+[done] (Bugfix) FilterPageTaxonomies() en taxonomy.go, llamada tras taxonomy.Build() en build.go
+[done] (Bugfix) 3 tests: filtrado basico, case-insensitive, sin exclusiones
+[done] (Bugfix) Tilde expansion (~) en vault_path para file watcher: config.ExpandTilde() exportada
+[done] (Bugfix) normalizePath() en serve_watch.go llama a ExpandTilde antes de filepath.Abs
+[done] (Bugfix) Header scroll: nav bar siempre visible, solo titulo grande colapsa con hysteresis
+[done] (Bugfix) CSS: grid-template-rows 1fr->0fr, max-width para brand-sm, transiciones sincronizadas
+[done] (Bugfix) JS: threshold con hysteresis (compact a 80px, expand bajo 10px), requestAnimationFrame
+[done] (Bugfix) Stale content cleanup: removeStaleContent() elimina content/ huerfanos tras update-content
+[done] (Bugfix) 4 tests: stale removal, skip _index.md, empty dir, no stale
+[done] (Bugfix) Watch loop: EnsureDefaultTheme compara bytes antes de escribir (evita loop infinito de rebuild)
+[done] (Bugfix) Dual-file sync: themes/default/ completamente sincronizado con internal/theme/default/
+
+[todo] (Phase 15) Contenido en multiples idiomas: /en/post-x/, /es/post-x/
+[todo] (Phase 15) Deteccion de idioma por sufijo o carpeta
+[todo] (Phase 15) hreflang alternates en head.html
+[todo] (Phase 15) Selector de idioma en header
+[todo] (Phase 15) Feeds y sitemap por idioma
+
+[todo] (Phase 16) Benchmark suite con vaults de distintos tamanos
+[todo] (Phase 16) Profiling de build pipeline
+[todo] (Phase 16) Optimizacion de cuellos de botella
+[todo] (Phase 16) CI check de regresion de rendimiento (opcional)
+
+[todo] (Archives - repo externo) Plugin WASM en repositorio propio (no core)
+[todo] (Archives - repo externo) Genera /archive/ cronologico por ano/mes
+[todo] (Archives - repo externo) Paginacion configurable, template overridable

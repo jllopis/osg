@@ -7,6 +7,8 @@
   <div class="card-content">
     <h3><a href="{{ .permalink }}">{{ .title }}</a></h3>
     <div class="meta">
+      {{ if .draft }}<span class="draft-badge">{{ trans "draft" }}</span>{{ end }}
+      {{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}
       <time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short") }}</time>
       {{ if .reading_time }}<span class="reading-badge">{{ .reading_time }} {{ trans "min_read" }}</span>{{ end }}
     </div>

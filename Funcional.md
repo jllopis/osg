@@ -204,6 +204,43 @@ El usuario puede marcar una nota de Obsidian como pagina standalone mediante el 
 
 Esto permite crear paginas como "Sobre mi", "Contacto" o "Proyectos" que no son posts cronologicos sino paginas fijas del sitio.
 
+### Abstract manual en frontmatter (osg.abstract)
+
+El campo `osg.abstract` permite definir un resumen escrito a mano directamente en la nota de Obsidian. Cuando esta presente, tiene prioridad absoluta sobre cualquier otra fuente de summary:
+
+```yaml
+---
+title: Mi Reflexion
+osg:
+  publish: true
+  abstract: "Una exploracion sobre la naturaleza del tiempo y la percepcion."
+---
+```
+
+**Prioridad de resolucion del summary:**
+1. `osg.abstract` (manual, maxima prioridad)
+2. `summary` / `description` / `excerpt` en frontmatter top-level
+3. Estrategia automatica segun `summary_strategy` (auto extrae primeras frases, ai usa Kairos LLM)
+
+El abstract se usa en: listados de posts (homepage, secciones), meta description para SEO, og:description para redes sociales, y feeds RSS/Atom.
+
+### Autor del post (osg.author)
+
+El campo `osg.author` permite indicar el autor de cada nota. Se muestra en negrita junto a la fecha tanto en la pagina del articulo como en todos los listados (homepage, secciones, cards):
+
+```yaml
+---
+title: Mi Reflexion
+osg:
+  publish: true
+  author: "Joan Llopis"
+---
+```
+
+**Visualizacion:** `**Joan Llopis** • 26 de julio de 2025`
+
+Se soporta tambien `author` a nivel top-level del frontmatter como fallback. Si no hay author, solo se muestra la fecha.
+
 ### Comando `osg new` para crear posts desde CLI
 
 El comando `osg new` permite crear una nueva nota Markdown directamente en el vault de Obsidian, con el frontmatter pre-configurado para OSG. Esto evita tener que abrir Obsidian y crear la nota manualmente.
@@ -342,6 +379,58 @@ Cuando se ejecuta `osg serve`, los summaries AI se desactivan automaticamente:
 - Las pages sin summary reciben fallback a estrategia `auto` (extraccion de primeras oraciones)
 - Esto evita requests LLM costosos y lentos durante el ciclo de desarrollo
 - El build normal (`osg build`) y el TUI siguen usando la estrategia AI configurada
+
+### Vista previa de borradores (--drafts)
+
+El flag `--drafts` en `osg serve` permite previsualizar notas con `publish: "draft"`:
+
+```bash
+osg serve --drafts
+```
+
+- Las paginas draft muestran un **banner rojo** ("Estas viendo un borrador") en la cabecera
+- En listados aparece un **badge "Borrador"** junto a la fecha del autor
+- Los drafts se **excluyen** de feeds RSS/Atom y sitemap (no se filtran al exterior)
+- El flag global `--include-drafts` tambien funciona con cualquier comando (build, update-content)
+
+### Shortcodes
+
+Los shortcodes permiten insertar contenido enriquecido en las notas Markdown.
+Se expanden antes de la conversion Markdown (antes de Goldmark).
+
+**Block shortcodes** (pares): `{{< name [args] >}}contenido{{< /name >}}`
+
+- `note`, `warning`, `tip`: admoniciones con colores Nord (azul, naranja, verde)
+- `details`: bloque colapsable con `<details>/<summary>`
+- `figure`: imagen con caption, alt, class, width, link
+- `tabs` + `tab`: pestanas con cambio por JS, navegacion por teclado, a11y
+
+**Inline shortcodes** (auto-cerrados): `{{< name args />}}`
+
+- `youtube`: embed responsive 16:9 (youtube-nocookie.com para privacidad)
+- `twitter`/`x`: embed tweet via oEmbed + widgets.js (normaliza x.com → twitter.com)
+- `codepen`: embed iframe con altura, tema y tab configurables
+
+Argumentos soportados: `key="value"`, `key='value'`, `key=value`, posicionales bare.
+
+Ejemplo de uso en una nota Obsidian:
+
+```markdown
+{{< youtube "dQw4w9WgXcQ" />}}
+
+{{< note "Importante" >}}
+Este es un aviso destacado.
+{{< /note >}}
+
+{{< tabs >}}
+{{< tab "JavaScript" >}}
+console.log("hello");
+{{< /tab >}}
+{{< tab "Python" >}}
+print("hello")
+{{< /tab >}}
+{{< /tabs >}}
+```
 
 ### Generación de HTML a partir de los ficheros Markdown originales
 

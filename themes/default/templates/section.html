@@ -9,16 +9,8 @@
       {{ template "partials/header.html" . }}
 
       <main id="main-content" class="container" role="main">
-        {{ block "section-breadcrumbs" . }}
-        <nav class="breadcrumbs" aria-label="{{ trans "aria_breadcrumb" }}">
-          <a href="{{ get_url "/" true false }}">{{ trans "home" }}</a>
-          <span class="sep" aria-hidden="true">/</span>
-          <span aria-current="page">{{ if .section.title }}{{ .section.title }}{{ else }}{{ trans "section_fallback" }}{{ end }}</span>
-        </nav>
-        {{ end }}
-
         {{ block "section-hero" . }}
-        <section class="hero">
+        <section class="hero hero-compact">
           <h1>{{ if .section.title }}{{ .section.title }}{{ else }}{{ trans "section_fallback" }}{{ end }}</h1>
           {{ if .section.content }}
           <div class="prose">{{ .section.content }}</div>
