@@ -66,10 +66,12 @@ type NewCmd struct {
 
 type ThemeCmd struct {
 	Init ThemeInitCmd `cmd:"" help:"Create a new theme scaffold"`
+	List struct{}     `cmd:"" help:"List installed themes"`
 }
 
 type ThemeInitCmd struct {
-	Name string `arg:"" help:"Theme name"`
+	Name   string `arg:"" help:"Theme name"`
+	Parent string `help:"Parent theme to inherit from (creates a child theme)" default:""`
 }
 
 type PluginCmd struct {
@@ -194,7 +196,9 @@ func main() {
 	case command == "doctor":
 		runErr = app.RunDoctor(context.Background(), opts)
 	case strings.HasPrefix(command, "theme init"):
-		runErr = app.RunThemeInit(context.Background(), opts, cli.Theme.Init.Name)
+		runErr = app.RunThemeInit(context.Background(), opts, cli.Theme.Init.Name, cli.Theme.Init.Parent)
+	case command == "theme list":
+		runErr = app.RunThemeList(context.Background(), opts, os.Stdout)
 	case strings.HasPrefix(command, "plugin install"):
 		runErr = app.RunPluginInstall(context.Background(), opts, cli.Plugin.Install.Path, cli.Plugin.Install.Name)
 	case strings.HasPrefix(command, "plugin enable"):

@@ -202,4 +202,18 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 12C) CSS: estilos TOC y admonitions con colores Nord
 [done] (Phase 12C) i18n: claves toc_title, toc_label (en + es)
 [done] (Phase 12C) Dual-file sync: templates, i18n, CSS
-[todo] (Backlog) Theme system improvements (herencia de temas, override de parciales)
+[done] (Theme System) theme.yaml metadata: name, description, author, version, parent
+[done] (Theme System) ThemeMeta struct, LoadMeta(), WriteMeta() en internal/theme/meta.go
+[done] (Theme System) ResolveChain(): parent chain resolution con cycle detection
+[done] (Theme System) ListThemes(): escanea themes dir y retorna metadata
+[done] (Theme System) TemplateLoader.ThemeChain: carga templates de root ancestor a child
+[done] (Theme System) assets.PrepareWithChain(): static y sass desde chain completa
+[done] (Theme System) i18n loading desde chain (ancestor primero, child sobreescribe)
+[done] (Theme System) Block-based templates: page-header, page-content, index-posts, etc.
+[done] (Theme System) ScaffoldChildTheme(): osg theme init --parent (tema minimal con herencia)
+[done] (Theme System) osg theme list (CLI + TUI)
+[done] (Theme System) Doctor: checkThemeMeta (theme.yaml, parent chain validation)
+[done] (Theme System) render.NewWithChain() para usar cadena de herencia
+[done] (Theme System) 19 tests unitarios (meta, chain, scaffold, list, cycle, edge cases)
+[done] (Theme System) Dual-file sync: theme.yaml, templates
+[done] (Theme System) Documentacion THEMES.md actualizada

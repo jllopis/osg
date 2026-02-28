@@ -443,22 +443,49 @@ func (m Model) handleNewCommand(args []string) (Model, tea.Cmd) {
 }
 
 func (m Model) handleThemeCommand(args []string) (Model, tea.Cmd) {
-	if len(args) < 1 || strings.ToLower(args[0]) != "init" {
-		m.appendMessage("ERROR", "Usage: /theme init <name>")
+	if len(args) < 1 {
+		m.appendMessage("ERROR", "Usage: /theme init <name> [--parent <parent>] | /theme list")
 		return m, nil
 	}
-	if len(args) < 2 {
-		m.appendMessage("ERROR", "Usage: /theme init <name>")
+
+	sub := strings.ToLower(args[0])
+	switch sub {
+	case "list":
+		if m.actions.ThemeList == nil {
+			m.appendMessage("ERROR", "Theme list not available")
+			return m, nil
+		}
+		m.appendMessage("PROGRESS", "Listing themes...")
+		m.lastAction = "Theme list"
+		return m.runSimpleAction("Theme list", m.actions.ThemeList)
+	case "init":
+		if len(args) < 2 {
+			m.appendMessage("ERROR", "Usage: /theme init <name> [--parent <parent>]")
+			return m, nil
+		}
+		if m.actions.ThemeInit == nil {
+			m.appendMessage("ERROR", "Theme init not available")
+			return m, nil
+		}
+		name := args[1]
+		parent := ""
+		// Parse optional --parent flag.
+		for i := 2; i < len(args)-1; i++ {
+			if args[i] == "--parent" {
+				parent = args[i+1]
+			}
+		}
+		if parent != "" {
+			m.appendMessage("PROGRESS", fmt.Sprintf("Scaffolding child theme %s (parent: %s)...", name, parent))
+		} else {
+			m.appendMessage("PROGRESS", fmt.Sprintf("Scaffolding theme %s...", name))
+		}
+		m.lastAction = "Theme init"
+		return m, runThemeInitCmd(context.Background(), name, parent, m.actions.ThemeInit)
+	default:
+		m.appendMessage("ERROR", "Usage: /theme init <name> [--parent <parent>] | /theme list")
 		return m, nil
 	}
-	if m.actions.ThemeInit == nil {
-		m.appendMessage("ERROR", "Theme init not available")
-		return m, nil
-	}
-	name := args[1]
-	m.appendMessage("PROGRESS", fmt.Sprintf("Scaffolding theme %s...", name))
-	m.lastAction = "Theme init"
-	return m, runThemeInitCmd(context.Background(), name, m.actions.ThemeInit)
 }
 
 func (m Model) handlePluginCommand(args []string) (Model, tea.Cmd) {

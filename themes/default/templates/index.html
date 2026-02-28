@@ -10,6 +10,7 @@
 
       <main id="main-content" class="container" role="main">
 
+        {{ block "index-featured" . }}
         {{/* ---- Featured post ---- */}}
         {{ with .section.featured_page }}
         <article class="featured">
@@ -31,14 +32,18 @@
           </a>
         </article>
         {{ end }}
+        {{ end }}
 
+        {{ block "index-intro" . }}
         {{/* ---- Section intro (from _index.md) ---- */}}
         {{ if .section.content }}
         <div class="prose home-intro">{{ .section.content }}</div>
         {{ else if .config.site_description }}
         <p class="home-description">{{ .config.site_description }}</p>
         {{ end }}
+        {{ end }}
 
+        {{ block "index-posts" . }}
         {{/* ---- Recent posts ---- */}}
         {{ if .section.pages }}
         <section class="recent-posts" aria-label="{{ trans "aria_recent_posts" }}">
@@ -61,7 +66,9 @@
           </div>
         </section>
         {{ end }}
+        {{ end }}
 
+        {{ block "index-sections" . }}
         {{/* ---- Subsections / topic areas ---- */}}
         {{/* Only show subsections backed by _index.md (has_source), not
              auto-generated date scaffolding sections. */}}
@@ -79,6 +86,7 @@
             {{ end }}{{ end }}
           </div>
         </section>
+        {{ end }}
         {{ end }}
 
       </main>

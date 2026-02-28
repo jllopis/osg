@@ -29,6 +29,25 @@ func Prepare(cfg config.Config, logger *slog.Logger) error {
 	return nil
 }
 
+// PrepareWithChain is like Prepare but uses a resolved theme inheritance chain
+// for static file copying and sass compilation.  The chain is ordered child-first;
+// ancestor static files are copied first so that child themes override them.
+func PrepareWithChain(cfg config.Config, themeChain []string, logger *slog.Logger) error {
+	if err := copyStaticChain(themeChain, cfg.StaticDir, cfg.PublicDir, logger); err != nil {
+		return err
+	}
+
+	if err := copyContentAssets(cfg, logger); err != nil {
+		return err
+	}
+
+	if err := compileSassChain(themeChain, cfg, logger); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func copyStatic(cfg config.Config, logger *slog.Logger) error {
 	if cfg.Theme != "" {
 		themeStatic := filepath.Join(cfg.ThemesDir, cfg.Theme, "static")
@@ -38,6 +57,34 @@ func copyStatic(cfg config.Config, logger *slog.Logger) error {
 	}
 
 	return copyDir(cfg.StaticDir, cfg.PublicDir, logger)
+}
+
+// copyStaticChain copies static assets from the theme chain (root ancestor
+// first, child last) followed by user static dir.
+func copyStaticChain(themeChain []string, userStaticDir string, publicDir string, logger *slog.Logger) error {
+	// Copy from root ancestor first so child overrides parent.
+	for i := len(themeChain) - 1; i >= 0; i-- {
+		themeStatic := filepath.Join(themeChain[i], "static")
+		if err := copyDir(themeStatic, publicDir, logger); err != nil {
+			return err
+		}
+	}
+	return copyDir(userStaticDir, publicDir, logger)
+}
+
+// compileSassChain compiles sass from the theme chain (root ancestor first,
+// child last) followed by user sass.
+func compileSassChain(themeChain []string, cfg config.Config, logger *slog.Logger) error {
+	for i := len(themeChain) - 1; i >= 0; i-- {
+		themeSass := filepath.Join(themeChain[i], "sass")
+		if err := compileSassDir(themeSass, cfg.PublicDir, logger); err != nil {
+			return err
+		}
+	}
+	if !cfg.CompileSass {
+		return nil
+	}
+	return compileSassDir(cfg.SassDir, cfg.PublicDir, logger)
 }
 
 func copyContentAssets(cfg config.Config, logger *slog.Logger) error {

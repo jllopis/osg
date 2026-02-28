@@ -21,6 +21,19 @@ func New(userDir string, themeDir string, ctx Context) (*Renderer, error) {
 	return &Renderer{templates: templates}, nil
 }
 
+// NewWithChain creates a Renderer using a theme inheritance chain instead of
+// a single theme directory.  The chain should be ordered child-first (as
+// returned by theme.ResolveChain); the loader reverses it internally so that
+// ancestor templates are loaded first and child templates override them.
+func NewWithChain(userDir string, themeChain []string, ctx Context) (*Renderer, error) {
+	loader := TemplateLoader{UserDir: userDir, ThemeChain: themeChain, Funcs: FuncMap(ctx)}
+	templates, err := loader.Load()
+	if err != nil {
+		return nil, err
+	}
+	return &Renderer{templates: templates}, nil
+}
+
 func (r *Renderer) HasTemplate(name string) bool {
 	return r.templates.Lookup(name) != nil
 }

@@ -62,8 +62,13 @@ func BuiltinsSignature() (string, error) {
 
 type TemplateLoader struct {
 	UserDir  string
-	ThemeDir string
-	Funcs    template.FuncMap
+	ThemeDir string // Single theme dir (legacy, used when ThemeChain is empty).
+	// ThemeChain is an ordered list of theme directories from the active
+	// theme through its parent chain (child first, root ancestor last).
+	// Templates are loaded root-ancestor-first so that child themes
+	// override parent templates.
+	ThemeChain []string
+	Funcs      template.FuncMap
 }
 
 func (l TemplateLoader) Load() (*template.Template, error) {
@@ -76,9 +81,14 @@ func (l TemplateLoader) Load() (*template.Template, error) {
 		return nil, err
 	}
 
-	if l.ThemeDir != "" {
-		if err := parseDir(root, l.ThemeDir); err != nil {
-			return nil, err
+	// Load theme templates.  When a chain is provided, iterate from
+	// root ancestor to child so that child definitions win.
+	themeDirs := l.themeTemplateDirs()
+	for _, dir := range themeDirs {
+		if dir != "" {
+			if err := parseDir(root, dir); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -89,6 +99,24 @@ func (l TemplateLoader) Load() (*template.Template, error) {
 	}
 
 	return root, nil
+}
+
+// themeTemplateDirs returns theme template directories in load order
+// (root ancestor first, active theme last).
+func (l TemplateLoader) themeTemplateDirs() []string {
+	if len(l.ThemeChain) > 0 {
+		// Reverse: chain is [child, parent, grandparent] -> load grandparent first.
+		dirs := make([]string, 0, len(l.ThemeChain))
+		for i := len(l.ThemeChain) - 1; i >= 0; i-- {
+			dirs = append(dirs, l.ThemeChain[i])
+		}
+		return dirs
+	}
+	// Legacy single-dir mode.
+	if l.ThemeDir != "" {
+		return []string{l.ThemeDir}
+	}
+	return nil
 }
 
 func parseDir(root *template.Template, dir string) error {

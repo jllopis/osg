@@ -9,19 +9,24 @@
       {{ template "partials/header.html" . }}
 
       <main id="main-content" class="container" role="main">
+        {{ block "section-breadcrumbs" . }}
         <nav class="breadcrumbs" aria-label="{{ trans "aria_breadcrumb" }}">
           <a href="{{ get_url "/" true false }}">{{ trans "home" }}</a>
           <span class="sep" aria-hidden="true">/</span>
           <span aria-current="page">{{ if .section.title }}{{ .section.title }}{{ else }}{{ trans "section_fallback" }}{{ end }}</span>
         </nav>
+        {{ end }}
 
+        {{ block "section-hero" . }}
         <section class="hero">
           <h1>{{ if .section.title }}{{ .section.title }}{{ else }}{{ trans "section_fallback" }}{{ end }}</h1>
           {{ if .section.content }}
           <div class="prose">{{ .section.content }}</div>
           {{ end }}
         </section>
+        {{ end }}
 
+        {{ block "section-posts" . }}
         {{ if .section.pages }}
         <section class="list" aria-label="{{ trans "aria_posts" }}">
           <h2 class="list-heading">{{ trans "posts" }}</h2>
@@ -32,7 +37,9 @@
           </div>
         </section>
         {{ end }}
+        {{ end }}
 
+        {{ block "section-subsections" . }}
         {{ if .section.subsections }}
         <section class="list" aria-label="{{ trans "aria_subsections" }}">
           <h2 class="list-heading">{{ trans "subsections" }}</h2>
@@ -45,6 +52,7 @@
             {{ end }}
           </div>
         </section>
+        {{ end }}
         {{ end }}
       </main>
 

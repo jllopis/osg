@@ -11,6 +11,7 @@
 
       <main id="main-content" role="main">
         <article class="article">
+          {{ block "page-header" . }}
           <header class="article-header container-narrow">
             <nav class="breadcrumbs" aria-label="{{ trans "aria_breadcrumb" }}">
               <a href="{{ get_url "/" true false }}">{{ trans "home" }}</a>
@@ -27,20 +28,26 @@
 
             {{ if .page.summary }}<p class="lead">{{ .page.summary }}</p>{{ end }}
           </header>
+          {{ end }}
 
+          {{ block "page-hero" . }}
           {{ if .page.image }}
           <div class="article-hero container-narrow">
             {{ picture .page.image .page.title "eager" }}
           </div>
           {{ end }}
+          {{ end }}
 
+          {{ block "page-content" . }}
           <div class="article-content container-narrow">
             {{ template "partials/toc.html" . }}
             <div class="prose">
               {{ .page.content }}
             </div>
           </div>
+          {{ end }}
 
+          {{ block "page-taxonomies" . }}
           {{ if .page.taxonomies }}
           <footer class="article-footer container-narrow">
             {{ range $kind, $terms := .page.taxonomies }}
@@ -53,7 +60,9 @@
             {{ end }}
           </footer>
           {{ end }}
+          {{ end }}
 
+          {{ block "page-nav" . }}
           {{- /* --- Prev / Next Navigation --- */ -}}
           {{ if or .prev_page .next_page }}
           <nav class="post-nav container-narrow" aria-label="Post navigation">
@@ -75,7 +84,9 @@
             {{ end }}
           </nav>
           {{ end }}
+          {{ end }}
 
+          {{ block "page-related" . }}
           {{- /* --- Related Posts --- */ -}}
           {{ if .related_posts }}
           <section class="related-posts container-narrow" aria-label="{{ trans "related_posts" }}">
@@ -97,13 +108,16 @@
             </div>
           </section>
           {{ end }}
+          {{ end }}
 
         </article>
       </main>
 
       {{ template "partials/footer.html" . }}
     </div>
+    {{ block "page-scripts" . }}
     {{ if .config.lightbox }}<script src="{{ get_url "/js/lightbox.js" false true }}"></script>{{ end }}
     <script src="{{ get_url "/js/progress.js" false true }}"></script>
+    {{ end }}
   </body>
 </html>

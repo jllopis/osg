@@ -157,23 +157,118 @@ Cuando multiples posts tienen `featured: true`:
 3. Los posts no-featured siguen en orden de fecha descendente
 4. Si ningun post es featured, el mas reciente se usa como hero automaticamente
 
+## theme.yaml (metadatos del tema)
+
+Cada tema puede incluir un fichero `theme.yaml` en su raiz con metadatos:
+
+```yaml
+name: my-theme
+description: A custom Nord-based theme with sidebar layout
+author: Your Name
+version: "1.0"
+min_osg_version: "0.1"
+parent: default        # opcional: hereda de otro tema
+```
+
+Campos:
+- `name` — nombre del tema (obligatorio, se usa como identificador)
+- `description` — descripcion breve
+- `author` — autor del tema
+- `version` — version del tema
+- `min_osg_version` — version minima de OSG requerida
+- `parent` — nombre del tema padre para herencia (opcional)
+
+## Herencia de temas
+
+Un tema puede declarar `parent: <nombre>` en `theme.yaml` para heredar de otro tema. La herencia es transitiva (child -> parent -> grandparent).
+
+### Cadena de resolucion
+
+Para templates, static, i18n y sass, la resolucion es:
+
+1. **Builtins** (embebidos en el binario) — fallback minimo
+2. **Root ancestor theme** (ej. `default`) — primer tema en la cadena
+3. **...temas intermedios...** — en orden ascendente
+4. **Active theme** (child) — sobreescribe cualquier fichero con el mismo nombre
+5. **User overrides** (`templates/`, `static/`, `i18n/`) — maxima prioridad
+
+Ejemplo: si `my-theme` tiene `parent: default`, y el usuario solo define `templates/partials/footer.html` en `my-theme`, heredara todos los demas templates de `default`.
+
+### Deteccion de ciclos
+
+OSG detecta ciclos en la cadena de herencia (ej. A -> B -> A) y reporta un error antes del build.
+
+## Bloques sobreescribibles
+
+Los templates principales del tema default usan `{{ block }}` para permitir sobreescritura parcial sin copiar el template completo:
+
+**page.html:**
+- `page-header` — cabecera del articulo (breadcrumbs, titulo, meta, summary)
+- `page-hero` — imagen hero del articulo
+- `page-content` — contenido principal (TOC + prose)
+- `page-taxonomies` — pills de taxonomias en el footer
+- `page-nav` — navegacion prev/next
+- `page-related` — posts relacionados
+- `page-scripts` — scripts al final del body (lightbox, progress)
+
+**index.html:**
+- `index-featured` — post destacado hero
+- `index-intro` — intro de seccion o descripcion del sitio
+- `index-posts` — listado de posts recientes
+- `index-sections` — grid de subsecciones
+
+**section.html:**
+- `section-breadcrumbs` — breadcrumbs
+- `section-hero` — titulo y contenido de la seccion
+- `section-posts` — listado de posts en cards
+- `section-subsections` — grid de subsecciones
+
+Para sobreescribir un bloque, crea un template con `{{ define "block-name" }}...{{ end }}` en tu tema o en `templates/`. Ejemplo para cambiar solo el footer de taxonomias en `page.html`:
+
+```html
+{{/* templates/partials/page-taxonomies-override.html */}}
+{{ define "page-taxonomies" }}
+<footer class="my-custom-footer">
+  <p>Custom taxonomy section</p>
+</footer>
+{{ end }}
+```
+
 ## Starter kit
-Para crear un theme base:
+
+### Copia completa (standalone)
 
 ```bash
 osg theme init my-theme
 ```
 
-Esto copia el theme por defecto en `themes/my-theme` para que lo uses como base.
+Copia el tema default completo en `themes/my-theme/` para modificarlo libremente.
+
+### Child theme (herencia)
+
+```bash
+osg theme init my-child --parent default
+```
+
+Crea un tema minimal en `themes/my-child/` con `parent: default` en `theme.yaml` y directorios vacios (`templates/`, `static/`, `i18n/`) listos para sobreescrituras selectivas.
 
 Luego actualiza `config.yaml`:
 
 ```yaml
-theme: my-theme
+theme: my-child
 ```
+
+## Listar temas
+
+```bash
+osg theme list
+```
+
+Muestra todos los temas instalados con su metadata, tema activo marcado con `(active)`, y relacion padre si existe.
 
 ## Notas
 - `osg init` asegura que exista `themes/default`.
 - Si el directorio del theme ya existe, `osg theme init` falla para evitar sobreescritura.
 - El theme embebido se sobrescribe en cada build para mantenerlo sincronizado con el binario.
 - Las fuentes se sirven desde `themes/default/static/fonts/` (copiadas a `public/fonts/`).
+- `osg doctor` valida el `theme.yaml`, la existencia del parent, y detecta ciclos de herencia.

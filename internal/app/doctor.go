@@ -15,6 +15,7 @@ import (
 
 	"osg/internal/config"
 	"osg/internal/logging"
+	"osg/internal/theme"
 )
 
 type doctorCounters struct {
@@ -117,6 +118,7 @@ func RunDoctor(ctx context.Context, opts CLIOptions) error {
 
 	checkThemeTemplates(logger, &counts, cfg, profile)
 	checkRequiredTemplates(logger, &counts, cfg, profile)
+	checkThemeMeta(logger, &counts, cfg)
 
 	// ── Category: Taxonomies ────────────────────────────────────────
 	checkInfo(logger, "checking taxonomies")
@@ -537,6 +539,42 @@ func checkServeConfig(logger *slog.Logger, counts *doctorCounters, cfg config.Co
 	if cfg.ServeWatch && cfg.ServeDebounce <= 0 {
 		checkWarn(logger, counts, "serve_debounce_ms should be > 0",
 			"fix", "set serve_debounce_ms to a positive value (e.g. 300)")
+	}
+}
+
+// checkThemeMeta validates the active theme's theme.yaml and its parent chain.
+func checkThemeMeta(logger *slog.Logger, counts *doctorCounters, cfg config.Config) {
+	if strings.TrimSpace(cfg.Theme) == "" || strings.TrimSpace(cfg.ThemesDir) == "" {
+		return
+	}
+	themeDir := filepath.Join(cfg.ThemesDir, cfg.Theme)
+	if !pathExists(themeDir) {
+		return // Already reported by checkThemeTemplates.
+	}
+
+	meta, err := theme.LoadMeta(themeDir)
+	if err != nil {
+		checkWarn(logger, counts, "theme.yaml parse error",
+			"theme", cfg.Theme, "error", err.Error(),
+			"fix", "fix or remove theme.yaml in "+themeDir)
+		return
+	}
+
+	metaPath := filepath.Join(themeDir, "theme.yaml")
+	if !pathExists(metaPath) {
+		checkInfo(logger, "theme.yaml not found (optional, recommended for metadata)",
+			"theme", cfg.Theme,
+			"fix", "create theme.yaml with name, description, author fields")
+	}
+
+	// Validate parent chain.
+	if meta.Parent != "" {
+		_, err := theme.ResolveChain(cfg.ThemesDir, cfg.Theme)
+		if err != nil {
+			checkWarn(logger, counts, "theme parent chain error",
+				"theme", cfg.Theme, "error", err.Error(),
+				"fix", "check parent field in theme.yaml and ensure the parent theme is installed")
+		}
 	}
 }
 

@@ -103,12 +103,18 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		return fmt.Errorf("ensure default theme: %w", err)
 	}
 
-	// Load i18n translations: theme dir first, then user dir (user overrides).
+	// Resolve theme inheritance chain (child -> parent -> grandparent).
+	themeChain, err := theme.ResolveChain(cfg.ThemesDir, cfg.Theme)
+	if err != nil {
+		return fmt.Errorf("resolve theme chain: %w", err)
+	}
+
+	// Load i18n translations: ancestor themes first, then child, then user (last wins).
 	i18nBundle := i18n.New(cfg.DefaultLanguage)
-	themeI18nDir := themeI18nDir(cfg)
-	if themeI18nDir != "" {
-		if err := i18nBundle.LoadDir(themeI18nDir); err != nil {
-			return fmt.Errorf("load theme translations: %w", err)
+	for idx := len(themeChain) - 1; idx >= 0; idx-- {
+		dir := filepath.Join(themeChain[idx], "i18n")
+		if err := i18nBundle.LoadDir(dir); err != nil {
+			return fmt.Errorf("load theme translations from %s: %w", dir, err)
 		}
 	}
 	userI18nDir := filepath.Join("i18n")
@@ -116,7 +122,7 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		return fmt.Errorf("load user translations: %w", err)
 	}
 
-	if err := assets.Prepare(cfg, logger); err != nil {
+	if err := assets.PrepareWithChain(cfg, themeChain, logger); err != nil {
 		return err
 	}
 
@@ -228,7 +234,12 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		}
 	}
 
-	renderer, err := render.New(cfg.TemplatesDir, themeTemplatesDir(cfg), render.Context{
+	// Build template directories from the theme chain.
+	var templateChain []string
+	for _, dir := range themeChain {
+		templateChain = append(templateChain, filepath.Join(dir, "templates"))
+	}
+	renderer, err := render.NewWithChain(cfg.TemplatesDir, templateChain, render.Context{
 		BaseURL:         cfg.BaseURL,
 		ContentDir:      cfg.ContentDir,
 		StaticDir:       cfg.StaticDir,

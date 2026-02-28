@@ -1,0 +1,5 @@
+name: default
+description: Default OSG theme with Nord color palette, Inter + JetBrains Mono fonts, dark mode support
+author: OSG
+version: "1.0"
+min_osg_version: "0.1"

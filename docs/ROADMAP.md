@@ -272,7 +272,20 @@
 - [done] i18n: claves toc_title, toc_label en en.yaml y es.yaml
 - [done] Dual-file sync: templates, i18n, CSS en internal/theme/ y themes/default/
 
+## Theme system improvements (done)
+- [done] theme.yaml metadata (name, description, author, version, min_osg_version, parent)
+- [done] Theme inheritance: parent chain resolution for templates, static, i18n, sass
+- [done] Cycle detection in parent chain
+- [done] Block-based overridable sections in page.html, index.html, section.html
+- [done] `osg theme init --parent <name>` scaffold for child themes
+- [done] `osg theme list` CLI + TUI command
+- [done] Doctor checks: theme.yaml validation, parent chain errors
+- [done] ThemeMeta struct, LoadMeta(), ResolveChain(), ListThemes(), WriteMeta()
+- [done] TemplateLoader.ThemeChain, render.NewWithChain(), assets.PrepareWithChain()
+- [done] 19 tests unitarios (meta, chain, scaffold, list, cycle, edge cases)
+- [done] Dual-file sync: theme.yaml, templates en internal/theme/ y themes/default/
+- [done] Documentacion THEMES.md actualizada con herencia, bloques, child themes
+
 ## Backlog (deferred)
-- [todo] Theme system improvements (heredar temas, sobrecargar parciales)
 - [done] i18n en templates
 - (vacio)

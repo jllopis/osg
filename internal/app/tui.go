@@ -62,8 +62,11 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		Doctor: func(actionCtx context.Context) error {
 			return RunDoctor(actionCtx, withLog())
 		},
-		ThemeInit: func(actionCtx context.Context, name string) error {
-			return RunThemeInit(actionCtx, withLog(), name)
+		ThemeInit: func(actionCtx context.Context, name string, parent string) error {
+			return RunThemeInit(actionCtx, withLog(), name, parent)
+		},
+		ThemeList: func(actionCtx context.Context) error {
+			return RunThemeList(actionCtx, withLog(), logSink)
 		},
 		PluginEnable: func(actionCtx context.Context, name string) error {
 			return RunPluginEnable(actionCtx, withLog(), name)

@@ -28,7 +28,8 @@ type Actions struct {
 	Build         func(context.Context) error
 	Serve         func(context.Context) error
 	Doctor        func(context.Context) error
-	ThemeInit     func(context.Context, string) error
+	ThemeInit     func(context.Context, string, string) error
+	ThemeList     func(context.Context) error
 	PluginEnable  func(context.Context, string) error
 	PluginDisable func(context.Context, string) error
 	PluginToggle  func(context.Context, string) error
@@ -277,12 +278,12 @@ func runSimpleActionCmd(ctx context.Context, label string, action func(context.C
 	}
 }
 
-func runThemeInitCmd(ctx context.Context, name string, action func(context.Context, string) error) tea.Cmd {
+func runThemeInitCmd(ctx context.Context, name string, parent string, action func(context.Context, string, string) error) tea.Cmd {
 	return func() tea.Msg {
 		if action == nil {
 			return simpleActionFinishedMsg{label: "Theme init", err: fmt.Errorf("action not available")}
 		}
-		err := action(ctx, name)
+		err := action(ctx, name, parent)
 		return simpleActionFinishedMsg{label: "Theme init", err: err}
 	}
 }
