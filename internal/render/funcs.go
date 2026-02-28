@@ -294,7 +294,7 @@ func getImageMetadataFunc(ctx Context) func(string, ...any) (map[string]any, err
 			}
 			return nil, err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		cfg, format, err := image.DecodeConfig(file)
 		if err != nil {
@@ -429,7 +429,7 @@ func readInput(ctx Context, input string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return nil, fmt.Errorf("http status: %s", resp.Status)
 		}

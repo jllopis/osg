@@ -58,8 +58,8 @@ func TestLogSinkWrite(t *testing.T) {
 
 	t.Run("partial writes buffered", func(t *testing.T) {
 		sink := NewLogSink(nil)
-		sink.Write([]byte("hel"))
-		sink.Write([]byte("lo\n"))
+		_, _ = sink.Write([]byte("hel"))
+		_, _ = sink.Write([]byte("lo\n"))
 
 		select {
 		case line := <-sink.Channel():
@@ -73,7 +73,7 @@ func TestLogSinkWrite(t *testing.T) {
 
 	t.Run("multiple lines in one write", func(t *testing.T) {
 		sink := NewLogSink(nil)
-		sink.Write([]byte("line1\nline2\n"))
+		_, _ = sink.Write([]byte("line1\nline2\n"))
 
 		select {
 		case line := <-sink.Channel():
@@ -96,7 +96,7 @@ func TestLogSinkWrite(t *testing.T) {
 
 	t.Run("blank lines skipped", func(t *testing.T) {
 		sink := NewLogSink(nil)
-		sink.Write([]byte("\n\nhello\n\n"))
+		_, _ = sink.Write([]byte("\n\nhello\n\n"))
 
 		select {
 		case line := <-sink.Channel():
@@ -118,7 +118,7 @@ func TestLogSinkWrite(t *testing.T) {
 
 	t.Run("carriage return stripped", func(t *testing.T) {
 		sink := NewLogSink(nil)
-		sink.Write([]byte("hello\r\n"))
+		_, _ = sink.Write([]byte("hello\r\n"))
 
 		select {
 		case line := <-sink.Channel():
@@ -133,7 +133,7 @@ func TestLogSinkWrite(t *testing.T) {
 	t.Run("writes through to writer", func(t *testing.T) {
 		w := &captureWriter{}
 		sink := NewLogSink(w)
-		sink.Write([]byte("test output\n"))
+		_, _ = sink.Write([]byte("test output\n"))
 
 		// Drain channel
 		select {
@@ -158,7 +158,7 @@ func TestLogSinkChannel(t *testing.T) {
 		t.Fatal("Channel() returned nil")
 	}
 	// Writing should populate the channel.
-	sink.Write([]byte("ping\n"))
+	_, _ = sink.Write([]byte("ping\n"))
 	select {
 	case line := <-ch:
 		if line != "ping" {

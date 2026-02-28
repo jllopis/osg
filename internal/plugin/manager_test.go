@@ -138,7 +138,7 @@ func TestLoad_DirIsFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.Close()
+	_ = f.Close()
 
 	ctx := context.Background()
 	m, err := Load(ctx, f.Name(), []string{"search"}, 0, nil)
@@ -154,7 +154,7 @@ func TestLoad_EmptyEnabled(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	// Place a dummy .wasm file.
-	os.WriteFile(filepath.Join(dir, "dummy.wasm"), []byte("not a wasm"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "dummy.wasm"), []byte("not a wasm"), 0o644)
 
 	ctx := context.Background()
 	m, err := Load(ctx, dir, nil, 0, nil)
@@ -164,7 +164,7 @@ func TestLoad_EmptyEnabled(t *testing.T) {
 	if len(m.plugins) != 0 {
 		t.Errorf("expected 0 plugins (none enabled), got %d", len(m.plugins))
 	}
-	m.Close(ctx)
+	_ = m.Close(ctx)
 }
 
 func TestLoad_EnabledButMissing(t *testing.T) {
@@ -180,14 +180,14 @@ func TestLoad_EnabledButMissing(t *testing.T) {
 	if len(m.plugins) != 0 {
 		t.Errorf("expected 0 plugins (missing .wasm), got %d", len(m.plugins))
 	}
-	m.Close(ctx)
+	_ = m.Close(ctx)
 }
 
 func TestLoad_InvalidWasm(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	// Write invalid content as .wasm.
-	os.WriteFile(filepath.Join(dir, "bad.wasm"), []byte("not valid wasm"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "bad.wasm"), []byte("not valid wasm"), 0o644)
 
 	ctx := context.Background()
 	logger := slog.Default()
@@ -199,14 +199,14 @@ func TestLoad_InvalidWasm(t *testing.T) {
 	if len(m.plugins) != 0 {
 		t.Errorf("expected 0 plugins (invalid wasm skipped), got %d", len(m.plugins))
 	}
-	m.Close(ctx)
+	_ = m.Close(ctx)
 }
 
 func TestLoad_SkipsNonWasmFiles(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "readme.txt"), []byte("hello"), 0o644)
-	os.MkdirAll(filepath.Join(dir, "subdir"), 0o755)
+	_ = os.WriteFile(filepath.Join(dir, "readme.txt"), []byte("hello"), 0o644)
+	_ = os.MkdirAll(filepath.Join(dir, "subdir"), 0o755)
 
 	ctx := context.Background()
 	m, err := Load(ctx, dir, []string{"readme"}, 0, nil)
@@ -216,7 +216,7 @@ func TestLoad_SkipsNonWasmFiles(t *testing.T) {
 	if len(m.plugins) != 0 {
 		t.Errorf("expected 0 plugins, got %d", len(m.plugins))
 	}
-	m.Close(ctx)
+	_ = m.Close(ctx)
 }
 
 // ---------------------------------------------------------------------------
@@ -270,7 +270,7 @@ func setupSearchPlugin(t *testing.T) (*Manager, context.Context) {
 func TestLoad_BundledSearch(t *testing.T) {
 	t.Parallel()
 	m, ctx := setupSearchPlugin(t)
-	defer m.Close(ctx)
+	defer func() { _ = m.Close(ctx) }()
 
 	if m.plugins[0].name != "search" {
 		t.Errorf("expected plugin name 'search', got %q", m.plugins[0].name)
@@ -280,7 +280,7 @@ func TestLoad_BundledSearch(t *testing.T) {
 func TestMetadata_FallbackToFilename(t *testing.T) {
 	t.Parallel()
 	m, ctx := setupSearchPlugin(t)
-	defer m.Close(ctx)
+	defer func() { _ = m.Close(ctx) }()
 
 	// The current search plugin does not export plugin_info,
 	// so Metadata should return a fallback with name = filename.
@@ -309,7 +309,7 @@ func TestMetadata_EmptyManager(t *testing.T) {
 func TestEmit_SearchIgnoresNonFinished(t *testing.T) {
 	t.Parallel()
 	m, ctx := setupSearchPlugin(t)
-	defer m.Close(ctx)
+	defer func() { _ = m.Close(ctx) }()
 
 	// The search plugin only listens to build.finished.
 	// Other events should return no overrides.
@@ -325,10 +325,10 @@ func TestEmit_SearchIgnoresNonFinished(t *testing.T) {
 func TestEmit_SearchBuildFinished(t *testing.T) {
 	t.Parallel()
 	m, ctx := setupSearchPlugin(t)
-	defer m.Close(ctx)
+	defer func() { _ = m.Close(ctx) }()
 
 	publicDir := filepath.Join(t.TempDir(), "public")
-	os.MkdirAll(publicDir, 0o755)
+	_ = os.MkdirAll(publicDir, 0o755)
 
 	pages := []any{
 		map[string]any{
@@ -392,7 +392,7 @@ func TestLoad_FiltersByEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	defer m.Close(ctx)
+	defer func() { _ = m.Close(ctx) }()
 
 	if len(m.plugins) != 0 {
 		t.Errorf("expected 0 plugins (search not enabled), got %d", len(m.plugins))
@@ -414,7 +414,7 @@ func TestLoad_NormalizesEnabledNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	defer m.Close(ctx)
+	defer func() { _ = m.Close(ctx) }()
 
 	if len(m.plugins) != 1 {
 		t.Errorf("expected 1 plugin (normalized name match), got %d", len(m.plugins))

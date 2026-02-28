@@ -66,7 +66,7 @@ func (r *Renderer) RenderToFile(name string, ctx map[string]any, outputPath stri
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	if isTextTemplate(name) {
 		return r.textTemplates.ExecuteTemplate(file, name, ctx)

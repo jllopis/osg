@@ -121,7 +121,7 @@ func fetchGitHubRelease(ctx context.Context, owner, repo, tag string) (*GitHubRe
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		if tag == "" || tag == "latest" {
@@ -165,7 +165,7 @@ func downloadFile(ctx context.Context, url, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download returned HTTP %d", resp.StatusCode)
@@ -175,11 +175,11 @@ func downloadFile(ctx context.Context, url, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	if _, err := io.Copy(out, resp.Body); err != nil {
 		// Clean up partial download.
-		os.Remove(dest)
+		_ = os.Remove(dest)
 		return err
 	}
 	return nil
@@ -313,7 +313,7 @@ func FetchIndexFrom(ctx context.Context, url string) (*PluginIndex, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetch index: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("index returned HTTP %d", resp.StatusCode)

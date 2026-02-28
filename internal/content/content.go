@@ -151,17 +151,6 @@ func pickString(fm map[string]any, keys ...string) string {
 	return ""
 }
 
-func pickValue(fm map[string]any, keys ...string) any {
-	for _, key := range keys {
-		if fm != nil {
-			if val, ok := fm[key]; ok {
-				return val
-			}
-		}
-	}
-	return nil
-}
-
 func stringFrom(fm map[string]any, key string) string {
 	if fm == nil {
 		return ""

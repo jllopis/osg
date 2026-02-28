@@ -96,9 +96,7 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 			postOpts := NewPostOptions{Title: title}
 			return RunNew(actionCtx, withLog(), postOpts)
 		},
-		Version: func() string {
-			return VersionInfo()
-		},
+		Version: VersionInfo,
 	}
 
 	options := tui.Options{

@@ -237,7 +237,7 @@ func TestTemplateLoaderThemeOverride(t *testing.T) {
 	themeDir := t.TempDir()
 	// Create a subdirectory for partials
 	partialsDir := filepath.Join(themeDir, "partials")
-	os.MkdirAll(partialsDir, 0o755)
+	_ = os.MkdirAll(partialsDir, 0o755)
 	err := os.WriteFile(
 		filepath.Join(partialsDir, "footer.html"),
 		[]byte(`<footer>Theme footer</footer>`),
@@ -281,8 +281,8 @@ func TestRendererRenderToFile(t *testing.T) {
 
 	// Create a simple template in user dir
 	userDir := filepath.Join(tmpDir, "templates")
-	os.MkdirAll(userDir, 0o755)
-	os.WriteFile(
+	_ = os.MkdirAll(userDir, 0o755)
+	_ = os.WriteFile(
 		filepath.Join(userDir, "test.html"),
 		[]byte(`Title: {{ .title }}`),
 		0o644,

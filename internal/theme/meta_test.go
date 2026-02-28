@@ -97,7 +97,7 @@ func TestLoadMeta_InvalidYAML(t *testing.T) {
 
 func TestResolveChain_Single(t *testing.T) {
 	base := t.TempDir()
-	os.MkdirAll(filepath.Join(base, "my-theme"), 0o755)
+	_ = os.MkdirAll(filepath.Join(base, "my-theme"), 0o755)
 
 	chain, err := ResolveChain(base, "my-theme")
 	if err != nil {
@@ -115,13 +115,13 @@ func TestResolveChain_WithParent(t *testing.T) {
 	base := t.TempDir()
 	// Create parent theme.
 	parentDir := filepath.Join(base, "parent")
-	os.MkdirAll(parentDir, 0o755)
-	os.WriteFile(filepath.Join(parentDir, "theme.yaml"), []byte("name: parent\n"), 0o644)
+	_ = os.MkdirAll(parentDir, 0o755)
+	_ = os.WriteFile(filepath.Join(parentDir, "theme.yaml"), []byte("name: parent\n"), 0o644)
 
 	// Create child theme.
 	childDir := filepath.Join(base, "child")
-	os.MkdirAll(childDir, 0o755)
-	os.WriteFile(filepath.Join(childDir, "theme.yaml"), []byte("name: child\nparent: parent\n"), 0o644)
+	_ = os.MkdirAll(childDir, 0o755)
+	_ = os.WriteFile(filepath.Join(childDir, "theme.yaml"), []byte("name: child\nparent: parent\n"), 0o644)
 
 	chain, err := ResolveChain(base, "child")
 	if err != nil {
@@ -140,14 +140,14 @@ func TestResolveChain_WithParent(t *testing.T) {
 
 func TestResolveChain_ThreeLevel(t *testing.T) {
 	base := t.TempDir()
-	os.MkdirAll(filepath.Join(base, "grandparent"), 0o755)
-	os.WriteFile(filepath.Join(base, "grandparent", "theme.yaml"), []byte("name: grandparent\n"), 0o644)
+	_ = os.MkdirAll(filepath.Join(base, "grandparent"), 0o755)
+	_ = os.WriteFile(filepath.Join(base, "grandparent", "theme.yaml"), []byte("name: grandparent\n"), 0o644)
 
-	os.MkdirAll(filepath.Join(base, "parent"), 0o755)
-	os.WriteFile(filepath.Join(base, "parent", "theme.yaml"), []byte("name: parent\nparent: grandparent\n"), 0o644)
+	_ = os.MkdirAll(filepath.Join(base, "parent"), 0o755)
+	_ = os.WriteFile(filepath.Join(base, "parent", "theme.yaml"), []byte("name: parent\nparent: grandparent\n"), 0o644)
 
-	os.MkdirAll(filepath.Join(base, "child"), 0o755)
-	os.WriteFile(filepath.Join(base, "child", "theme.yaml"), []byte("name: child\nparent: parent\n"), 0o644)
+	_ = os.MkdirAll(filepath.Join(base, "child"), 0o755)
+	_ = os.WriteFile(filepath.Join(base, "child", "theme.yaml"), []byte("name: child\nparent: parent\n"), 0o644)
 
 	chain, err := ResolveChain(base, "child")
 	if err != nil {
@@ -160,11 +160,11 @@ func TestResolveChain_ThreeLevel(t *testing.T) {
 
 func TestResolveChain_Cycle(t *testing.T) {
 	base := t.TempDir()
-	os.MkdirAll(filepath.Join(base, "a"), 0o755)
-	os.WriteFile(filepath.Join(base, "a", "theme.yaml"), []byte("name: a\nparent: b\n"), 0o644)
+	_ = os.MkdirAll(filepath.Join(base, "a"), 0o755)
+	_ = os.WriteFile(filepath.Join(base, "a", "theme.yaml"), []byte("name: a\nparent: b\n"), 0o644)
 
-	os.MkdirAll(filepath.Join(base, "b"), 0o755)
-	os.WriteFile(filepath.Join(base, "b", "theme.yaml"), []byte("name: b\nparent: a\n"), 0o644)
+	_ = os.MkdirAll(filepath.Join(base, "b"), 0o755)
+	_ = os.WriteFile(filepath.Join(base, "b", "theme.yaml"), []byte("name: b\nparent: a\n"), 0o644)
 
 	_, err := ResolveChain(base, "a")
 	if err == nil {
@@ -174,8 +174,8 @@ func TestResolveChain_Cycle(t *testing.T) {
 
 func TestResolveChain_MissingParent(t *testing.T) {
 	base := t.TempDir()
-	os.MkdirAll(filepath.Join(base, "child"), 0o755)
-	os.WriteFile(filepath.Join(base, "child", "theme.yaml"), []byte("name: child\nparent: nonexistent\n"), 0o644)
+	_ = os.MkdirAll(filepath.Join(base, "child"), 0o755)
+	_ = os.WriteFile(filepath.Join(base, "child", "theme.yaml"), []byte("name: child\nparent: nonexistent\n"), 0o644)
 
 	_, err := ResolveChain(base, "child")
 	if err == nil {
@@ -196,14 +196,14 @@ func TestResolveChain_EmptyInputs(t *testing.T) {
 func TestListThemes(t *testing.T) {
 	base := t.TempDir()
 	// Create two themes.
-	os.MkdirAll(filepath.Join(base, "alpha"), 0o755)
-	os.WriteFile(filepath.Join(base, "alpha", "theme.yaml"), []byte("name: alpha\ndescription: First\n"), 0o644)
+	_ = os.MkdirAll(filepath.Join(base, "alpha"), 0o755)
+	_ = os.WriteFile(filepath.Join(base, "alpha", "theme.yaml"), []byte("name: alpha\ndescription: First\n"), 0o644)
 
-	os.MkdirAll(filepath.Join(base, "beta"), 0o755)
+	_ = os.MkdirAll(filepath.Join(base, "beta"), 0o755)
 	// No theme.yaml — should still appear with directory name.
 
 	// Create a regular file (not a dir) — should be ignored.
-	os.WriteFile(filepath.Join(base, "not-a-theme.txt"), []byte("hello"), 0o644)
+	_ = os.WriteFile(filepath.Join(base, "not-a-theme.txt"), []byte("hello"), 0o644)
 
 	themes, err := ListThemes(base)
 	if err != nil {
@@ -262,8 +262,8 @@ func TestScaffoldChildTheme(t *testing.T) {
 	base := t.TempDir()
 	// Create parent theme.
 	parentDir := filepath.Join(base, "default")
-	os.MkdirAll(parentDir, 0o755)
-	os.WriteFile(filepath.Join(parentDir, "theme.yaml"), []byte("name: default\n"), 0o644)
+	_ = os.MkdirAll(parentDir, 0o755)
+	_ = os.WriteFile(filepath.Join(parentDir, "theme.yaml"), []byte("name: default\n"), 0o644)
 
 	err := ScaffoldChildTheme(base, "my-child", "default")
 	if err != nil {
@@ -313,8 +313,8 @@ func TestScaffoldChildTheme_SelfParent(t *testing.T) {
 
 func TestScaffoldChildTheme_AlreadyExists(t *testing.T) {
 	base := t.TempDir()
-	os.MkdirAll(filepath.Join(base, "default"), 0o755)
-	os.MkdirAll(filepath.Join(base, "child"), 0o755)
+	_ = os.MkdirAll(filepath.Join(base, "default"), 0o755)
+	_ = os.MkdirAll(filepath.Join(base, "child"), 0o755)
 	err := ScaffoldChildTheme(base, "child", "default")
 	if err == nil {
 		t.Fatal("expected error for existing theme")

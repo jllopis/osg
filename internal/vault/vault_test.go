@@ -32,7 +32,7 @@ func TestBuildImageIndex(t *testing.T) {
 		filepath.Join(attachDir, "video.mp4"):   "video",  // not an image ext
 		filepath.Join(attachDir, "banner.webp"): "webp",
 	}
-	for path, _ := range images {
+	for path := range images {
 		if err := os.WriteFile(path, []byte("test"), 0o644); err != nil {
 			t.Fatal(err)
 		}

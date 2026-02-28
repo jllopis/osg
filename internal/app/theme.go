@@ -45,7 +45,7 @@ func RunThemeList(_ context.Context, opts CLIOptions, w io.Writer) error {
 	}
 
 	if len(themes) == 0 {
-		fmt.Fprintln(w, "No themes found.")
+		_, _ = fmt.Fprintln(w, "No themes found.")
 		return nil
 	}
 
@@ -61,7 +61,7 @@ func RunThemeList(_ context.Context, opts CLIOptions, w io.Writer) error {
 		if t.Description != "" {
 			line += fmt.Sprintf("  — %s", t.Description)
 		}
-		fmt.Fprintln(w, line)
+		_, _ = fmt.Fprintln(w, line)
 	}
 	return nil
 }

@@ -159,10 +159,7 @@ func isStructuredOutput(text string) bool {
 	}
 	// Also reject if the text has too many newlines (structured output).
 	lines := strings.Count(text, "\n")
-	if lines > 4 {
-		return true
-	}
-	return false
+	return lines > 4
 }
 
 // AIConfig holds the parameters needed to create a KairosProvider.

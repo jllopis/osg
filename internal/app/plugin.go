@@ -124,7 +124,7 @@ func RunPluginList(ctx context.Context, opts CLIOptions, out io.Writer) error {
 	mgr, loadErr := plugin.Load(ctx, cfg.PluginsDir, cfg.PluginsEnabled, 0, nil)
 	metaMap := map[string]plugin.PluginMeta{}
 	if loadErr == nil && mgr != nil {
-		defer mgr.Close(ctx)
+		defer func() { _ = mgr.Close(ctx) }()
 		for _, m := range mgr.Metadata() {
 			metaMap[m.Name] = m
 		}
@@ -158,7 +158,7 @@ func RunPluginSearch(ctx context.Context, opts CLIOptions, query string, out io.
 
 	results := plugin.SearchIndex(index, query)
 	if len(results) == 0 {
-		fmt.Fprintln(out, "No plugins found.")
+		_, _ = fmt.Fprintln(out, "No plugins found.")
 		return nil
 	}
 
@@ -170,9 +170,9 @@ func RunPluginSearch(ctx context.Context, opts CLIOptions, query string, out io.
 		if e.Description != "" {
 			line += " — " + e.Description
 		}
-		fmt.Fprintln(out, line)
+		_, _ = fmt.Fprintln(out, line)
 		if e.Repo != "" {
-			fmt.Fprintf(out, "  install: osg plugin install %s\n", e.Repo)
+			_, _ = fmt.Fprintf(out, "  install: osg plugin install %s\n", e.Repo)
 		}
 	}
 	return nil
@@ -195,30 +195,30 @@ func RunPluginUpdate(ctx context.Context, opts CLIOptions, name string, out io.W
 	}
 
 	if len(names) == 0 {
-		fmt.Fprintln(out, "No plugins tracked in lock file. Install plugins from GitHub to enable updates.")
+		_, _ = fmt.Fprintln(out, "No plugins tracked in lock file. Install plugins from GitHub to enable updates.")
 		return nil
 	}
 
 	for _, n := range names {
 		newVersion, err := plugin.CheckUpdate(ctx, n, lock)
 		if err != nil {
-			fmt.Fprintf(out, "%s: %v\n", n, err)
+			_, _ = fmt.Fprintf(out, "%s: %v\n", n, err)
 			continue
 		}
 		if newVersion == "" {
-			fmt.Fprintf(out, "%s: up to date\n", n)
+			_, _ = fmt.Fprintf(out, "%s: up to date\n", n)
 			continue
 		}
 
 		entry, _ := lock.Get(n)
-		fmt.Fprintf(out, "%s: %s -> %s, updating...\n", n, entry.Version, newVersion)
+		_, _ = fmt.Fprintf(out, "%s: %s -> %s, updating...\n", n, entry.Version, newVersion)
 
 		_, err = plugin.UpdatePlugin(ctx, n, cfg.PluginsDir, lock)
 		if err != nil {
-			fmt.Fprintf(out, "%s: update failed: %v\n", n, err)
+			_, _ = fmt.Fprintf(out, "%s: update failed: %v\n", n, err)
 			continue
 		}
-		fmt.Fprintf(out, "%s: updated to %s\n", n, newVersion)
+		_, _ = fmt.Fprintf(out, "%s: updated to %s\n", n, newVersion)
 	}
 	return nil
 }
@@ -319,13 +319,13 @@ func copyFile(src string, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	out, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	if _, err := io.Copy(out, in); err != nil {
 		return err

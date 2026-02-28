@@ -169,7 +169,7 @@ func main() {
 		if cli.Build.ForceAISummaries && !cli.Build.Yes {
 			fmt.Print("This will regenerate ALL AI summaries (may incur API costs). Continue? [y/N] ")
 			var answer string
-			fmt.Scanln(&answer)
+			_, _ = fmt.Scanln(&answer)
 			if strings.ToLower(strings.TrimSpace(answer)) != "y" {
 				fmt.Fprintln(os.Stderr, "aborted")
 				os.Exit(0)

@@ -1,7 +1,6 @@
 package image
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -29,7 +28,7 @@ func createTestJPEG(t *testing.T, path string, w, h int) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if err := jpeg.Encode(f, img, &jpeg.Options{Quality: 90}); err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +50,7 @@ func createTestPNG(t *testing.T, path string, w, h int) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if err := png.Encode(f, img); err != nil {
 		t.Fatal(err)
 	}
@@ -281,7 +280,7 @@ func TestOptimize_FullWalk(t *testing.T) {
 
 	// Create an SVG (should be ignored).
 	svgPath := filepath.Join(dir, "img", "placeholder.svg")
-	os.WriteFile(svgPath, []byte(`<svg></svg>`), 0o644)
+	_ = os.WriteFile(svgPath, []byte(`<svg></svg>`), 0o644)
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
@@ -439,7 +438,7 @@ func TestWriteJPEG(t *testing.T) {
 
 	// Verify it's a valid JPEG.
 	f, _ := os.Open(path)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, format, err := image.Decode(f)
 	if err != nil {
 		t.Fatalf("cannot decode written JPEG: %v", err)
@@ -517,7 +516,7 @@ func TestPictureHTML_WebPOnly(t *testing.T) {
 		t.Error("unexpected jpeg source when only webp exists")
 	}
 	// Fallback img should still be the original.
-	if !strings.Contains(html, fmt.Sprintf(`src="/img/hero.jpg"`)) {
+	if !strings.Contains(html, `src="/img/hero.jpg"`) {
 		t.Error("expected original src in fallback img")
 	}
 }

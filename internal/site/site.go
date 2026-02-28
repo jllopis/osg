@@ -401,7 +401,7 @@ func (s *Section) View() map[string]any {
 	// their relative date order.  If no page is explicitly featured the
 	// most-recent page is used as hero.
 	var featured map[string]any
-	var featuredIdx int = -1
+	featuredIdx := -1
 	for i, page := range s.Pages {
 		if val, ok := page.Extra["featured"]; ok {
 			if b, ok := val.(bool); ok && b {
@@ -564,7 +564,9 @@ func mergeTaxonomy(out map[string][]string, key string, values []string) {
 	}
 	values = normalizeTerms(values)
 	existing := out[key]
-	merged := append(existing, values...)
+	merged := make([]string, 0, len(existing)+len(values))
+	merged = append(merged, existing...)
+	merged = append(merged, values...)
 	out[key] = uniqueStrings(merged)
 }
 
@@ -583,9 +585,7 @@ func normalizeTerm(value string) string {
 	if value == "" {
 		return ""
 	}
-	if strings.HasPrefix(value, "#") {
-		value = strings.TrimPrefix(value, "#")
-	}
+	value = strings.TrimPrefix(value, "#")
 	if strings.HasPrefix(value, "[[") && strings.HasSuffix(value, "]]") {
 		inner := strings.TrimSuffix(strings.TrimPrefix(value, "[["), "]]")
 		inner = strings.TrimSpace(inner)

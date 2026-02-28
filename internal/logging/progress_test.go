@@ -75,7 +75,7 @@ func TestProgressWriter_PassesThrough(t *testing.T) {
 	var buf bytes.Buffer
 	// nil progress => pass-through.
 	w := NewProgressWriter(&buf, nil)
-	w.Write([]byte("hello\n"))
+	_, _ = w.Write([]byte("hello\n"))
 	if buf.String() != "hello\n" {
 		t.Errorf("expected pass-through, got %q", buf.String())
 	}
@@ -90,7 +90,7 @@ func TestProgressWriter_ClearsSpinner(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// A log write should clear the spinner line first.
-	w.Write([]byte("log line\n"))
+	_, _ = w.Write([]byte("log line\n"))
 	time.Sleep(100 * time.Millisecond)
 
 	p.Stop()

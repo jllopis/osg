@@ -9,11 +9,11 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/jllopis/kairos v0.0.0
-	github.com/jllopis/kairos/providers/anthropic v0.0.0-00010101000000-000000000000
-	github.com/jllopis/kairos/providers/gemini v0.0.0-20260123134612-834fd2325f2e
-	github.com/jllopis/kairos/providers/openai v0.0.0-00010101000000-000000000000
-	github.com/jllopis/kairos/providers/qwen v0.0.0-00010101000000-000000000000
+	github.com/jllopis/kairos v0.2.5
+	github.com/jllopis/kairos/providers/anthropic v0.2.5
+	github.com/jllopis/kairos/providers/gemini v0.2.5
+	github.com/jllopis/kairos/providers/openai v0.2.5
+	github.com/jllopis/kairos/providers/qwen v0.2.5
 	github.com/knadh/koanf/parsers/yaml v1.1.0
 	github.com/knadh/koanf/providers/env v1.1.0
 	github.com/knadh/koanf/providers/file v1.2.1
@@ -27,14 +27,6 @@ require (
 	golang.org/x/image v0.36.0
 	golang.org/x/text v0.34.0
 	gopkg.in/yaml.v3 v3.0.1
-)
-
-replace (
-	github.com/jllopis/kairos => /Users/jllopis/src/kairos
-	github.com/jllopis/kairos/providers/anthropic => /Users/jllopis/src/kairos/providers/anthropic
-	github.com/jllopis/kairos/providers/gemini => /Users/jllopis/src/kairos/providers/gemini
-	github.com/jllopis/kairos/providers/openai => /Users/jllopis/src/kairos/providers/openai
-	github.com/jllopis/kairos/providers/qwen => /Users/jllopis/src/kairos/providers/qwen
 )
 
 require (
@@ -65,7 +57,7 @@ require (
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
-	github.com/openai/openai-go v1.0.0 // indirect
+	github.com/openai/openai-go v1.12.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/tdewolff/parse/v2 v2.8.8 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect

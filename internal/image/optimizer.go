@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
-	"image/png"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -158,7 +157,7 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, logge
 	if err != nil {
 		return nil, 0, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	src, format, err := image.Decode(file)
 	if err != nil {
@@ -270,18 +269,8 @@ func writeJPEG(path string, img image.Image, quality int) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	return jpeg.Encode(f, img, &jpeg.Options{Quality: quality})
-}
-
-// writePNG encodes an image as PNG (unused for variants but kept for completeness).
-func writePNG(path string, img image.Image) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return png.Encode(f, img)
 }
 
 // writeWebP converts an image to WebP using the cwebp binary.

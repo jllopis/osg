@@ -248,7 +248,7 @@ func BytesToWasm(data []byte) uint64 {
 		return 0
 	}
 	ptr := Alloc(int32(len(data)))
-	copy(unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), len(data)), data)
+	copy(unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), len(data)), data) //nolint:govet // intentional unsafe.Pointer for WASM memory access
 	return PackPtrLen(uint32(ptr), uint32(len(data)))
 }
 
@@ -268,5 +268,5 @@ func SliceFromPtr(ptr int32, length int32) []byte {
 	if ptr == 0 || length == 0 {
 		return nil
 	}
-	return unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), length)
+	return unsafe.Slice((*byte)(unsafe.Pointer(uintptr(ptr))), length) //nolint:govet // intentional unsafe.Pointer for WASM memory access
 }

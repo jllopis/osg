@@ -363,9 +363,10 @@ func TestTruncateSentence_BreaksAtWord(t *testing.T) {
 	if !strings.HasSuffix(got, "...") {
 		t.Errorf("expected word-break with ellipsis, got %q", got)
 	}
-	// Should not break mid-word
-	if strings.HasSuffix(strings.TrimSuffix(got, "..."), "a") {
-		// This is a soft check; main thing is it ends at a word boundary
+	// Should not break mid-word (soft check; main thing is it ends at a word boundary)
+	trimmed := strings.TrimSuffix(got, "...")
+	if strings.HasSuffix(trimmed, "a") {
+		t.Log("word-break ended with 'a', possibly mid-word")
 	}
 }
 

@@ -103,11 +103,12 @@ func parseArgs(raw string) map[string]string {
 	re := regexp.MustCompile(`(\w+)\s*=\s*"([^"]*)"|\b(\w+)\s*=\s*'([^']*)'|\b(\w+)\s*=\s*(\S+)`)
 	matches := re.FindAllStringSubmatch(raw, -1)
 	for _, m := range matches {
-		if m[1] != "" {
+		switch {
+		case m[1] != "":
 			out[m[1]] = m[2]
-		} else if m[3] != "" {
+		case m[3] != "":
 			out[m[3]] = m[4]
-		} else if m[5] != "" {
+		case m[5] != "":
 			out[m[5]] = m[6]
 		}
 	}
@@ -166,10 +167,10 @@ func renderFigure(args string, content string) string {
 	if class != "" {
 		classAttr += " " + class
 	}
-	buf.WriteString(fmt.Sprintf(`<figure class="%s">`, classAttr))
+	fmt.Fprintf(&buf, `<figure class="%s">`, classAttr)
 
 	if link != "" {
-		buf.WriteString(fmt.Sprintf(`<a href="%s">`, link))
+		fmt.Fprintf(&buf, `<a href="%s">`, link)
 	}
 
 	imgTag := fmt.Sprintf(`<img src="%s" alt="%s"`, src, alt)
@@ -186,9 +187,9 @@ func renderFigure(args string, content string) string {
 	// Inner content (markdown) as figcaption if present, otherwise use caption arg
 	inner := strings.TrimSpace(content)
 	if inner != "" {
-		buf.WriteString(fmt.Sprintf("\n\n<figcaption>%s</figcaption>\n\n", inner))
+		fmt.Fprintf(&buf, "\n\n<figcaption>%s</figcaption>\n\n", inner)
 	} else if caption != "" {
-		buf.WriteString(fmt.Sprintf("\n\n<figcaption>%s</figcaption>\n\n", caption))
+		fmt.Fprintf(&buf, "\n\n<figcaption>%s</figcaption>\n\n", caption)
 	}
 
 	buf.WriteString("</figure>")

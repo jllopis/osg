@@ -89,7 +89,7 @@ func (p *CLIProgress) Stop() {
 	p.mu.Unlock()
 
 	// Clear the spinner line.
-	fmt.Fprintf(p.w, "\r%s\r", strings.Repeat(" ", 80))
+	_, _ = fmt.Fprintf(p.w, "\r%s\r", strings.Repeat(" ", 80))
 }
 
 func (p *CLIProgress) loop() {
@@ -107,7 +107,7 @@ func (p *CLIProgress) loop() {
 			p.frame++
 			p.mu.Unlock()
 			// \r moves cursor to column 0; \033[K clears to end of line.
-			fmt.Fprintf(p.w, "\r\033[K  %s %s", frame, msg)
+			_, _ = fmt.Fprintf(p.w, "\r\033[K  %s %s", frame, msg)
 		}
 	}
 }
@@ -134,7 +134,7 @@ func (pw *ProgressWriter) Write(b []byte) (int, error) {
 	running := pw.progress.running
 	if running {
 		// Clear spinner line before log output.
-		fmt.Fprintf(pw.inner, "\r\033[K")
+		_, _ = fmt.Fprintf(pw.inner, "\r\033[K")
 	}
 	n, err := pw.inner.Write(b)
 	pw.progress.mu.Unlock()

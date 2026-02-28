@@ -74,7 +74,7 @@ func TestInstallFromGitHub(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/repos/testuser/testplugin/releases/latest", func(w http.ResponseWriter, r *http.Request) {
 		// The wasm asset URL will be set below after the server starts.
-		json.NewEncoder(w).Encode(release)
+		_ = json.NewEncoder(w).Encode(release)
 	})
 
 	server := httptest.NewServer(mux)
@@ -101,7 +101,7 @@ func TestInstallFromGitHubWithMockServer(t *testing.T) {
 	// Serve the wasm file.
 	mux.HandleFunc("/download/osg-test.wasm", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/wasm")
-		w.Write(wasmContent)
+		_, _ = w.Write(wasmContent)
 	})
 
 	server := httptest.NewServer(mux)
@@ -117,10 +117,10 @@ func TestInstallFromGitHubWithMockServer(t *testing.T) {
 	}
 
 	mux.HandleFunc("/repos/myuser/myplugin/releases/latest", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(release)
+		_ = json.NewEncoder(w).Encode(release)
 	})
 	mux.HandleFunc("/repos/myuser/myplugin/releases/tags/v2.0.0", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(release)
+		_ = json.NewEncoder(w).Encode(release)
 	})
 
 	// Temporarily override the GitHub API host by using fetchGitHubRelease directly.
@@ -328,7 +328,7 @@ func TestFetchIndexFromMockServer(t *testing.T) {
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(index)
+		_ = json.NewEncoder(w).Encode(index)
 	}))
 	defer server.Close()
 
@@ -385,10 +385,10 @@ func TestFetchGitHubReleaseMock(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/repos/owner/repo/releases/latest", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(release)
+		_ = json.NewEncoder(w).Encode(release)
 	})
 	mux.HandleFunc("/repos/owner/repo/releases/tags/v3.0.0", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(release)
+		_ = json.NewEncoder(w).Encode(release)
 	})
 
 	server := httptest.NewServer(mux)
@@ -400,10 +400,10 @@ func TestFetchGitHubReleaseMock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var got GitHubRelease
-	json.NewDecoder(resp.Body).Decode(&got)
+	_ = json.NewDecoder(resp.Body).Decode(&got)
 	if got.TagName != "v3.0.0" {
 		t.Errorf("expected v3.0.0, got %s", got.TagName)
 	}

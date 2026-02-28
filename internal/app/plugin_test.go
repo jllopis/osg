@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,7 +20,7 @@ func TestPluginEnableDisable(t *testing.T) {
 
 	opts := CLIOptions{ConfigPath: path}
 
-	if err := RunPluginEnable(nil, opts, "search.wasm"); err != nil {
+	if err := RunPluginEnable(context.TODO(), opts, "search.wasm"); err != nil {
 		t.Fatalf("enable plugin: %v", err)
 	}
 
@@ -31,7 +32,7 @@ func TestPluginEnableDisable(t *testing.T) {
 		t.Fatalf("unexpected plugins_enabled: %v", cfg.PluginsEnabled)
 	}
 
-	if err := RunPluginDisable(nil, opts, "search"); err != nil {
+	if err := RunPluginDisable(context.TODO(), opts, "search"); err != nil {
 		t.Fatalf("disable plugin: %v", err)
 	}
 

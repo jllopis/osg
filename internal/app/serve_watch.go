@@ -66,7 +66,7 @@ func startWatch(ctx context.Context, cfg config.Config, configPath string, logge
 	go func() {
 		defer close(events)
 		defer close(errs)
-		defer watcher.Close()
+		defer func() { _ = watcher.Close() }()
 
 		for {
 			select {
@@ -311,7 +311,6 @@ func runWatchLoop(ctx context.Context, events <-chan watchEvent, errs <-chan err
 				trigger()
 				continue
 			}
-			running = true
 			update := pendingUpdate
 			build := pendingBuild
 			pendingUpdate = false

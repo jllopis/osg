@@ -13,7 +13,6 @@ var (
 // Nord palette — Snow Storm (text)
 var (
 	nordFg0 = lipgloss.Color("#d8dee9")
-	nordFg1 = lipgloss.Color("#e5e9f0")
 	nordFg2 = lipgloss.Color("#eceff4")
 )
 
@@ -22,7 +21,6 @@ var (
 	nordFrost0 = lipgloss.Color("#8fbcbb")
 	nordFrost1 = lipgloss.Color("#88c0d0")
 	nordFrost2 = lipgloss.Color("#81a1c1")
-	nordFrost3 = lipgloss.Color("#5e81ac")
 )
 
 // Nord palette — Aurora (status)
@@ -31,19 +29,6 @@ var (
 	nordOrange = lipgloss.Color("#d08770")
 	nordYellow = lipgloss.Color("#ebcb8b")
 	nordGreen  = lipgloss.Color("#a3be8c")
-	nordPurple = lipgloss.Color("#b48ead")
-)
-
-// Semantic aliases.
-var (
-	colorPrimary = nordFrost1
-	colorAccent  = nordFrost2
-	colorMuted   = nordBg3
-	colorSuccess = nordGreen
-	colorWarning = nordYellow
-	colorError   = nordRed
-	colorInfo    = nordFrost0
-	colorSpecial = nordPurple
 )
 
 // ---- Reusable styles ----

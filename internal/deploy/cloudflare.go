@@ -122,7 +122,7 @@ func (p *CloudflareProvider) deployWorkers(ctx context.Context, publicDir string
 	// For simplicity, we'll use wrangler's static asset serving feature.
 
 	// Create a minimal worker script
-	workerScript := fmt.Sprintf(`
+	workerScript := `
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -151,14 +151,14 @@ export default {
     return new Response('Not Found', { status: 404 });
   }
 };
-`)
+`
 
 	// Write temporary worker script
 	tmpDir, err := os.MkdirTemp("", "osg-cloudflare-worker-*")
 	if err != nil {
 		return fmt.Errorf("cloudflare workers: creating temp dir: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	workerFile := filepath.Join(tmpDir, "worker.js")
 	if err := os.WriteFile(workerFile, []byte(workerScript), 0644); err != nil {

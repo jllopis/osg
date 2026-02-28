@@ -90,16 +90,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.acVisible {
 			switch {
 			case key.Matches(msg, keys.ScrollUp):
-				m.viewport.LineUp(1)
+				m.viewport.ScrollUp(1)
 				return m, nil
 			case key.Matches(msg, keys.ScrollDown):
-				m.viewport.LineDown(1)
+				m.viewport.ScrollDown(1)
 				return m, nil
 			case key.Matches(msg, keys.PageUp):
-				m.viewport.HalfViewUp()
+				m.viewport.HalfPageUp()
 				return m, nil
 			case key.Matches(msg, keys.PageDown):
-				m.viewport.HalfViewDown()
+				m.viewport.HalfPageDown()
 				return m, nil
 			}
 		}
@@ -359,9 +359,10 @@ func (m Model) finishTask(msg taskFinishedMsg) (Model, tea.Cmd) {
 	m.appendHistory("ACTION", fmt.Sprintf("%s completed", label))
 	m.lastAction = label + " completed"
 
-	if msg.kind == taskInit {
+	switch msg.kind {
+	case taskInit:
 		m.hasInit = true
-	} else if msg.kind == taskUpdate {
+	case taskUpdate:
 		if pathExists(m.options.ContentDir) {
 			m.hasInit = true
 		}

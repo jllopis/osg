@@ -98,10 +98,10 @@ func TestMinifyDir_EmptyDir(t *testing.T) {
 
 func TestMinifyDir_MultipleTypes(t *testing.T) {
 	dir := t.TempDir()
-	os.WriteFile(filepath.Join(dir, "index.html"), []byte("<html> <body> </body> </html>"), 0o644)
-	os.WriteFile(filepath.Join(dir, "app.js"), []byte("var x = 1 ;"), 0o644)
-	os.WriteFile(filepath.Join(dir, "data.json"), []byte(`{ "a" : 1 }`), 0o644)
-	os.WriteFile(filepath.Join(dir, "feed.xml"), []byte(`<?xml version="1.0" ?>\n<root> </root>`), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "index.html"), []byte("<html> <body> </body> </html>"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "app.js"), []byte("var x = 1 ;"), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "data.json"), []byte(`{ "a" : 1 }`), 0o644)
+	_ = os.WriteFile(filepath.Join(dir, "feed.xml"), []byte(`<?xml version="1.0" ?>\n<root> </root>`), 0o644)
 
 	count, err := minifyDir(dir, slog.Default())
 	if err != nil {

@@ -117,7 +117,7 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 			return fmt.Errorf("load theme translations from %s: %w", dir, err)
 		}
 	}
-	userI18nDir := filepath.Join("i18n")
+	userI18nDir := "i18n"
 	if err := i18nBundle.LoadDir(userI18nDir); err != nil {
 		return fmt.Errorf("load user translations: %w", err)
 	}

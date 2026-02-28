@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,7 +11,7 @@ func TestDoctorDevAllowsEmptyBaseURL(t *testing.T) {
 	t.Parallel()
 
 	cfgPath := writeDoctorConfig(t, "dev", "")
-	if err := RunDoctor(nil, CLIOptions{ConfigPath: cfgPath}); err != nil {
+	if err := RunDoctor(context.TODO(), CLIOptions{ConfigPath: cfgPath}); err != nil {
 		t.Fatalf("doctor dev should not error: %v", err)
 	}
 }
@@ -19,7 +20,7 @@ func TestDoctorProdRequiresBaseURL(t *testing.T) {
 	t.Parallel()
 
 	cfgPath := writeDoctorConfig(t, "prod", "")
-	if err := RunDoctor(nil, CLIOptions{ConfigPath: cfgPath}); err == nil {
+	if err := RunDoctor(context.TODO(), CLIOptions{ConfigPath: cfgPath}); err == nil {
 		t.Fatalf("doctor prod should error on empty base_url")
 	}
 }

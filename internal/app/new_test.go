@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,7 +15,7 @@ func TestRunNew_CreatesFile(t *testing.T) {
 	opts := CLIOptions{ConfigPath: cfgPath}
 	postOpts := NewPostOptions{Title: "My First Post"}
 
-	if err := RunNew(nil, opts, postOpts); err != nil {
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
 		t.Fatalf("RunNew failed: %v", err)
 	}
 
@@ -49,7 +50,7 @@ func TestRunNew_PublishFlag(t *testing.T) {
 	opts := CLIOptions{ConfigPath: cfgPath}
 	postOpts := NewPostOptions{Title: "Published Post", Publish: true}
 
-	if err := RunNew(nil, opts, postOpts); err != nil {
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
 		t.Fatalf("RunNew failed: %v", err)
 	}
 
@@ -74,7 +75,7 @@ func TestRunNew_WithTags(t *testing.T) {
 		Tags:  []string{"go", "testing"},
 	}
 
-	if err := RunNew(nil, opts, postOpts); err != nil {
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
 		t.Fatalf("RunNew failed: %v", err)
 	}
 
@@ -99,7 +100,7 @@ func TestRunNew_EmptyTitle(t *testing.T) {
 	opts := CLIOptions{ConfigPath: cfgPath}
 	postOpts := NewPostOptions{Title: ""}
 
-	err := RunNew(nil, opts, postOpts)
+	err := RunNew(context.TODO(), opts, postOpts)
 	if err == nil {
 		t.Fatal("expected error for empty title")
 	}
@@ -122,7 +123,7 @@ func TestRunNew_FileAlreadyExists(t *testing.T) {
 	opts := CLIOptions{ConfigPath: cfgPath}
 	postOpts := NewPostOptions{Title: "Duplicate"}
 
-	err := RunNew(nil, opts, postOpts)
+	err := RunNew(context.TODO(), opts, postOpts)
 	if err == nil {
 		t.Fatal("expected error for existing file")
 	}
@@ -138,7 +139,7 @@ func TestRunNew_DryRun(t *testing.T) {
 	opts := CLIOptions{ConfigPath: cfgPath, DryRun: true}
 	postOpts := NewPostOptions{Title: "Dry Run Post"}
 
-	if err := RunNew(nil, opts, postOpts); err != nil {
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
 		t.Fatalf("RunNew dry-run failed: %v", err)
 	}
 
@@ -161,7 +162,7 @@ func TestRunNew_NoVaultPath(t *testing.T) {
 	opts := CLIOptions{ConfigPath: cfgPath}
 	postOpts := NewPostOptions{Title: "No Vault"}
 
-	err := RunNew(nil, opts, postOpts)
+	err := RunNew(context.TODO(), opts, postOpts)
 	if err == nil {
 		t.Fatal("expected error when vault_path is empty")
 	}
@@ -180,7 +181,7 @@ func TestRunNew_VaultPathOverride(t *testing.T) {
 	opts := CLIOptions{ConfigPath: cfgPath, VaultPath: altVault}
 	postOpts := NewPostOptions{Title: "Override Vault"}
 
-	if err := RunNew(nil, opts, postOpts); err != nil {
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
 		t.Fatalf("RunNew failed: %v", err)
 	}
 
@@ -197,7 +198,7 @@ func TestRunNew_UnicodeTitle(t *testing.T) {
 	opts := CLIOptions{ConfigPath: cfgPath}
 	postOpts := NewPostOptions{Title: "Inferencia Bayesiana"}
 
-	if err := RunNew(nil, opts, postOpts); err != nil {
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
 		t.Fatalf("RunNew failed: %v", err)
 	}
 

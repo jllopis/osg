@@ -1,6 +1,7 @@
 package deploy
 
 import (
+	"context"
 	"testing"
 )
 
@@ -448,7 +449,7 @@ func TestNewCloudflare_Defaults(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRun_UnknownProvider(t *testing.T) {
-	err := Run(nil, "nonexistent", nil, "/tmp")
+	err := Run(context.TODO(), "nonexistent", nil, "/tmp")
 	if err == nil {
 		t.Error("expected error for unknown provider")
 	}
@@ -456,7 +457,7 @@ func TestRun_UnknownProvider(t *testing.T) {
 
 func TestRun_ValidationFailure(t *testing.T) {
 	// rsync without host should fail validation
-	err := Run(nil, "rsync", map[string]any{}, "/tmp")
+	err := Run(context.TODO(), "rsync", map[string]any{}, "/tmp")
 	if err == nil {
 		t.Error("expected validation error for rsync without host")
 	}
