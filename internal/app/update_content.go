@@ -132,12 +132,22 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 		slugValue := slug.Derive(fm, info.Name())
 		osgPath := publish.GetOSGString(fm, "path")
 
+		// Determine the page language for content path placement.
+		pageLang := strings.ToLower(strings.TrimSpace(pickValue(fm, "lang", "language")))
+
 		var outputPath string
 		if osgPath != "" {
 			outputPath = filepath.Join(cfg.ContentDir, filepath.Clean(osgPath), "index.md")
 		} else {
 			datePath := date.FormatPath(dateValue)
 			outputPath = content.BuildOutputPath(cfg.ContentDir, cfg.ContentLayout, datePath, slugValue)
+		}
+
+		// For non-default languages, inject /{lang}/ prefix into the content
+		// path so that the build phase places these pages under /en/, /fr/, etc.
+		if pageLang != "" && pageLang != cfg.DefaultLanguage && cfg.IsMultilingual() {
+			rel, _ := filepath.Rel(cfg.ContentDir, outputPath)
+			outputPath = filepath.Join(cfg.ContentDir, pageLang, rel)
 		}
 
 		if prev, exists := seen[outputPath]; exists {
@@ -357,6 +367,22 @@ func removeStaleContent(contentDir string, validPaths map[string]string, logger 
 	})
 
 	return cleaned
+}
+
+// pickValue returns the first non-empty string value for the given keys.
+func pickValue(fm map[string]any, keys ...string) string {
+	if fm == nil {
+		return ""
+	}
+	for _, key := range keys {
+		if val, ok := fm[key].(string); ok {
+			val = strings.TrimSpace(val)
+			if val != "" {
+				return val
+			}
+		}
+	}
+	return ""
 }
 
 // pickTitle extracts title from frontmatter (title or name field)

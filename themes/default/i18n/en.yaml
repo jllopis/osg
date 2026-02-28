@@ -45,6 +45,7 @@ aria_terms: Terms
 aria_posts: Posts
 aria_subsections: Subsections
 aria_paginated_posts: Paginated posts
+aria_language: Language
 
 # --- Navigation ---
 nav.search: Search

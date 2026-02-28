@@ -21,13 +21,13 @@
             </div>
             {{ end }}
             <div class="featured-body">
-              <span class="featured-label">{{ trans "featured" }}</span>
+              <span class="featured-label">{{ trans "featured" .lang }}</span>
               <h2 class="featured-title">{{ .title }}</h2>
               <div class="featured-meta">
-                {{ if .draft }}<span class="draft-badge draft-badge--featured">{{ trans "draft" }}</span>{{ end }}
+                {{ if .draft }}<span class="draft-badge draft-badge--featured">{{ trans "draft" .lang }}</span>{{ end }}
                 {{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}
-                <time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short") }}</time>
-                {{ if .reading_time }}<span class="reading-badge">{{ .reading_time }} {{ trans "min_read" }}</span>{{ end }}
+                <time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short" .lang) .lang }}</time>
+                {{ if .reading_time }}<span class="reading-badge">{{ .reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
               </div>
               {{ if .summary }}<p class="featured-summary">{{ .summary }}</p>{{ end }}
             </div>
@@ -49,8 +49,8 @@
 
           {{/* ---- Main feed (left column) ---- */}}
           {{ if .section.pages }}
-          <section class="main-feed" aria-label="{{ trans "aria_recent_posts" }}">
-            <h2 class="section-heading">{{ trans "recent_posts" }}</h2>
+          <section class="main-feed" aria-label="{{ trans "aria_recent_posts" .lang }}">
+            <h2 class="section-heading">{{ trans "recent_posts" .lang }}</h2>
             <div class="post-list">
               {{ range .section.pages }}
               <a class="post-item" href="{{ .permalink }}">
@@ -60,10 +60,10 @@
                 </div>
                 {{ end }}
                 <div class="post-item-body">
-                  <div class="post-item-date">{{ if .draft }}<span class="draft-badge">{{ trans "draft" }}</span>{{ end }}{{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}<time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short") }}</time></div>
+                  <div class="post-item-date">{{ if .draft }}<span class="draft-badge">{{ trans "draft" .lang }}</span>{{ end }}{{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}<time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short" .lang) .lang }}</time></div>
                   <h3 class="post-item-title">{{ .title }}</h3>
                   {{ if .summary }}<p class="post-item-summary">{{ .summary }}</p>{{ end }}
-                  {{ if .reading_time }}<span class="post-item-reading">{{ .reading_time }} {{ trans "min_read" }}</span>{{ end }}
+                  {{ if .reading_time }}<span class="post-item-reading">{{ .reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
                 </div>
               </a>
               {{ end }}
@@ -77,7 +77,7 @@
             {{ $tags := get_taxonomy "tags" }}
             {{ if $tags }}
             <div class="sidebar-section">
-              <h3 class="sidebar-heading">{{ trans "recommended_topics" }}</h3>
+              <h3 class="sidebar-heading">{{ trans "recommended_topics" .lang }}</h3>
               <div class="topic-pills">
                 {{ range $tags.terms }}
                 <a class="topic-pill" href="{{ .permalink }}">{{ .name }}</a>
@@ -92,7 +92,7 @@
             {{ range .section.subsections }}{{ if .has_source }}{{ $hasReal = true }}{{ end }}{{ end }}
             {{ if $hasReal }}
             <div class="sidebar-section">
-              <h3 class="sidebar-heading">{{ trans "sections" }}</h3>
+              <h3 class="sidebar-heading">{{ trans "sections" .lang }}</h3>
               <div class="topic-pills">
                 {{ range .section.subsections }}{{ if .has_source }}
                 <a class="topic-pill" href="{{ .permalink }}">{{ .title }}{{ if .pages }} <span class="pill-count">{{ len .pages }}</span>{{ end }}</a>

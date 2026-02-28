@@ -926,3 +926,119 @@ Body text.
 		t.Fatalf("expected author in View(), got %v", v["author"])
 	}
 }
+
+// --- Phase 15: Multi-language tests ---
+
+func TestLinkTranslations_TwoPagesWithSameSlug(t *testing.T) {
+	s := New()
+	now := time.Now()
+	es := &Page{Title: "Mi Post", Slug: "mi-post", Lang: "es", Path: "/mi-post/", Permalink: "http://example.com/mi-post/", Date: now}
+	en := &Page{Title: "My Post", Slug: "mi-post", Lang: "en", Path: "/en/mi-post/", Permalink: "http://example.com/en/mi-post/", Date: now}
+	s.AddPage(es)
+	s.AddPage(en)
+
+	s.LinkTranslations()
+
+	if len(es.Translations) != 1 {
+		t.Fatalf("expected 1 translation for es, got %d", len(es.Translations))
+	}
+	if es.Translations[0].Lang != "en" {
+		t.Fatalf("expected translation lang 'en', got %q", es.Translations[0].Lang)
+	}
+	if es.Translations[0].Path != "/en/mi-post/" {
+		t.Fatalf("expected translation path '/en/mi-post/', got %q", es.Translations[0].Path)
+	}
+
+	if len(en.Translations) != 1 {
+		t.Fatalf("expected 1 translation for en, got %d", len(en.Translations))
+	}
+	if en.Translations[0].Lang != "es" {
+		t.Fatalf("expected translation lang 'es', got %q", en.Translations[0].Lang)
+	}
+}
+
+func TestLinkTranslations_NoLinkWhenSameLanguage(t *testing.T) {
+	s := New()
+	now := time.Now()
+	// Two pages with the same slug but same language should not be linked.
+	p1 := &Page{Title: "Post A", Slug: "post-a", Lang: "es", Path: "/post-a/", Date: now}
+	p2 := &Page{Title: "Post A v2", Slug: "post-a", Lang: "es", Path: "/alt/post-a/", Date: now}
+	s.AddPage(p1)
+	s.AddPage(p2)
+
+	s.LinkTranslations()
+
+	if len(p1.Translations) != 0 {
+		t.Fatalf("expected 0 translations when same language, got %d", len(p1.Translations))
+	}
+	if len(p2.Translations) != 0 {
+		t.Fatalf("expected 0 translations when same language, got %d", len(p2.Translations))
+	}
+}
+
+func TestLinkTranslations_ThreeLanguages(t *testing.T) {
+	s := New()
+	now := time.Now()
+	es := &Page{Title: "Post", Slug: "hello", Lang: "es", Path: "/hello/", Permalink: "http://example.com/hello/", Date: now}
+	en := &Page{Title: "Post", Slug: "hello", Lang: "en", Path: "/en/hello/", Permalink: "http://example.com/en/hello/", Date: now}
+	fr := &Page{Title: "Post", Slug: "hello", Lang: "fr", Path: "/fr/hello/", Permalink: "http://example.com/fr/hello/", Date: now}
+	s.AddPage(es)
+	s.AddPage(en)
+	s.AddPage(fr)
+
+	s.LinkTranslations()
+
+	if len(es.Translations) != 2 {
+		t.Fatalf("expected 2 translations for es, got %d", len(es.Translations))
+	}
+	if len(en.Translations) != 2 {
+		t.Fatalf("expected 2 translations for en, got %d", len(en.Translations))
+	}
+	if len(fr.Translations) != 2 {
+		t.Fatalf("expected 2 translations for fr, got %d", len(fr.Translations))
+	}
+}
+
+func TestLinkTranslations_EmptySlugSkipped(t *testing.T) {
+	s := New()
+	now := time.Now()
+	p1 := &Page{Title: "No Slug", Slug: "", Lang: "es", Path: "/post/", Date: now}
+	p2 := &Page{Title: "No Slug", Slug: "", Lang: "en", Path: "/en/post/", Date: now}
+	s.AddPage(p1)
+	s.AddPage(p2)
+
+	s.LinkTranslations()
+
+	if len(p1.Translations) != 0 {
+		t.Fatalf("expected 0 translations for empty slug, got %d", len(p1.Translations))
+	}
+}
+
+func TestPageView_IncludesLangAndTranslations(t *testing.T) {
+	p := &Page{
+		Title:     "Test",
+		Slug:      "test",
+		Lang:      "en",
+		Path:      "/en/test/",
+		Permalink: "http://example.com/en/test/",
+		Date:      time.Now(),
+		Translations: []Translation{
+			{Lang: "es", Path: "/test/", Permalink: "http://example.com/test/", Title: "Prueba"},
+		},
+	}
+
+	v := p.View()
+	if v["lang"] != "en" {
+		t.Fatalf("expected lang='en', got %q", v["lang"])
+	}
+	translations, ok := v["translations"].([]map[string]any)
+	if !ok {
+		t.Fatal("expected translations to be []map[string]any")
+	}
+	if len(translations) != 1 {
+		t.Fatalf("expected 1 translation in view, got %d", len(translations))
+	}
+	if translations[0]["lang"] != "es" {
+		t.Fatalf("expected translation lang='es', got %q", translations[0]["lang"])
+	}
+}

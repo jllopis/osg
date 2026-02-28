@@ -233,6 +233,10 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 				stats.Skipped++
 				continue
 			}
+			// Default empty Lang to the site's default language.
+			if res.page.Lang == "" {
+				res.page.Lang = cfg.DefaultLanguage
+			}
 			siteIndex.AddPage(res.page)
 		}
 
@@ -242,6 +246,12 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	}
 
 	siteIndex.BuildHierarchy()
+
+	// Link translations: pages with the same slug in different languages
+	// get cross-references so templates can render hreflang alternates.
+	if cfg.IsMultilingual() {
+		siteIndex.LinkTranslations()
+	}
 	done()
 
 	// --- Stage: transform ---
@@ -771,6 +781,8 @@ func configView(cfg config.Config) map[string]any {
 		"lightbox":           cfg.Lightbox,
 		"minify":             cfg.Minify,
 		"nav_taxonomy":       cfg.NavTaxonomy,
+		"multilingual":       cfg.IsMultilingual(),
+		"languages":          languagesView(cfg),
 		"social":             cfg.Social,
 		"copyright":          strings.ReplaceAll(cfg.Copyright, "{year}", fmt.Sprintf("%d", time.Now().Year())),
 		"logging": map[string]any{
@@ -779,6 +791,24 @@ func configView(cfg config.Config) map[string]any {
 		},
 		"taxonomies": taxonomies,
 	}
+}
+
+func languagesView(cfg config.Config) []map[string]any {
+	var langs []map[string]any
+	// Include the default language first.
+	langs = append(langs, map[string]any{
+		"code":    cfg.DefaultLanguage,
+		"label":   cfg.LanguageLabel(cfg.DefaultLanguage),
+		"default": true,
+	})
+	for _, l := range cfg.Languages {
+		langs = append(langs, map[string]any{
+			"code":    l.Code,
+			"label":   l.Label,
+			"default": false,
+		})
+	}
+	return langs
 }
 
 func taxonomiesView(indices map[string]*taxonomy.Index) map[string]any {
@@ -1288,7 +1318,28 @@ func collectSitemapEntries(cfg config.Config, siteIndex *site.Site, indices map[
 		if page.Draft {
 			continue
 		}
-		addEntry(page.Permalink, page.Date)
+		entry := SitemapEntry{
+			Permalink: page.Permalink,
+			Updated:   page.Date,
+		}
+		// Include hreflang alternates for translated pages.
+		if len(page.Translations) > 0 {
+			alternates := []map[string]string{
+				{"lang": page.Lang, "href": page.Permalink},
+			}
+			for _, t := range page.Translations {
+				alternates = append(alternates, map[string]string{
+					"lang": t.Lang, "href": t.Permalink,
+				})
+			}
+			entry.Extra = map[string]any{"alternates": alternates}
+		}
+		if strings.TrimSpace(entry.Permalink) != "" {
+			existing, ok := entries[entry.Permalink]
+			if !ok || entry.Updated.After(existing.Updated) {
+				entries[entry.Permalink] = entry
+			}
+		}
 	}
 
 	for _, section := range siteIndex.Sections {

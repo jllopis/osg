@@ -160,10 +160,11 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
 
 ## Current State (as of last session)
 
-All phases 1-14 complete plus stability/bugfix round.
+All phases 1-16 complete plus stability/bugfix round.
 Phase 11 (Plugin ecosystem) fully done: Fase A, B, C, D, E, F.
 Standalone Pages, `osg new`, i18n, Kairos AI summaries, AI cache all complete.
-Phase 13 (Draft preview) and Phase 14 (Additional shortcodes) complete.
+Phase 13 (Draft preview), Phase 14 (Additional shortcodes), Phase 15 (Multi-language),
+and Phase 16 (Performance & benchmarks) complete.
 
 ### Recently completed (v0.99)
 - **exclude_terms in page templates**: `FilterPageTaxonomies()` strips excluded
@@ -219,8 +220,35 @@ Phase 13 (Draft preview) and Phase 14 (Additional shortcodes) complete.
   Run with `go test -bench=. -benchmem ./internal/...`
 - **4 tests** for BuildTimings (stage, multiple stages, log, log empty).
 
+### Recently completed (Phase 15)
+- **Multi-language config**: `LanguageConfig` struct (Code, Label), `Languages`
+  field on Config, validation (empty codes, duplicate of default), helper methods
+  `IsMultilingual()`, `AllLanguages()`, `LanguageLabel()`.
+- **Translation linking**: `Translation` struct on Page, `LinkTranslations()`
+  groups pages by slug and cross-references across languages.
+- **Content export**: Non-default language pages get `/{lang}/` prefix injected
+  into their content output path.
+- **Build pipeline**: `Page.Lang` defaults to `cfg.DefaultLanguage`,
+  `LinkTranslations()` called when multilingual, `languagesView()` helper,
+  `multilingual` + `languages` exposed in configView.
+- **Templates i18n**: All 58 `{{ trans "key" }}` calls updated to
+  `{{ trans "key" .lang }}`. All `date_format` calls pass `.lang`.
+- **hreflang alternates**: `<link rel="alternate" hreflang>` in head.html
+  with `x-default` pointing to default language version.
+- **Language switcher**: Nav element in header showing current language
+  and links to translations. CSS Nord-styled. i18n key `aria_language`.
+- **og:locale**: Uses `.lang` from render context (actual page language)
+  instead of always using `default_language`.
+- **Feeds**: `xml:lang` attribute on Atom `<feed>`, `<language>` element
+  in RSS `<channel>`, `trans` calls pass `.lang`.
+- **Sitemap**: `xmlns:xhtml` namespace, `<xhtml:link rel="alternate"
+  hreflang>` for pages with translations.
+- **11 tests**: 5 site tests (LinkTranslations: 2 langs, same lang,
+  3 langs, empty slug, View) + 6 config tests (IsMultilingual,
+  AllLanguages, LanguageLabel, validation empty/duplicate/label-default).
+- **Dual-file sync**: templates, i18n YAML, CSS synchronized.
+
 ### Backlog (planned, not started)
-- Phase 15: Multi-idioma real (contenido en `/en/`, `/es/`, hreflang alternates)
 - Paginated archives plugin (repo externo, no parte del core)
 
 ## Key Dependencies

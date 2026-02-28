@@ -253,11 +253,18 @@ Formato: [todo|doing|done] Tarea
 [done] (Bugfix) Watch loop: EnsureDefaultTheme compara bytes antes de escribir (evita loop infinito de rebuild)
 [done] (Bugfix) Dual-file sync: themes/default/ completamente sincronizado con internal/theme/default/
 
-[todo] (Phase 15) Contenido en multiples idiomas: /en/post-x/, /es/post-x/
-[todo] (Phase 15) Deteccion de idioma por sufijo o carpeta
-[todo] (Phase 15) hreflang alternates en head.html
-[todo] (Phase 15) Selector de idioma en header
-[todo] (Phase 15) Feeds y sitemap por idioma
+[done] (Phase 15) Config: LanguageConfig struct, Languages field, validacion, helpers IsMultilingual/AllLanguages/LanguageLabel
+[done] (Phase 15) Site model: Translation struct, Translations en Page, LinkTranslations() por slug
+[done] (Phase 15) Content export: /{lang}/ prefix en output path para idiomas no-default
+[done] (Phase 15) Build pipeline: Page.Lang default, LinkTranslations() multilingual, languagesView()
+[done] (Phase 15) Templates: 58 llamadas trans actualizadas a trans .lang, date_format con .lang
+[done] (Phase 15) hreflang: <link rel="alternate" hreflang> en head.html con x-default
+[done] (Phase 15) Language switcher: nav en header + CSS, i18n key aria_language
+[done] (Phase 15) og:locale usa .lang del contexto en vez de siempre default_language
+[done] (Phase 15) Feeds: xml:lang en Atom, <language> en RSS
+[done] (Phase 15) Sitemap: xmlns:xhtml, xhtml:link hreflang alternates para paginas traducidas
+[done] (Phase 15) 11 tests: 5 site (LinkTranslations) + 6 config (language validation)
+[done] (Phase 15) Dual-file sync: templates, i18n, CSS
 
 [done] (Phase 16) Build timing: instrumentacion por stages con log estructurado al final de cada build
 [done] (Phase 16) CPU profiling: `osg build --profile=cpu.prof`, pprof compatible

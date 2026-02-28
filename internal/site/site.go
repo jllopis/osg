@@ -17,27 +17,36 @@ import (
 	"osg/internal/publish"
 )
 
+// Translation describes a single alternate-language version of a page.
+type Translation struct {
+	Lang      string
+	Path      string
+	Permalink string
+	Title     string
+}
+
 type Page struct {
-	Title       string
-	Slug        string
-	Path        string
-	Permalink   string
-	SourcePath  string
-	Date        time.Time
-	Updated     time.Time
-	Draft       bool
-	Menu        bool
-	Author      string
-	Image       string
-	Summary     string
-	Content     string
-	RawContent  string
-	Template    string
-	Lang        string
-	WordCount   int
-	ReadingTime int
-	Taxonomies  map[string][]string
-	Extra       map[string]any
+	Title        string
+	Slug         string
+	Path         string
+	Permalink    string
+	SourcePath   string
+	Date         time.Time
+	Updated      time.Time
+	Draft        bool
+	Menu         bool
+	Author       string
+	Image        string
+	Summary      string
+	Content      string
+	RawContent   string
+	Template     string
+	Lang         string
+	WordCount    int
+	ReadingTime  int
+	Taxonomies   map[string][]string
+	Extra        map[string]any
+	Translations []Translation
 }
 
 type Section struct {
@@ -169,6 +178,50 @@ func (s *Site) BuildHierarchy() {
 		for _, p := range s.Pages {
 			if !p.Menu {
 				root.Pages = append(root.Pages, p)
+			}
+		}
+	}
+}
+
+// LinkTranslations cross-references pages that share the same slug across
+// different languages.  Two pages are considered translations of each other
+// when they have the same Slug but different Lang values.
+func (s *Site) LinkTranslations() {
+	// Build a slug -> []*Page index.
+	bySlug := make(map[string][]*Page)
+	for _, p := range s.Pages {
+		if p.Slug == "" {
+			continue
+		}
+		bySlug[p.Slug] = append(bySlug[p.Slug], p)
+	}
+
+	for _, group := range bySlug {
+		if len(group) < 2 {
+			continue
+		}
+
+		// Check that the group actually has pages in more than one language.
+		langs := make(map[string]bool)
+		for _, p := range group {
+			langs[p.Lang] = true
+		}
+		if len(langs) < 2 {
+			continue
+		}
+
+		// Link each page to all other-language pages in the group.
+		for _, page := range group {
+			for _, other := range group {
+				if other.Lang == page.Lang {
+					continue
+				}
+				page.Translations = append(page.Translations, Translation{
+					Lang:      other.Lang,
+					Path:      other.Path,
+					Permalink: other.Permalink,
+					Title:     other.Title,
+				})
 			}
 		}
 	}
@@ -362,6 +415,16 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 }
 
 func (p *Page) View() map[string]any {
+	var translations []map[string]any
+	for _, t := range p.Translations {
+		translations = append(translations, map[string]any{
+			"lang":      t.Lang,
+			"path":      t.Path,
+			"permalink": t.Permalink,
+			"title":     t.Title,
+		})
+	}
+
 	return map[string]any{
 		"title":        p.Title,
 		"slug":         p.Slug,
@@ -381,6 +444,7 @@ func (p *Page) View() map[string]any {
 		"taxonomies":   p.Taxonomies,
 		"extra":        p.Extra,
 		"lang":         p.Lang,
+		"translations": translations,
 	}
 }
 

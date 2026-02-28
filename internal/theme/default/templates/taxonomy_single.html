@@ -10,11 +10,11 @@
 
       <main id="main-content" class="container" role="main">
         <section class="hero hero-compact">
-          <h1>{{ .term.name }} <span class="hero-count">({{ .term.page_count }} {{ trans "posts" }})</span></h1>
+          <h1>{{ .term.name }} <span class="hero-count">({{ .term.page_count }} {{ trans "posts" .lang }})</span></h1>
         </section>
 
         {{ if .paginator }}
-        <section class="list" aria-label="{{ trans "aria_paginated_posts" }}">
+        <section class="list" aria-label="{{ trans "aria_paginated_posts" .lang }}">
           <div class="cards">
             {{ range .paginator.pages }}
             {{ template "partials/card.html" . }}
@@ -22,13 +22,13 @@
           </div>
           {{ if or .paginator.previous .paginator.next }}
           <div class="pager">
-            {{ if .paginator.previous }}<a class="btn" href="{{ .paginator.previous }}">&larr; {{ trans "previous" }}</a>{{ else }}<span></span>{{ end }}
-            {{ if .paginator.next }}<a class="btn" href="{{ .paginator.next }}">{{ trans "next" }} &rarr;</a>{{ end }}
+            {{ if .paginator.previous }}<a class="btn" href="{{ .paginator.previous }}">&larr; {{ trans "previous" .lang }}</a>{{ else }}<span></span>{{ end }}
+            {{ if .paginator.next }}<a class="btn" href="{{ .paginator.next }}">{{ trans "next" .lang }} &rarr;</a>{{ end }}
           </div>
           {{ end }}
         </section>
         {{ else }}
-        <section class="list" aria-label="{{ trans "aria_posts" }}">
+        <section class="list" aria-label="{{ trans "aria_posts" .lang }}">
           <div class="cards">
             {{ range .term.pages }}
             {{ template "partials/card.html" . }}

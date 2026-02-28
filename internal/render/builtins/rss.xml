@@ -3,9 +3,10 @@
   <channel>
     <title>{{ if .feed_title }}{{ .feed_title }}{{ else }}{{ .taxonomy.name }}: {{ .term.name }}{{ end }}</title>
     <link>{{ if .feed_title }}{{ with .config }}{{ .base_url }}{{ end }}{{ else }}{{ .feed_url }}{{ end }}</link>
-    <description>{{ if .feed_description }}{{ .feed_description }}{{ else }}{{ .taxonomy.name }} {{ trans "feed_description_suffix" }}{{ end }}</description>
+    <description>{{ if .feed_description }}{{ .feed_description }}{{ else }}{{ .taxonomy.name }} {{ trans "feed_description_suffix" .lang }}{{ end }}</description>
     <atom:link href="{{ .feed_url }}" rel="self" type="application/rss+xml" />
-    <lastBuildDate>{{ .last_updated }}</lastBuildDate>
+    {{ if .lang }}<language>{{ .lang }}</language>
+    {{ end }}<lastBuildDate>{{ .last_updated }}</lastBuildDate>
     {{ range .pages }}
     <item>
       <title>{{ .title }}</title>

@@ -316,7 +316,7 @@ El post destacado en homepage muestra la imagen con un overlay de texto:
 
 ## i18n (internacionalizacion de plantillas)
 
-`internal/i18n/` provee traduccion de cadenas UI en las plantillas del tema. No es multi-language content routing — solo traduce strings de interfaz.
+`internal/i18n/` provee traduccion de cadenas UI en las plantillas del tema. Ademas, desde Phase 15, OSG soporta contenido multi-idioma: paginas con el mismo slug en distintos idiomas se vinculan automaticamente como traducciones, con hreflang alternates, selector de idioma y feeds/sitemap multi-idioma.
 
 ### Arquitectura
 
@@ -348,6 +348,37 @@ Load config.default_language
 Los ficheros YAML de traduccion existen en DOS ubicaciones que deben mantenerse sincronizadas:
 1. `internal/theme/default/i18n/` — fuente embebida (//go:embed)
 2. `themes/default/i18n/` — copia runtime
+
+### Multi-idioma (Phase 15)
+
+OSG soporta contenido en multiples idiomas. El idioma por defecto se configura con `default_language` y los secundarios con `languages`:
+
+```yaml
+default_language: es
+languages:
+  - code: en
+    label: English
+  - code: fr
+    label: Francais
+```
+
+**Deteccion de idioma**: cada nota del vault especifica `lang: en` (o equivalente) en su frontmatter. Si no se especifica, se asume `default_language`.
+
+**URL prefix**: el idioma por defecto NO tiene prefijo (`/mi-post/`). Los idiomas secundarios tienen prefijo `/{lang}/` (`/en/mi-post/`). Esto mantiene compatibilidad con URLs existentes.
+
+**Translation linking**: paginas con el mismo `Slug` pero distinto `Lang` se vinculan automaticamente como traducciones via `LinkTranslations()`. La vinculacion se realiza despues de `BuildHierarchy()`.
+
+**Templates**: todas las llamadas `{{ trans "key" }}` reciben `.lang` como segundo argumento (`{{ trans "key" .lang }}`), lo que permite que cada pagina se renderice en su propio idioma.
+
+**SEO**:
+- `<link rel="alternate" hreflang>` en `<head>` para paginas con traducciones
+- `x-default` apunta a la version en idioma por defecto
+- `og:locale` usa el idioma real de la pagina
+- Sitemap incluye `<xhtml:link rel="alternate" hreflang>` para paginas traducidas
+
+**Feeds**: `xml:lang` en Atom `<feed>`, `<language>` en RSS `<channel>`.
+
+**Language switcher**: nav element en el header que muestra el idioma actual (bold) y links a las traducciones. Solo aparece en paginas que tienen traducciones.
 
 ## Featured overlay (CSS)
 

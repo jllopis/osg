@@ -1,4 +1,4 @@
-<a class="skip-link" href="#main-content">{{ trans "skip_to_content" }}</a>
+<a class="skip-link" href="#main-content">{{ trans "skip_to_content" .lang }}</a>
 <header class="site-header" role="banner">
   {{/* ---- Expanded brand row (hidden on scroll) ---- */}}
   <div class="header-expanded">
@@ -19,7 +19,7 @@
       </a>
 
       {{ if or .nav_terms .taxonomies .menu_pages }}
-      <nav class="nav" aria-label="{{ trans "aria_main_nav" }}">
+      <nav class="nav" aria-label="{{ trans "aria_main_nav" .lang }}">
         {{ if .nav_terms }}
           {{ range .nav_terms }}
           <a href="{{ .permalink }}">{{ .name }}</a>
@@ -37,18 +37,28 @@
 
       <div class="header-actions">
         {{/* Search toggle button (magnifying glass) */}}
-        <button class="search-toggle" type="button" aria-label="{{ trans "nav.search" }}" title="{{ trans "nav.search" }}">
+        <button class="search-toggle" type="button" aria-label="{{ trans "nav.search" .lang }}" title="{{ trans "nav.search" .lang }}">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
 
         {{/* Inline search field (hidden by default, shown on toggle) */}}
         <div class="header-search" id="header-search-wrapper">
-          <input type="search" id="header-search-input" placeholder="{{ trans "nav.search" }}..." autocomplete="off" aria-label="{{ trans "nav.search" }}" />
+          <input type="search" id="header-search-input" placeholder="{{ trans "nav.search" .lang }}..." autocomplete="off" aria-label="{{ trans "nav.search" .lang }}" />
           <button class="search-close" type="button" aria-label="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
           <div id="header-search-results" class="search-dropdown" aria-expanded="false"></div>
         </div>
+
+        {{/* Language switcher (only when page has translations) */}}
+        {{ if and .page .page.translations }}
+        <nav class="lang-switcher" aria-label="{{ trans "aria_language" .lang }}">
+          <span class="lang-current" aria-current="true">{{ .lang }}</span>
+          {{ range .page.translations }}
+          <a class="lang-link" href="{{ .permalink }}" hreflang="{{ .lang }}">{{ .lang }}</a>
+          {{ end }}
+        </nav>
+        {{ end }}
       </div>
     </div>
   </div>

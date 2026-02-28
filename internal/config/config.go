@@ -40,6 +40,16 @@ type AIConfig struct {
 	Concurrency int `koanf:"concurrency" yaml:"concurrency"`
 }
 
+// LanguageConfig describes a secondary (non-default) language.  The default
+// language is specified by DefaultLanguage and needs no entry here.
+type LanguageConfig struct {
+	// Code is the BCP-47 language code (e.g. "en", "fr", "de").
+	Code string `koanf:"code" yaml:"code"`
+	// Label is the human-readable name shown in the language switcher
+	// (e.g. "English", "Francais").
+	Label string `koanf:"label" yaml:"label"`
+}
+
 type Config struct {
 	BaseURL           string            `koanf:"base_url" yaml:"base_url"`
 	SiteTitle         string            `koanf:"site_title" yaml:"site_title"`
@@ -78,6 +88,7 @@ type Config struct {
 	Minify            bool              `koanf:"minify" yaml:"minify"`
 	NavTaxonomy       string            `koanf:"nav_taxonomy" yaml:"nav_taxonomy"`
 	DefaultLanguage   string            `koanf:"default_language" yaml:"default_language"`
+	Languages         []LanguageConfig  `koanf:"languages" yaml:"languages"`
 	DoctorProfile     string            `koanf:"doctor_profile" yaml:"doctor_profile"`
 	Social            map[string]string `koanf:"social" yaml:"social"`
 	Copyright         string            `koanf:"copyright" yaml:"copyright"`
@@ -215,6 +226,21 @@ func Load(path string) (Config, error) {
 		cfg.DefaultLanguage = "es"
 	}
 
+	// Normalise and validate languages.
+	for i, lang := range cfg.Languages {
+		cfg.Languages[i].Code = strings.ToLower(strings.TrimSpace(lang.Code))
+		cfg.Languages[i].Label = strings.TrimSpace(lang.Label)
+		if cfg.Languages[i].Code == "" {
+			return cfg, fmt.Errorf("languages[%d].code is required", i)
+		}
+		if cfg.Languages[i].Code == cfg.DefaultLanguage {
+			return cfg, fmt.Errorf("languages[%d].code %q duplicates default_language", i, lang.Code)
+		}
+		if cfg.Languages[i].Label == "" {
+			cfg.Languages[i].Label = cfg.Languages[i].Code
+		}
+	}
+
 	// Normalise and validate AI config.
 	cfg.AI.Provider = strings.ToLower(strings.TrimSpace(cfg.AI.Provider))
 	if cfg.AI.Provider == "" {
@@ -234,6 +260,35 @@ func Load(path string) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// IsMultilingual returns true if secondary languages are configured.
+func (c Config) IsMultilingual() bool {
+	return len(c.Languages) > 0
+}
+
+// AllLanguages returns the default language followed by secondary language
+// codes.  For a monolingual site it returns a single-element slice.
+func (c Config) AllLanguages() []string {
+	langs := []string{c.DefaultLanguage}
+	for _, l := range c.Languages {
+		langs = append(langs, l.Code)
+	}
+	return langs
+}
+
+// LanguageLabel returns the display label for a language code.
+// Returns the code itself if no label is configured.
+func (c Config) LanguageLabel(code string) string {
+	if code == c.DefaultLanguage {
+		return code // default language label is just the code
+	}
+	for _, l := range c.Languages {
+		if l.Code == code {
+			return l.Label
+		}
+	}
+	return code
 }
 
 func ResolveVaultPath(cfg Config) (string, error) {

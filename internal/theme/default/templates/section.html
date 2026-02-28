@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="{{ .lang }}" data-color-scheme="{{ .config.color_scheme }}">
   <head>
-    <title>{{ if .section.title }}{{ .section.title }}{{ else }}{{ trans "section_fallback" }}{{ end }} &mdash; {{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}</title>
+    <title>{{ if .section.title }}{{ .section.title }}{{ else }}{{ trans "section_fallback" .lang }}{{ end }} &mdash; {{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}</title>
     {{ template "partials/head.html" . }}
   </head>
   <body>
@@ -11,7 +11,7 @@
       <main id="main-content" class="container" role="main">
         {{ block "section-hero" . }}
         <section class="hero hero-compact">
-          <h1>{{ if .section.title }}{{ .section.title }}{{ else }}{{ trans "section_fallback" }}{{ end }}</h1>
+          <h1>{{ if .section.title }}{{ .section.title }}{{ else }}{{ trans "section_fallback" .lang }}{{ end }}</h1>
           {{ if .section.content }}
           <div class="prose">{{ .section.content }}</div>
           {{ end }}
@@ -20,8 +20,8 @@
 
         {{ block "section-posts" . }}
         {{ if .section.pages }}
-        <section class="list" aria-label="{{ trans "aria_posts" }}">
-          <h2 class="list-heading">{{ trans "posts" }}</h2>
+        <section class="list" aria-label="{{ trans "aria_posts" .lang }}">
+          <h2 class="list-heading">{{ trans "posts" .lang }}</h2>
           <div class="cards">
             {{ range .section.pages }}
             {{ template "partials/card.html" . }}
@@ -33,8 +33,8 @@
 
         {{ block "section-subsections" . }}
         {{ if .section.subsections }}
-        <section class="list" aria-label="{{ trans "aria_subsections" }}">
-          <h2 class="list-heading">{{ trans "subsections" }}</h2>
+        <section class="list" aria-label="{{ trans "aria_subsections" .lang }}">
+          <h2 class="list-heading">{{ trans "subsections" .lang }}</h2>
           <div class="term-grid">
             {{ range .section.subsections }}
             <a class="term-card" href="{{ .permalink }}">

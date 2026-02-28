@@ -4,6 +4,19 @@
 <meta name="generator" content="OSG" />
 {{- /* --- Canonical URL --- */ -}}
 {{ if and .config.base_url .current_path }}<link rel="canonical" href="{{ .config.base_url }}{{ .current_path }}" />{{ end }}
+{{- /* --- hreflang alternates for translated pages --- */ -}}
+{{ if and .page .page.translations -}}
+<link rel="alternate" hreflang="{{ .lang }}" href="{{ .page.permalink }}" />
+{{ range .page.translations -}}
+<link rel="alternate" hreflang="{{ .lang }}" href="{{ .permalink }}" />
+{{ end -}}
+{{ if eq .lang .config.default_language -}}
+<link rel="alternate" hreflang="x-default" href="{{ .page.permalink }}" />
+{{ else -}}
+{{ range .page.translations }}{{ if eq .lang $.config.default_language }}<link rel="alternate" hreflang="x-default" href="{{ .permalink }}" />
+{{ end }}{{ end -}}
+{{ end -}}
+{{ end -}}
 {{- /* --- Meta description: page summary > section content > site description --- */ -}}
 {{ if and .page .page.summary }}<meta name="description" content="{{ .page.summary }}" />
 {{ else if .config.site_description }}<meta name="description" content="{{ .config.site_description }}" />{{ end }}
@@ -12,7 +25,7 @@
 <link rel="preload" href="/fonts/jetbrains-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin />
 {{- /* --- Open Graph --- */ -}}
 {{ if .config.site_title }}<meta property="og:site_name" content="{{ .config.site_title }}" />{{ end }}
-{{ if .config.default_language }}<meta property="og:locale" content="{{ .config.default_language }}" />{{ end }}
+{{ if .lang }}<meta property="og:locale" content="{{ .lang }}" />{{ else if .config.default_language }}<meta property="og:locale" content="{{ .config.default_language }}" />{{ end }}
 {{ if .page -}}
 <meta property="og:title" content="{{ .page.title }}" />
 <meta property="og:type" content="article" />
@@ -52,8 +65,8 @@
 {{ if .config.site_description }}<meta name="twitter:description" content="{{ .config.site_description }}" />{{ end }}
 {{ end -}}
 {{- /* --- Feeds --- */ -}}
-{{ if .config.site_feed }}<link rel="alternate" type="application/atom+xml" title="{{ .config.site_title }} — {{ trans "atom_feed" }}" href="{{ get_url "/atom.xml" false false }}" />
-<link rel="alternate" type="application/rss+xml" title="{{ .config.site_title }} — {{ trans "rss_feed" }}" href="{{ get_url "/rss.xml" false false }}" />{{ end }}
+{{ if .config.site_feed }}<link rel="alternate" type="application/atom+xml" title="{{ .config.site_title }} — {{ trans "atom_feed" .lang }}" href="{{ get_url "/atom.xml" false false }}" />
+<link rel="alternate" type="application/rss+xml" title="{{ .config.site_title }} — {{ trans "rss_feed" .lang }}" href="{{ get_url "/rss.xml" false false }}" />{{ end }}
 {{- /* --- Stylesheets --- */ -}}
 <link rel="stylesheet" href="{{ get_url "/style.css" false true }}" />
 <link rel="stylesheet" href="{{ get_url "/css/syntax.css" false true }}" />

@@ -321,12 +321,20 @@
 - [done] Watch loop fix: EnsureDefaultTheme skips writes when on-disk content is identical (prevents infinite rebuild)
 - [done] Dual-file sync: themes/default/ fully synchronized with internal/theme/default/
 
-### Phase 15 - Multi-idioma real (todo)
-- [todo] Contenido en multiples idiomas: `/en/post-x/`, `/es/post-x/`
-- [todo] Deteccion de idioma por sufijo de archivo o carpeta (ej. `post.en.md`, `en/post.md`)
-- [todo] `hreflang` alternates en head.html para SEO
-- [todo] Selector de idioma en header
-- [todo] Feeds y sitemap por idioma
+### Phase 15 - Multi-idioma real (done)
+- [done] Config: `LanguageConfig` struct (Code, Label), `Languages []LanguageConfig`, validacion (empty codes, duplicates of default), helpers `IsMultilingual()`, `AllLanguages()`, `LanguageLabel()`
+- [done] Site model: `Translation` struct, `Translations []Translation` en Page, `LinkTranslations()` agrupa por slug y cross-referencia entre idiomas
+- [done] Content export: inyeccion de `/{lang}/` prefix en output path para idiomas no-default
+- [done] Build pipeline: `Page.Lang` default a `cfg.DefaultLanguage`, `LinkTranslations()` cuando multilingual, `languagesView()`, `multilingual` + `languages` en configView
+- [done] Templates i18n: todas las 58 llamadas `{{ trans "key" }}` actualizadas a `{{ trans "key" .lang }}`, todos los `date_format` pasan `.lang`
+- [done] hreflang alternates: `<link rel="alternate" hreflang>` en head.html con x-default apuntando al idioma por defecto
+- [done] Language switcher: nav en header con idioma actual resaltado y links a traducciones, CSS Nord-styled
+- [done] og:locale: usa `.lang` del contexto (idioma real de la pagina) en vez de siempre default_language
+- [done] Feeds: `xml:lang` en Atom, `<language>` en RSS, `trans` con `.lang`
+- [done] Sitemap: namespace `xhtml`, `<xhtml:link rel="alternate" hreflang>` para paginas traducidas
+- [done] i18n keys: `aria_language` (en: "Language", es: "Idioma")
+- [done] 11 tests: 5 site (LinkTranslations: 2 idiomas, mismo idioma, 3 idiomas, slug vacio, View) + 6 config (IsMultilingual, AllLanguages, LanguageLabel, validacion empty/duplicate/label-default)
+- [done] Dual-file sync: templates, i18n, CSS en internal/theme/ y themes/default/
 
 ### Phase 16 - Performance y benchmarks (done)
 - [done] Build timing: instrumentacion por stages (plan, theme, assets, plugins, parse, transform, images, taxonomy, templates, render, minify) con log estructurado

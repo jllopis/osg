@@ -12,14 +12,14 @@
       <main id="main-content" role="main">
         <article class="article">
           {{ block "page-header" . }}
-          {{ if .page.draft }}<div class="draft-banner" role="alert">{{ trans "draft_banner" }}</div>{{ end }}
+          {{ if .page.draft }}<div class="draft-banner" role="alert">{{ trans "draft_banner" .lang }}</div>{{ end }}
           <header class="article-header container-narrow">
             <h1>{{ .page.title }}</h1>
 
             <div class="meta">
               {{ if .page.author }}<span class="author">{{ .page.author }}</span><span class="meta-sep">&bull;</span>{{ end }}
-              <time datetime="{{ .page.date.Format "2006-01-02" }}">{{ date_format .page.date (trans "date_format_long") }}</time>
-              {{ if .page.reading_time }}<span class="reading-badge">{{ .page.reading_time }} {{ trans "min_read" }}</span>{{ end }}
+              <time datetime="{{ .page.date.Format "2006-01-02" }}">{{ date_format .page.date (trans "date_format_long" .lang) .lang }}</time>
+              {{ if .page.reading_time }}<span class="reading-badge">{{ .page.reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
             </div>
 
             {{ if .page.summary }}<p class="lead">{{ .page.summary }}</p>{{ end }}
@@ -46,7 +46,7 @@
           {{ block "page-taxonomies" . }}
           {{ if .page.taxonomies }}
           <div class="published-in container-narrow">
-            <span class="published-in-label">{{ trans "published_in" }}</span>
+            <span class="published-in-label">{{ trans "published_in" .lang }}</span>
             {{- $first := true -}}
             {{- range $kind, $terms := .page.taxonomies -}}
               {{- /* Limit tags to 3 items max */ -}}
@@ -70,7 +70,7 @@
           <nav class="post-nav container-narrow" aria-label="Post navigation">
             {{ if .prev_page }}
             <a class="post-nav-link post-nav-prev" href="{{ get_url .prev_page.path true false }}">
-              <span class="post-nav-label">&larr; {{ trans "older_post" }}</span>
+              <span class="post-nav-label">&larr; {{ trans "older_post" .lang }}</span>
               <span class="post-nav-title">{{ .prev_page.title }}</span>
             </a>
             {{ else }}
@@ -78,7 +78,7 @@
             {{ end }}
             {{ if .next_page }}
             <a class="post-nav-link post-nav-next" href="{{ get_url .next_page.path true false }}">
-              <span class="post-nav-label">{{ trans "newer_post" }} &rarr;</span>
+              <span class="post-nav-label">{{ trans "newer_post" .lang }} &rarr;</span>
               <span class="post-nav-title">{{ .next_page.title }}</span>
             </a>
             {{ else }}
@@ -91,8 +91,8 @@
           {{ block "page-related" . }}
           {{- /* --- Related Posts --- */ -}}
           {{ if .related_posts }}
-          <section class="related-posts container-narrow" aria-label="{{ trans "related_posts" }}">
-            <h2 class="section-heading">{{ trans "related_posts" }}</h2>
+          <section class="related-posts container-narrow" aria-label="{{ trans "related_posts" .lang }}">
+            <h2 class="section-heading">{{ trans "related_posts" .lang }}</h2>
             <div class="related-grid">
               {{ range .related_posts }}
               <a class="related-card" href="{{ get_url .path true false }}">
