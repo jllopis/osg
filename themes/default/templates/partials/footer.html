@@ -22,7 +22,7 @@
           {{ end }}
           <a href="{{ get_url "/sitemap.xml" true false }}">{{ trans "footer_sitemap" .lang }}</a>
           {{ range .menu_pages }}
-          <a href="{{ .path }}">{{ .title }}</a>
+          <a href="{{ .path }}">{{ if .menu_title }}{{ .menu_title }}{{ else }}{{ .title }}{{ end }}</a>
           {{ end }}
         </nav>
       </div>

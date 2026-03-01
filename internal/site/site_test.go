@@ -1042,3 +1042,31 @@ func TestPageView_IncludesLangAndTranslations(t *testing.T) {
 		t.Fatalf("expected translation lang='es', got %q", translations[0]["lang"])
 	}
 }
+
+func TestPageView_MenuTitle(t *testing.T) {
+	p := &Page{
+		Title:     "Sobre mí (aproximadamente)",
+		MenuTitle: "Sobre mí",
+		Path:      "/sobre-mi/",
+		Menu:      true,
+	}
+	v := p.View()
+	if v["menu_title"] != "Sobre mí" {
+		t.Fatalf("expected menu_title='Sobre mí', got %q", v["menu_title"])
+	}
+	if v["title"] != "Sobre mí (aproximadamente)" {
+		t.Fatalf("expected title='Sobre mí (aproximadamente)', got %q", v["title"])
+	}
+}
+
+func TestPageView_MenuTitleEmpty(t *testing.T) {
+	p := &Page{
+		Title: "About",
+		Path:  "/about/",
+		Menu:  true,
+	}
+	v := p.View()
+	if v["menu_title"] != "" {
+		t.Fatalf("expected empty menu_title, got %q", v["menu_title"])
+	}
+}

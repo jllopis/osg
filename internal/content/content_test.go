@@ -201,6 +201,66 @@ func TestNormalizeFrontmatter_TitleFallbackToFilename(t *testing.T) {
 	}
 }
 
+func TestNormalizeFrontmatter_TitleUsesFilenameNotOSGPath(t *testing.T) {
+	// osg.path does NOT affect the page title — only menu_title.
+	// Title falls back to filename when no explicit title is set.
+	fm := map[string]any{
+		"osg": map[string]any{
+			"publish": true,
+			"path":    "Sobre mí",
+			"menu":    true,
+		},
+	}
+	out := NormalizeFrontmatter(fm, "sobre-mi", "2025-01-01", false, "Sobre mí (aproximadamente).md")
+	if out["title"] != "Sobre mí (aproximadamente)" {
+		t.Fatalf("expected title from filename, got %v", out["title"])
+	}
+}
+
+func TestNormalizeFrontmatter_MenuTitleFromOSGPath(t *testing.T) {
+	// When osg.menu=true and osg.path is set, menu_title is derived from osg.path.
+	fm := map[string]any{
+		"title": "Sobre mí (aproximadamente)",
+		"osg": map[string]any{
+			"publish": true,
+			"path":    "Sobre mí",
+			"menu":    true,
+		},
+	}
+	out := NormalizeFrontmatter(fm, "sobre-mi", "2025-01-01", false, "Sobre mí (aproximadamente).md")
+	if out["menu_title"] != "Sobre mí" {
+		t.Fatalf("expected menu_title from osg.path, got %v", out["menu_title"])
+	}
+}
+
+func TestNormalizeFrontmatter_NoMenuTitleWithoutOSGPath(t *testing.T) {
+	// When osg.menu=true but no osg.path, menu_title is not set.
+	fm := map[string]any{
+		"title": "About",
+		"osg": map[string]any{
+			"menu": true,
+		},
+	}
+	out := NormalizeFrontmatter(fm, "about", "2025-01-01", false, "About.md")
+	if _, ok := out["menu_title"]; ok {
+		t.Fatalf("expected no menu_title when osg.path is absent, got %v", out["menu_title"])
+	}
+}
+
+func TestNormalizeFrontmatter_NoMenuTitleWithoutMenu(t *testing.T) {
+	// When osg.path is set but osg.menu is not true, no menu_title.
+	fm := map[string]any{
+		"osg": map[string]any{
+			"publish": true,
+			"path":    "about",
+		},
+	}
+	out := NormalizeFrontmatter(fm, "about", "2025-01-01", false, "About.md")
+	if _, ok := out["menu_title"]; ok {
+		t.Fatalf("expected no menu_title when menu is false, got %v", out["menu_title"])
+	}
+}
+
 func TestNormalizeFrontmatter_Lang(t *testing.T) {
 	fm := map[string]any{"title": "Test", "lang": "en"}
 	out := NormalizeFrontmatter(fm, "test", "2025-01-01", false, "test.md")

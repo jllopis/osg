@@ -98,9 +98,14 @@ func NormalizeFrontmatter(fm map[string]any, slug string, dateISO string, isDraf
 
 	// Menu: osg.menu marks a page for navigation menu display.
 	// Menu pages are also excluded from homepage listings.
+	// menu_title: osg.path is used as the menu label when available,
+	// so the user can have a long page title but a short nav entry.
 	if osg != nil {
 		if menu := pickBool(osg, "menu"); menu {
 			out["menu"] = true
+			if menuTitle := pickString(osg, "path"); menuTitle != "" {
+				out["menu_title"] = menuTitle
+			}
 		}
 	}
 

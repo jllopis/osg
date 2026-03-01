@@ -27,6 +27,7 @@ type Translation struct {
 
 type Page struct {
 	Title        string
+	MenuTitle    string
 	Slug         string
 	Path         string
 	Permalink    string
@@ -379,6 +380,7 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 
 	page := &Page{
 		Title:      title,
+		MenuTitle:  pickString(fm, "menu_title"),
 		Slug:       slug,
 		Path:       pagePath,
 		Permalink:  permalink,
@@ -427,6 +429,7 @@ func (p *Page) View() map[string]any {
 
 	return map[string]any{
 		"title":        p.Title,
+		"menu_title":   p.MenuTitle,
 		"slug":         p.Slug,
 		"path":         p.Path,
 		"permalink":    p.Permalink,
