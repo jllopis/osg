@@ -270,8 +270,12 @@ and favicon support all complete.
 - **Dual-file sync**: templates, i18n YAML, CSS synchronized.
 
 ### Backlog (planned, not started)
-- Paginated archives plugin (repo externo, no parte del core)
-- LLMS.txt Generator plugin (repo externo, no parte del core)
+- Official plugins (archives, llms.txt, mermaid): source in `plugins-src/`,
+  compiled by CI, published as GitHub release assets. User installs with
+  `osg plugin install <name>`. Only `search` is embedded in binary.
+- Paginated archives plugin
+- LLMS.txt Generator plugin
+- Mermaid diagrams plugin (client-side: mermaid.js CDN + content.transform hook)
 
 ## Key Dependencies
 

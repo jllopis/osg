@@ -374,13 +374,29 @@
 - [done] Documentado en `DefaultConfigYAML()` (seccion Theme & appearance)
 - [done] Dual-file sync: head.html en internal/theme/ y themes/default/
 
-### Paginated archives (todo, repo externo)
-- [todo] Plugin WASM en repositorio propio (no parte del core)
+### Official plugins — release assets (todo)
+
+Plugins mantenidos en el mismo repo (`plugins-src/`), compilados por CI,
+publicados como release assets en GitHub. El usuario instala con
+`osg plugin install <nombre>`. No se embeben en el binario (solo `search`
+esta embebido).
+
+#### Auto-install en osg init
+- [todo] `osg init` detecta plugins en `plugins_enabled` que no estan en `plugins_dir`
+- [todo] Si el plugin es oficial (esta en el indice curado), lo descarga automaticamente del release
+- [todo] Logging claro: "Installing plugin mermaid... done"
+
+#### Paginated archives
 - [todo] Genera `/archive/` con listado cronologico por ano/mes
 - [todo] Paginacion configurable
 - [todo] Template overridable desde el tema
 
-### LLMS.txt Generator (todo, repo externo)
-- [todo] Plugin WASM en repositorio propio (no parte del core)
+#### LLMS.txt Generator
 - [todo] Genera `/llms.txt` con contenido del sitio en formato apto para LLMs
 - [todo] Configurable: que secciones/paginas incluir, formato de salida
+
+#### Mermaid diagrams
+- [todo] Enfoque client-side: inyecta mermaid.js (CDN) y transforma bloques ```mermaid en markup renderizable
+- [todo] Hook `content.transform`: reescribe bloques de codigo mermaid a `<pre class="mermaid">`
+- [todo] Hook `page.render` o `after.build`: inyecta `<script src="mermaid CDN">` solo en paginas que usen mermaid
+- [todo] Configurable: version de mermaid, tema (default/dark/forest/neutral), inicializacion custom

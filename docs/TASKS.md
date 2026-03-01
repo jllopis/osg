@@ -289,10 +289,10 @@ Formato: [todo|doing|done] Tarea
 [done] (Favicon) head.html: <link rel="icon"> con fallback config.favicon > config.logo > SVG inline Nord blue
 [done] (Favicon) Documentado en DefaultConfigYAML(), dual-file sync head.html
 
-[todo] (Archives - repo externo) Plugin WASM en repositorio propio (no core)
-[todo] (Archives - repo externo) Genera /archive/ cronologico por ano/mes
-[todo] (Archives - repo externo) Paginacion configurable, template overridable
+[todo] (Official plugins) CI pipeline: compilar plugins-src/ y publicar .wasm como release assets
+[todo] (Official plugins) Documentar instalacion via osg plugin install <nombre>
+[todo] (Official plugins) osg init auto-instala plugins oficiales activos en plugins_enabled que falten en plugins_dir
 
-[todo] (LLMS.txt - repo externo) Plugin WASM en repositorio propio (no core)
-[todo] (LLMS.txt - repo externo) Genera /llms.txt con contenido del sitio para LLMs
-[todo] (LLMS.txt - repo externo) Configurable: secciones/paginas a incluir, formato
+[todo] (Archives) Genera /archive/ cronologico por ano/mes, paginacion configurable
+[todo] (LLMS.txt) Genera /llms.txt con contenido del sitio para LLMs, configurable
+[todo] (Mermaid) Client-side: content.transform reescribe bloques mermaid, inyecta mermaid.js CDN
