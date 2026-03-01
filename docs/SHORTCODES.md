@@ -107,6 +107,54 @@ Sin titulo, el texto del `<summary>` es "Details".
 
 ---
 
+## Quote (cita con atribucion)
+
+Genera un `<blockquote>` estilizado con atribucion opcional (autor y fuente).
+El contenido interior se procesa como Markdown.
+
+### Argumentos
+
+| Argumento | Descripcion | Obligatorio |
+|-----------|-------------|-------------|
+| `author` | Nombre del autor (posicional o `author="..."`) | No |
+| `source` | Titulo de la obra o fuente | No |
+
+### Ejemplos
+
+Sin atribucion:
+
+```markdown
+{{< quote >}}
+La imaginacion es mas importante que el conocimiento.
+{{< /quote >}}
+```
+
+Con autor (posicional):
+
+```markdown
+{{< quote "Albert Einstein" >}}
+La imaginacion es mas importante que el conocimiento.
+{{< /quote >}}
+```
+
+Con autor y fuente:
+
+```markdown
+{{< quote author="Albert Einstein" source="Sobre la ciencia cosmica" >}}
+La imaginacion es mas importante que el conocimiento.
+{{< /quote >}}
+```
+
+Solo fuente, sin autor:
+
+```markdown
+{{< quote source="Refranero popular" >}}
+Mas vale pajaro en mano que cien volando.
+{{< /quote >}}
+```
+
+---
+
 ## Figure (imagen con caption)
 
 Genera un elemento `<figure>` con imagen, caption opcional, atributos de clase,
@@ -272,6 +320,7 @@ Si la URL no es valida, se genera un enlace de fallback en lugar del iframe.
 | `warning` | Block | `{{< warning >}}Texto{{< /warning >}}` |
 | `tip` | Block | `{{< tip >}}Texto{{< /tip >}}` |
 | `details` | Block | `{{< details >}}Texto{{< /details >}}` |
+| `quote` | Block | `{{< quote "Autor" >}}Texto{{< /quote >}}` |
 | `figure` | Block | `{{< figure src="img.jpg" >}}{{< /figure >}}` |
 | `tabs`+`tab` | Block | `{{< tabs >}}{{< tab "T" >}}...{{< /tab >}}{{< /tabs >}}` |
 | `youtube` | Inline | `{{< youtube "ID" />}}` |
@@ -286,4 +335,4 @@ Si la URL no es valida, se genera un enlace de fallback en lugar del iframe.
   (pasa por Goldmark despues de la expansion).
 - Los shortcodes desconocidos se dejan intactos en el output.
 - El estilo visual esta definido en `style.css` del tema default (secciones
-  ADMONITIONS, DETAILS, FIGURE, EMBEDS, TABS).
+  ADMONITIONS, DETAILS, QUOTE, FIGURE, EMBEDS, TABS).

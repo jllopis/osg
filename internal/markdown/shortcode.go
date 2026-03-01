@@ -8,7 +8,7 @@ import (
 
 // --- Block shortcodes (paired: opening + closing tag) ---
 
-var blockShortcodeNames = []string{"note", "warning", "tip", "details", "figure", "tabs", "tab"}
+var blockShortcodeNames = []string{"note", "warning", "tip", "details", "figure", "quote", "tabs", "tab"}
 
 var blockShortcodeHandlers = map[string]func(args, content string) string{
 	"note":    func(args, content string) string { return renderAdmonition("note", "info", args, content) },
@@ -16,6 +16,7 @@ var blockShortcodeHandlers = map[string]func(args, content string) string{
 	"tip":     func(args, content string) string { return renderAdmonition("tip", "tip", args, content) },
 	"details": renderDetails,
 	"figure":  renderFigure,
+	"quote":   renderQuote,
 	"tabs":    renderTabs,
 	"tab":     renderTab,
 }
@@ -193,6 +194,38 @@ func renderFigure(args string, content string) string {
 	}
 
 	buf.WriteString("</figure>")
+	return buf.String()
+}
+
+func renderQuote(args string, content string) string {
+	p := parseArgs(args)
+	author := p["author"]
+	if author == "" {
+		author = p["_pos"]
+	}
+	source := p["source"]
+
+	content = strings.TrimSpace(content)
+
+	var buf strings.Builder
+	buf.WriteString(`<blockquote class="quote">`)
+	buf.WriteString("\n\n" + content + "\n\n")
+
+	if author != "" || source != "" {
+		buf.WriteString("<footer class=\"quote-attribution\">")
+		if author != "" {
+			fmt.Fprintf(&buf, `<cite class="quote-author">%s</cite>`, author)
+		}
+		if source != "" {
+			if author != "" {
+				buf.WriteString(", ")
+			}
+			fmt.Fprintf(&buf, `<span class="quote-source">%s</span>`, source)
+		}
+		buf.WriteString("</footer>")
+	}
+
+	buf.WriteString("</blockquote>")
 	return buf.String()
 }
 

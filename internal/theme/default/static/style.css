@@ -1934,6 +1934,42 @@ details > *:not(summary) {
 }
 
 /* ============================================================
+   QUOTE (shortcode: quote)
+   ============================================================ */
+blockquote.quote {
+  margin: 2em 0;
+  padding: var(--sp-4) var(--sp-6);
+  border-left: 4px solid #5e81ac;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: rgba(94, 129, 172, 0.06);
+  font-style: italic;
+}
+
+blockquote.quote > p {
+  margin: 0;
+}
+
+.quote-attribution {
+  margin-top: var(--sp-3);
+  font-style: normal;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.quote-attribution::before {
+  content: "\2014\00a0";
+}
+
+.quote-author {
+  font-style: normal;
+  font-weight: 600;
+}
+
+.quote-source {
+  font-style: italic;
+}
+
+/* ============================================================
    FIGURE (shortcode: figure)
    ============================================================ */
 .figure {

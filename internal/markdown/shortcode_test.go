@@ -341,3 +341,54 @@ func TestExtractVideoID_Empty(t *testing.T) {
 		t.Errorf("expected empty for empty input, got %q", id)
 	}
 }
+
+// --- Quote shortcode tests ---
+
+func TestExpandShortcodes_Quote(t *testing.T) {
+	input := `{{< quote >}}To be or not to be.{{< /quote >}}`
+	result := ExpandShortcodes(input)
+	if !strings.Contains(result, `<blockquote class="quote">`) {
+		t.Errorf("expected blockquote.quote, got:\n%s", result)
+	}
+	if !strings.Contains(result, "To be or not to be.") {
+		t.Errorf("expected content preserved, got:\n%s", result)
+	}
+	// No attribution without author.
+	if strings.Contains(result, "quote-attribution") {
+		t.Errorf("expected no attribution without author, got:\n%s", result)
+	}
+}
+
+func TestExpandShortcodes_QuoteWithAuthor(t *testing.T) {
+	input := `{{< quote "Shakespeare" >}}To be or not to be.{{< /quote >}}`
+	result := ExpandShortcodes(input)
+	if !strings.Contains(result, `class="quote-author">Shakespeare</cite>`) {
+		t.Errorf("expected author attribution, got:\n%s", result)
+	}
+}
+
+func TestExpandShortcodes_QuoteWithAuthorAndSource(t *testing.T) {
+	input := `{{< quote author="Shakespeare" source="Hamlet" >}}To be or not to be.{{< /quote >}}`
+	result := ExpandShortcodes(input)
+	if !strings.Contains(result, `class="quote-author">Shakespeare</cite>`) {
+		t.Errorf("expected author, got:\n%s", result)
+	}
+	if !strings.Contains(result, `class="quote-source">Hamlet</span>`) {
+		t.Errorf("expected source, got:\n%s", result)
+	}
+	if !strings.Contains(result, "quote-attribution") {
+		t.Errorf("expected attribution footer, got:\n%s", result)
+	}
+}
+
+func TestExpandShortcodes_QuoteSourceOnly(t *testing.T) {
+	input := `{{< quote source="Hamlet, Act III" >}}To be or not to be.{{< /quote >}}`
+	result := ExpandShortcodes(input)
+	if !strings.Contains(result, `class="quote-source">Hamlet, Act III</span>`) {
+		t.Errorf("expected source without author, got:\n%s", result)
+	}
+	// Should not have comma separator when there's no author.
+	if strings.Contains(result, "</cite>, ") {
+		t.Errorf("expected no comma before source when author is absent, got:\n%s", result)
+	}
+}
