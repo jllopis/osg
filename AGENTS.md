@@ -165,8 +165,29 @@ Phase 11 (Plugin ecosystem) fully done: Fase A, B, C, D, E, F.
 Standalone Pages, `osg new`, i18n, Kairos AI summaries, AI cache all complete.
 Phase 13 (Draft preview), Phase 14 (Additional shortcodes), Phase 15 (Multi-language),
 and Phase 16 (Performance & benchmarks) complete.
+Test coverage expansion, shortcode docs, osg.title, menu_title, quote shortcode,
+and favicon support all complete.
 
-### Recently completed (v0.99)
+### Recently completed (post v0.99)
+- **Test coverage expansion**: 1,644 lines of new tests across 7 packages.
+  date (100%), slug (100%), content (96.4%), vault (90.9%), config (88.9%),
+  render (74.4%), theme (84.7%).
+- **Shortcode documentation**: `docs/SHORTCODES.md` with full usage guide for
+  all 12 shortcodes, README features mention, QUICKSTART section.
+- **menu_title from osg.path**: `MenuTitle` field on `Page`, derived from
+  `osg.path` when `osg.menu=true`. Templates use `menu_title` with fallback
+  to `title`. Allows menu label to differ from page title. 6 tests.
+- **osg.title**: Highest-precedence page title override. Both
+  `NormalizeFrontmatter` (update-content) and `ParseFile` (build) respect it.
+  Precedence chain: osg.title > fm.title > fm.name > filename. 3 tests.
+- **Quote shortcode**: `{{< quote author="..." source="..." >}}` generates
+  `<blockquote class="quote">` with `<footer class="quote-attribution">`.
+  CSS: Nord left border, subtle background, italic. 4 tests.
+- **Favicon support**: `Favicon` config field, `<link rel="icon">` in
+  head.html with 3-tier fallback: config.favicon > config.logo > inline
+  SVG data URI (OSG logo in Nord blue #5e81ac). Dual-file sync.
+
+### Previously completed (v0.99)
 - **exclude_terms in page templates**: `FilterPageTaxonomies()` strips excluded
   terms from `page.Taxonomies` before any `View()` call, so "Publicado en:",
   card pills, related pages, and prev/next never show excluded terms.
@@ -250,6 +271,7 @@ and Phase 16 (Performance & benchmarks) complete.
 
 ### Backlog (planned, not started)
 - Paginated archives plugin (repo externo, no parte del core)
+- LLMS.txt Generator plugin (repo externo, no parte del core)
 
 ## Key Dependencies
 

@@ -345,8 +345,42 @@
 - [done] Benchmark suite: 18 benchmarks en 5 packages (markdown, summary, build, frontmatter, slug)
 - [done] 4 tests unitarios para BuildTimings (stage, multiple stages, log, log empty)
 
+### Test coverage expansion (done)
+- [done] 1,644 lineas de nuevos tests en 7 packages: date (100%), slug (100%), content (96.4%), vault (90.9%), config (88.9%), render (74.4%), theme (84.7%)
+
+### Shortcode documentation (done)
+- [done] `docs/SHORTCODES.md`: guia completa de uso de los 11 shortcodes con ejemplos, argumentos, referencia rapida
+- [done] README.md: mencion de shortcodes en features + link a docs
+- [done] QUICKSTART.md: seccion de shortcodes
+
+### osg.title y menu_title (done)
+- [done] `osg.title` en frontmatter como titulo de maxima precedencia (osg.title > fm.title > fm.name > filename)
+- [done] `menu_title` derivado de `osg.path` cuando `osg.menu=true` para que el label del menu pueda diferir del titulo de pagina
+- [done] Templates header/footer usan `menu_title` con fallback a `title`
+- [done] 9 tests (3 osg.title + 6 menu_title)
+
+### Quote shortcode (done)
+- [done] Shortcode `quote` con atribucion opcional: `author` (posicional o key=value) y `source`
+- [done] HTML: `<blockquote class="quote">` con `<footer class="quote-attribution">`, `<cite>`, `<span>`
+- [done] CSS Nord-styled: borde izquierdo Nord blue, background sutil, fuente italic para cita
+- [done] 4 tests unitarios (bare, author, author+source, source-only)
+- [done] Documentacion en SHORTCODES.md
+- [done] Dual-file sync: CSS en internal/theme/ y themes/default/
+
+### Favicon support (done)
+- [done] Campo `Favicon` en Config struct (`internal/config/config.go`)
+- [done] `favicon` expuesto en `configView()` para templates
+- [done] `head.html`: `<link rel="icon">` con fallback 3 niveles: config.favicon > config.logo > SVG inline (logo OSG en Nord blue #5e81ac)
+- [done] Documentado en `DefaultConfigYAML()` (seccion Theme & appearance)
+- [done] Dual-file sync: head.html en internal/theme/ y themes/default/
+
 ### Paginated archives (todo, repo externo)
 - [todo] Plugin WASM en repositorio propio (no parte del core)
 - [todo] Genera `/archive/` con listado cronologico por ano/mes
 - [todo] Paginacion configurable
 - [todo] Template overridable desde el tema
+
+### LLMS.txt Generator (todo, repo externo)
+- [todo] Plugin WASM en repositorio propio (no parte del core)
+- [todo] Genera `/llms.txt` con contenido del sitio en formato apto para LLMs
+- [todo] Configurable: que secciones/paginas incluir, formato de salida

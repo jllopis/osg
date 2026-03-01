@@ -274,6 +274,25 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 16) Benchmark suite: 18 benchmarks en 5 packages (markdown, summary, build, frontmatter, slug)
 [done] (Phase 16) 4 tests unitarios para BuildTimings
 
+[done] (Coverage) 1,644 lineas de nuevos tests en 7 packages: date, slug, content, vault, config, render, theme
+[done] (Docs) SHORTCODES.md: guia completa de 11 shortcodes con ejemplos, args, referencia rapida
+[done] (Docs) README.md features + QUICKSTART.md seccion shortcodes
+[done] (osg.title) osg.title en frontmatter como titulo de maxima precedencia (> fm.title > fm.name > filename)
+[done] (osg.title) 3 tests unitarios para osg.title
+[done] (menu_title) menu_title derivado de osg.path cuando osg.menu=true, templates usan menu_title con fallback
+[done] (menu_title) 6 tests unitarios para menu_title
+[done] (Quote) Shortcode quote con author (posicional/key=value) y source, <blockquote class="quote">
+[done] (Quote) CSS Nord-styled: borde izquierdo, background sutil, italic
+[done] (Quote) 4 tests unitarios + documentacion en SHORTCODES.md
+[done] (Quote) Dual-file sync: CSS
+[done] (Favicon) Campo Favicon en Config, favicon en configView() para templates
+[done] (Favicon) head.html: <link rel="icon"> con fallback config.favicon > config.logo > SVG inline Nord blue
+[done] (Favicon) Documentado en DefaultConfigYAML(), dual-file sync head.html
+
 [todo] (Archives - repo externo) Plugin WASM en repositorio propio (no core)
 [todo] (Archives - repo externo) Genera /archive/ cronologico por ano/mes
 [todo] (Archives - repo externo) Paginacion configurable, template overridable
+
+[todo] (LLMS.txt - repo externo) Plugin WASM en repositorio propio (no core)
+[todo] (LLMS.txt - repo externo) Genera /llms.txt con contenido del sitio para LLMs
+[todo] (LLMS.txt - repo externo) Configurable: secciones/paginas a incluir, formato
