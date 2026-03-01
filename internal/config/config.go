@@ -56,6 +56,7 @@ type Config struct {
 	SiteDescription   string            `koanf:"site_description" yaml:"site_description"`
 	Theme             string            `koanf:"theme" yaml:"theme"`
 	Logo              string            `koanf:"logo" yaml:"logo"`
+	Favicon           string            `koanf:"favicon" yaml:"favicon"`
 	ColorScheme       string            `koanf:"color_scheme" yaml:"color_scheme"`
 	VaultPath         string            `koanf:"vault_path" yaml:"vault_path"`
 	ContentDir        string            `koanf:"content_dir" yaml:"content_dir"`
@@ -355,9 +356,13 @@ include_drafts: false
 #   "auto"  — follows the visitor's OS preference (prefers-color-scheme).
 #   "light" — always light mode.
 #   "dark"  — always dark mode.
+# favicon: Path to a custom favicon (e.g. "/img/favicon.svg").
+#          If empty and logo is set, the logo is used as favicon.
+#          If both are empty, a built-in SVG favicon is used.
 theme: default
 themes_dir: themes
 color_scheme: auto
+# favicon: ""
 
 # -----------------------------------------------------------------------------
 # Navigation

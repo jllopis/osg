@@ -2,6 +2,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){var s=localStorage.getItem('osg-color-scheme');if(s)document.documentElement.setAttribute('data-color-scheme',s)})()</script>
 <meta name="generator" content="OSG" />
+{{- /* --- Favicon --- */ -}}
+{{ if .config.favicon }}<link rel="icon" href="{{ .config.favicon }}" />
+{{ else if .config.logo }}<link rel="icon" href="{{ .config.logo }}" />
+{{ else }}<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 32'%3E%3Cpath d='M18 7C12 7 10 11 10 16c0 6 4 10 11 10s11-4 11-10c0-5-3-8.5-8-9' stroke='%235e81ac' stroke-width='2.2' stroke-linecap='round' fill='none'/%3E%3Cline x1='1' y1='16' x2='44' y2='16' stroke='%235e81ac' stroke-width='1.8' stroke-linecap='round'/%3E%3Cpolygon points='44,16 39,12.5 39,19.5' fill='%235e81ac'/%3E%3Cline x1='5' y1='16' x2='1.5' y2='12' stroke='%235e81ac' stroke-width='1.4' stroke-linecap='round'/%3E%3Cline x1='5' y1='16' x2='1.5' y2='20' stroke='%235e81ac' stroke-width='1.4' stroke-linecap='round'/%3E%3Cline x1='7.5' y1='16' x2='4' y2='11.5' stroke='%235e81ac' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='7.5' y1='16' x2='4' y2='20.5' stroke='%235e81ac' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='10' y1='16' x2='7' y2='12.5' stroke='%235e81ac' stroke-width='1' stroke-linecap='round'/%3E%3Cline x1='10' y1='16' x2='7' y2='19.5' stroke='%235e81ac' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E" type="image/svg+xml" />
+{{ end -}}
 {{- /* --- Canonical URL --- */ -}}
 {{ if and .config.base_url .current_path }}<link rel="canonical" href="{{ .config.base_url }}{{ .current_path }}" />{{ end }}
 {{- /* --- hreflang alternates for translated pages --- */ -}}

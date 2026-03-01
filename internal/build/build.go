@@ -750,6 +750,7 @@ func configView(cfg config.Config) map[string]any {
 		"site_description":   cfg.SiteDescription,
 		"theme":              cfg.Theme,
 		"logo":               cfg.Logo,
+		"favicon":            cfg.Favicon,
 		"color_scheme":       cfg.ColorScheme,
 		"default_language":   cfg.DefaultLanguage,
 		"vault_path":         cfg.VaultPath,
