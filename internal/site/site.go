@@ -297,7 +297,14 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		return nil, nil, fmt.Errorf("render markdown: %w", err)
 	}
 
-	title := pickString(fm, "title", "name")
+	// Extract osg block early so osg.title can participate in title resolution.
+	osg := publish.GetOSGBlock(fm)
+
+	// Title precedence: osg.title > fm.title > fm.name > slug
+	title := pickString(osg, "title")
+	if title == "" {
+		title = pickString(fm, "title", "name")
+	}
 	slug := pickString(fm, "slug")
 	if slug == "" {
 		if isSection {
@@ -314,9 +321,6 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 	if title == "" {
 		title = strings.Trim(slug, "-")
 	}
-
-	// Extract osg block for osg.image and osg.featured overrides
-	osg := publish.GetOSGBlock(fm)
 
 	if isSection {
 		section := &Section{

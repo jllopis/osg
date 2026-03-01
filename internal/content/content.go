@@ -15,7 +15,11 @@ func NormalizeFrontmatter(fm map[string]any, slug string, dateISO string, isDraf
 	out := map[string]any{}
 	osg := publish.GetOSGBlock(fm)
 
-	title := pickString(fm, "title", "name")
+	// Title precedence: osg.title > fm.title > fm.name > filename
+	title := pickString(osg, "title")
+	if title == "" {
+		title = pickString(fm, "title", "name")
+	}
 	if title == "" {
 		title = strings.TrimSuffix(sourceName, filepath.Ext(sourceName))
 	}

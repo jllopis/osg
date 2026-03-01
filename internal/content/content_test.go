@@ -217,6 +217,49 @@ func TestNormalizeFrontmatter_TitleUsesFilenameNotOSGPath(t *testing.T) {
 	}
 }
 
+func TestNormalizeFrontmatter_OSGTitleWins(t *testing.T) {
+	// osg.title has the highest precedence, overriding fm.title and filename.
+	fm := map[string]any{
+		"title": "Title from frontmatter",
+		"osg": map[string]any{
+			"publish": true,
+			"title":   "Title from osg",
+		},
+	}
+	out := NormalizeFrontmatter(fm, "test", "2025-01-01", false, "Filename Title.md")
+	if out["title"] != "Title from osg" {
+		t.Fatalf("expected osg.title to win, got %v", out["title"])
+	}
+}
+
+func TestNormalizeFrontmatter_OSGTitleOverridesFilename(t *testing.T) {
+	// osg.title wins even when there's no fm.title (would otherwise fall back to filename).
+	fm := map[string]any{
+		"osg": map[string]any{
+			"publish": true,
+			"title":   "Custom Title",
+		},
+	}
+	out := NormalizeFrontmatter(fm, "test", "2025-01-01", false, "Some Long Filename.md")
+	if out["title"] != "Custom Title" {
+		t.Fatalf("expected osg.title, got %v", out["title"])
+	}
+}
+
+func TestNormalizeFrontmatter_FMTitleFallbackWhenNoOSGTitle(t *testing.T) {
+	// Without osg.title, fm.title is used.
+	fm := map[string]any{
+		"title": "FM Title",
+		"osg": map[string]any{
+			"publish": true,
+		},
+	}
+	out := NormalizeFrontmatter(fm, "test", "2025-01-01", false, "Filename.md")
+	if out["title"] != "FM Title" {
+		t.Fatalf("expected fm.title fallback, got %v", out["title"])
+	}
+}
+
 func TestNormalizeFrontmatter_MenuTitleFromOSGPath(t *testing.T) {
 	// When osg.menu=true and osg.path is set, menu_title is derived from osg.path.
 	fm := map[string]any{
