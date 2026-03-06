@@ -37,7 +37,24 @@ func RunAPI(ctx context.Context, opts CLIOptions, apiOpts APIOptions) error {
 	}
 	defer store.Close()
 
-	srv := api.NewServer(store, cfg.Interactions, logger)
+	// Optionally create comment store and auth providers.
+	var commentStore *api.CommentStore
+	var authProviders map[string]*api.AuthProvider
+	if cfg.Interactions.Comments.Enabled && len(cfg.Interactions.Comments.Providers) > 0 {
+		cs, err := api.NewCommentStore(cfg.Interactions.Comments.DBPath, cfg.Interactions.Comments.AuthSessionDays)
+		if err != nil {
+			return err
+		}
+		defer cs.Close()
+		commentStore = cs
+
+		baseCallback := cfg.Interactions.Comments.AuthCallbackURL
+		authProviders = api.BuildAuthProviders(cfg.Interactions.Comments, baseCallback)
+
+		logger.Info("comments enabled", "db", cfg.Interactions.Comments.DBPath, "providers", len(authProviders))
+	}
+
+	srv := api.NewServer(store, cfg.Interactions, logger, commentStore, authProviders)
 
 	server := &http.Server{
 		Addr:    listen,
@@ -71,11 +88,26 @@ func RunAPI(ctx context.Context, opts CLIOptions, apiOpts APIOptions) error {
 
 // StartAPIHandler creates an API handler that can be mounted on an existing
 // ServeMux (used by `osg serve --api`).
-func StartAPIHandler(cfg config.InteractionsConfig, logger *slog.Logger) (*api.Server, *api.Store, error) {
+func StartAPIHandler(cfg config.InteractionsConfig, logger *slog.Logger) (*api.Server, *api.Store, *api.CommentStore, error) {
 	store, err := api.NewStore(cfg.DBPath, cfg.ViewDedupHours)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	srv := api.NewServer(store, cfg, logger)
-	return srv, store, nil
+
+	var commentStore *api.CommentStore
+	var authProviders map[string]*api.AuthProvider
+	if cfg.Comments.Enabled && len(cfg.Comments.Providers) > 0 {
+		cs, err := api.NewCommentStore(cfg.Comments.DBPath, cfg.Comments.AuthSessionDays)
+		if err != nil {
+			store.Close()
+			return nil, nil, nil, err
+		}
+		commentStore = cs
+
+		baseCallback := cfg.Comments.AuthCallbackURL
+		authProviders = api.BuildAuthProviders(cfg.Comments, baseCallback)
+	}
+
+	srv := api.NewServer(store, cfg, logger, commentStore, authProviders)
+	return srv, store, commentStore, nil
 }

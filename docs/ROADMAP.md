@@ -436,6 +436,35 @@
 - [done] 2 config tests (default enabled, YAML disable)
 - [done] Dual-file sync: page.html, share.js, style.css, en.yaml, es.yaml
 
+### Comentarios: sistema de comentarios con OAuth2 (done)
+- [done] `CommentsConfig` y `AuthProviderConfig` structs en config.go con defaults, normalizacion y validacion
+- [done] `DefaultConfigYAML()` documentado con seccion comments completa
+- [done] `CommentStore` en `internal/api/comment_store.go`: SQLite separada con tablas users, sessions, comments
+- [done] User CRUD: UpsertUser, GetUserByProvider, GetUserByID
+- [done] Session CRUD: CreateSession (crypto random), ValidateSession, DeleteSession, CleanExpiredSessions
+- [done] Comment CRUD: CreateComment, GetComment, SoftDeleteComment, ListComments
+- [done] Tree building: buildCommentTree (two-pass map+link), pruneDeletedLeaves
+- [done] OAuth2 auth handlers en `internal/api/auth.go`: BuildAuthProviders (GitHub read:user, Google openid profile email)
+- [done] AuthHandlers: HandleLogin, HandleCallback, HandleMe, HandleLogout
+- [done] State cookie + return_to flow, code exchange, user info fetch, session creation
+- [done] Comment HTTP handlers en `internal/api/comments.go`: HandleList, HandleCreate, HandleDelete
+- [done] CreateCommentRequest validation (page_path, body max 10000, parent_id same page)
+- [done] Ownership check for delete (solo propios comentarios)
+- [done] Server 5-arg NewServer (commentStore + authProviders nil-safe), rutas condicionales
+- [done] CORS middleware con withCredentials (GET/DELETE, Access-Control-Allow-Credentials)
+- [done] `RunAPI` y `StartAPIHandler` (4 retornos) con CommentStore lifecycle
+- [done] `configView()`: comments_enabled, comments_providers con display labels
+- [done] comments.js: IIFE, cookie auth (credentials include), login URLs, recursive rendering, reply inline, delete, timeAgo, HTML escaping
+- [done] page.html: bloque page-comments entre page-actions y page-nav, JS condicional
+- [done] CSS: seccion COMMENTS (~200 lineas), nesting 5 niveles, avatars, responsive
+- [done] i18n: 13 claves comentarios en en.yaml y es.yaml
+- [done] 25 tests CommentStore + 21 tests auth + 19 tests comment handlers + 6 tests config = 71 tests nuevos
+- [done] golang.org/x/oauth2 v0.35.0 como dependencia directa
+- [done] Dual-file sync: page.html, comments.js, style.css, en.yaml, es.yaml
+- [done] Dockerfile multi-stage (golang:1.25-alpine -> alpine:3.21, non-root, volumes)
+- [done] docker-compose.yml con osg-data volume
+- [done] deploy/k8s/: configmap, pvc, deployment (health probes, resource limits), service
+
 ### Official plugins — release assets (todo)
 
 Plugins mantenidos en el mismo repo (`plugins-src/`), compilados por CI,

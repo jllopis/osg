@@ -94,3 +94,16 @@ share_on: "Share on"
 share_via_email: "Share via email"
 copy_link: "Copy link"
 link_copied: "Link copied!"
+
+# --- Comments ---
+comments: Comments
+comments_login: "Log in to comment"
+comments_login_with: "Log in with"
+comments_logout: "Log out"
+comments_placeholder: "Write a comment..."
+comments_submit: "Post comment"
+comments_reply: Reply
+comments_delete: Delete
+comments_deleted: "[comment deleted]"
+comments_no_comments: "No comments yet. Be the first!"
+comments_login_required: "Log in to leave a comment."

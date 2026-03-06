@@ -27,7 +27,7 @@ make test-coverage                         # tests + HTML coverage report
 cmd/osg/              CLI entry (Kong)
 internal/
   app/                App struct, Version, CLI commands (init, tui, serve, new, api)
-  api/                Interactions API: SQLite store, HTTP handlers, CORS, validation
+  api/                Interactions + Comments API: SQLite stores, OAuth2 auth, HTTP handlers, CORS
   assets/             Sass pipeline, static copy, cachebust
   build/              HTML build: hierarchy, pagination, feeds, templates
   config/             Config struct, YAML loading, defaults, validation
@@ -191,6 +191,23 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
   - Merged into unified `.article-actions` bar with interactions (views+votes left, share right)
   - `internal/theme/default/static/js/share.js`, `page.html` block `page-actions`
 
+- **Comments**: OAuth2-authenticated comment system with threaded replies:
+  - Separate SQLite database (`comments.db`) from interactions (`interactions.db`)
+  - OAuth2 providers: GitHub (`read:user`), Google (`openid profile email`)
+  - Auth flow: state cookie → provider redirect → callback → upsert user → session cookie
+  - `osg_session` httpOnly cookie (SameSite=Lax, 30 days, Secure if HTTPS callback)
+  - 6 API endpoints: auth login/callback/me/logout, comments list/create/delete
+  - Unlimited nesting depth (CSS indents up to 5 levels then flattens)
+  - Soft-delete: preserves comment in tree if it has non-deleted replies
+  - Tree building: flat rows → two-pass map+link → prune deleted leaves
+  - `comments.js`: IIFE, cookie-based auth, recursive rendering, reply inline
+  - Config: `interactions.comments` block with `enabled`, `db_path`, `auth_session_days`,
+    `auth_callback_url`, `providers` (each with `provider`, `client_id`, `client_secret`)
+  - `internal/api/comment_store.go`, `auth.go`, `comments.go`
+  - `NewServer()` accepts 5 args: `(store, cfg, logger, commentStore, authProviders)`
+  - `StartAPIHandler()` returns 4 values: `(Server, Store, *CommentStore, error)`
+  - Deployment: `Dockerfile`, `docker-compose.yml`, `deploy/k8s/` manifests
+
 ## Current State (as of last session)
 
 All phases 1-16 complete plus stability/bugfix round.
@@ -199,8 +216,8 @@ Standalone Pages, `osg new`, i18n, Kairos AI summaries, AI cache all complete.
 Phase 13 (Draft preview), Phase 14 (Additional shortcodes), Phase 15 (Multi-language),
 and Phase 16 (Performance & benchmarks) complete.
 Test coverage expansion, shortcode docs, osg.title, menu_title, quote shortcode,
-favicon support, configurable permalinks, interactions (views + likes), and
-sharing (social share popover) all complete.
+favicon support, configurable permalinks, interactions (views + likes),
+sharing (social share popover), and comments (OAuth2 + threaded replies) all complete.
 
 ### Recently completed (post v0.99)
 - **Sharing**: Social sharing buttons and title copy-link for articles.
@@ -216,6 +233,18 @@ sharing (social share popover) all complete.
   with network-nodes icon opens `.share-popover` (absolute positioned dropdown).
   Options: X, LinkedIn, Bluesky, Email, Copy link with "copied" feedback.
   Close on outside click or Escape. `aria-expanded`/`aria-haspopup` a11y.
+- **Comments (OAuth2 + threaded replies)**: Full comment system with OAuth2 auth.
+  Separate SQLite DB (`comments.db`). OAuth2 providers: GitHub, Google.
+  Auth flow: state cookie → redirect → callback → upsert user → session cookie.
+  `osg_session` httpOnly cookie (30 days, SameSite=Lax, Secure if HTTPS).
+  6 API endpoints: auth login/callback/me/logout, comments list/create/delete.
+  Unlimited nesting depth. Soft-delete preserves tree structure.
+  `comments.js` IIFE: cookie-based auth, recursive rendering, reply inline.
+  Config: `interactions.comments` block with providers, db_path, auth settings.
+  `NewServer()` 5 args, `StartAPIHandler()` 4 returns, CORS with credentials.
+  71 new tests (25 store + 21 auth + 19 handlers + 6 config).
+  `golang.org/x/oauth2` v0.35.0. Deployment: Dockerfile, docker-compose,
+  Kubernetes manifests. Dual-file sync for all theme files.
 - **Permalinks**: Configurable URL patterns with extended placeholders.
   `content_layout` supports `{date}`, `{year}`, `{month}`, `{day}`, `{slug}`, `{title}`.
   `osg.permalink` per-page override with same placeholders.
@@ -350,3 +379,4 @@ sharing (social share popover) all complete.
 - `github.com/tdewolff/minify` - HTML/CSS/JS minification
 - `github.com/jllopis/kairos` - AI/LLM framework (multi-provider: gemini, anthropic, openai, qwen, ollama)
 - `modernc.org/sqlite` - SQLite driver (pure Go, no CGO) for interactions API
+- `golang.org/x/oauth2` - OAuth2 client for comments authentication (GitHub, Google)

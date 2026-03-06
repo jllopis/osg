@@ -661,3 +661,176 @@ func TestLoad_SharingDisabled(t *testing.T) {
 		t.Error("expected Sharing = false after explicit disable")
 	}
 }
+
+// --- Comments config tests ---
+
+func TestDefault_CommentsDefaults(t *testing.T) {
+	t.Parallel()
+	cfg := Default()
+	c := cfg.Interactions.Comments
+
+	if c.Enabled {
+		t.Error("Comments should default to disabled")
+	}
+	if c.DBPath != ".osg/comments.db" {
+		t.Errorf("DBPath = %q, want .osg/comments.db", c.DBPath)
+	}
+	if c.AuthSessionDays != 30 {
+		t.Errorf("AuthSessionDays = %d, want 30", c.AuthSessionDays)
+	}
+}
+
+func TestLoad_CommentsFromYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `
+interactions:
+  enabled: true
+  comments:
+    enabled: true
+    db_path: "data/my-comments.db"
+    auth_session_days: 7
+    auth_callback_url: "https://blog.example.com"
+    providers:
+      - provider: github
+        client_id: "gh-id-123"
+        client_secret: "gh-secret-456"
+      - provider: google
+        client_id: "g-id-789"
+        client_secret: "g-secret-012"
+`)
+	cfg, err := Load(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	c := cfg.Interactions.Comments
+	if !c.Enabled {
+		t.Error("expected comments enabled")
+	}
+	if c.DBPath != "data/my-comments.db" {
+		t.Errorf("DBPath = %q", c.DBPath)
+	}
+	if c.AuthSessionDays != 7 {
+		t.Errorf("AuthSessionDays = %d, want 7", c.AuthSessionDays)
+	}
+	if c.AuthCallbackURL != "https://blog.example.com" {
+		t.Errorf("AuthCallbackURL = %q", c.AuthCallbackURL)
+	}
+	if len(c.Providers) != 2 {
+		t.Fatalf("expected 2 providers, got %d", len(c.Providers))
+	}
+	if c.Providers[0].Provider != "github" || c.Providers[0].ClientID != "gh-id-123" {
+		t.Errorf("provider[0] = %+v", c.Providers[0])
+	}
+	if c.Providers[1].Provider != "google" || c.Providers[1].ClientID != "g-id-789" {
+		t.Errorf("provider[1] = %+v", c.Providers[1])
+	}
+}
+
+func TestLoad_CommentsNormalization(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `
+interactions:
+  enabled: true
+  comments:
+    enabled: true
+    db_path: ""
+    auth_session_days: -1
+    providers:
+      - provider: "  GITHUB  "
+        client_id: "  id  "
+        client_secret: "  secret  "
+`)
+	cfg, err := Load(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	c := cfg.Interactions.Comments
+
+	// Empty db_path should default.
+	if c.DBPath != ".osg/comments.db" {
+		t.Errorf("DBPath = %q, want .osg/comments.db", c.DBPath)
+	}
+	// Negative session days should default to 30.
+	if c.AuthSessionDays != 30 {
+		t.Errorf("AuthSessionDays = %d, want 30", c.AuthSessionDays)
+	}
+	// Provider name should be lowercased and trimmed.
+	if c.Providers[0].Provider != "github" {
+		t.Errorf("provider = %q, want github", c.Providers[0].Provider)
+	}
+	// Client ID/secret should be trimmed.
+	if c.Providers[0].ClientID != "id" {
+		t.Errorf("client_id = %q, want id", c.Providers[0].ClientID)
+	}
+	if c.Providers[0].ClientSecret != "secret" {
+		t.Errorf("client_secret = %q, want secret", c.Providers[0].ClientSecret)
+	}
+}
+
+func TestLoad_CommentsInvalidProvider(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `
+interactions:
+  enabled: true
+  comments:
+    enabled: true
+    providers:
+      - provider: twitter
+        client_id: id
+        client_secret: secret
+`)
+	_, err := Load(filepath.Join(dir, "config.yaml"))
+	if err == nil {
+		t.Fatal("expected error for invalid provider")
+	}
+	if !strings.Contains(err.Error(), "must be github or google") {
+		t.Errorf("error = %q, want 'must be github or google'", err.Error())
+	}
+}
+
+func TestLoad_CommentsMissingClientID(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `
+interactions:
+  enabled: true
+  comments:
+    enabled: true
+    providers:
+      - provider: github
+        client_id: ""
+        client_secret: secret
+`)
+	_, err := Load(filepath.Join(dir, "config.yaml"))
+	if err == nil {
+		t.Fatal("expected error for missing client_id")
+	}
+	if !strings.Contains(err.Error(), "client_id is required") {
+		t.Errorf("error = %q, want 'client_id is required'", err.Error())
+	}
+}
+
+func TestLoad_CommentsMissingClientSecret(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `
+interactions:
+  enabled: true
+  comments:
+    enabled: true
+    providers:
+      - provider: github
+        client_id: id
+        client_secret: ""
+`)
+	_, err := Load(filepath.Join(dir, "config.yaml"))
+	if err == nil {
+		t.Fatal("expected error for missing client_secret")
+	}
+	if !strings.Contains(err.Error(), "client_secret is required") {
+		t.Errorf("error = %q, want 'client_secret is required'", err.Error())
+	}
+}

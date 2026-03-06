@@ -1,0 +1,34 @@
+# docker-compose.yml — OSG with interactions API + comments
+#
+# Usage:
+#   docker compose up -d
+#
+# Mount your site directory (with config.yaml) at /site.
+# SQLite databases are stored in the /data volume.
+
+services:
+  osg:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: "${OSG_VERSION:-dev}"
+    image: osg:latest
+    ports:
+      - "${OSG_LISTEN:-8090}:8090"
+    volumes:
+      # Persistent storage for interactions.db and comments.db.
+      - osg-data:/data
+      # Mount your site directory (must contain config.yaml).
+      - ${OSG_SITE_DIR:-.}:/site:ro
+    environment:
+      - OSG_INTERACTIONS__ENABLED=true
+      - OSG_INTERACTIONS__DB_PATH=/data/interactions.db
+      - OSG_INTERACTIONS__COMMENTS__ENABLED=${OSG_COMMENTS_ENABLED:-false}
+      - OSG_INTERACTIONS__COMMENTS__DB_PATH=/data/comments.db
+      - OSG_INTERACTIONS__COMMENTS__AUTH_CALLBACK_URL=${OSG_AUTH_CALLBACK_URL:-}
+    restart: unless-stopped
+
+volumes:
+  osg-data:
+    driver: local

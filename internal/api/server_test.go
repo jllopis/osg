@@ -26,7 +26,7 @@ func testServer(t *testing.T) (*Server, *Store) {
 		ViewDedupHours: 24,
 	}
 	logger := slog.Default()
-	srv := NewServer(store, cfg, logger)
+	srv := NewServer(store, cfg, logger, nil, nil)
 	return srv, store
 }
 
@@ -219,7 +219,7 @@ func TestCORS_AllowedOrigin(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	store, _ := NewStore(dbPath, 24)
 	defer store.Close()
-	srv := NewServer(store, cfg, slog.Default())
+	srv := NewServer(store, cfg, slog.Default(), nil, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/pageview",
 		bytes.NewReader([]byte(`{"path":"/a","fp":"x"}`)))
@@ -241,7 +241,7 @@ func TestCORS_Preflight(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	store, _ := NewStore(dbPath, 24)
 	defer store.Close()
-	srv := NewServer(store, cfg, slog.Default())
+	srv := NewServer(store, cfg, slog.Default(), nil, nil)
 
 	req := httptest.NewRequest(http.MethodOptions, "/api/v1/pageview", nil)
 	req.Header.Set("Origin", "https://example.com")

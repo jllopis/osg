@@ -1,0 +1,17 @@
+# deploy/k8s/service.yaml — Expose the OSG API server
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: osg
+  labels:
+    app: osg
+spec:
+  type: ClusterIP
+  selector:
+    app: osg
+  ports:
+    - name: http
+      port: 8090
+      targetPort: http
+      protocol: TCP

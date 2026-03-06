@@ -7,8 +7,10 @@ import (
 
 // CORSMiddleware returns a handler that sets CORS headers and handles
 // preflight OPTIONS requests. If allowedOrigins is empty, CORS headers
-// are not set (same-origin only).
-func CORSMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
+// are not set (same-origin only). When withCredentials is true (comments
+// enabled), Access-Control-Allow-Credentials is set and wildcard origins
+// are expanded to the request origin.
+func CORSMiddleware(allowedOrigins []string, withCredentials bool, next http.Handler) http.Handler {
 	if len(allowedOrigins) == 0 {
 		return next
 	}
@@ -21,6 +23,11 @@ func CORSMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 			allowAll = true
 		}
 		originSet[o] = true
+	}
+
+	allowedMethods := "POST, OPTIONS"
+	if withCredentials {
+		allowedMethods = "GET, POST, DELETE, OPTIONS"
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -36,15 +43,22 @@ func CORSMiddleware(allowedOrigins []string, next http.Handler) http.Handler {
 			return
 		}
 
-		if allowAll {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-		} else {
+		// When credentials are needed, cannot use wildcard origin — must
+		// echo the specific origin.
+		if withCredentials || !allowAll {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Vary", "Origin")
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 		}
-		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+
+		w.Header().Set("Access-Control-Allow-Methods", allowedMethods)
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		if withCredentials {
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		}
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)

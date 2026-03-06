@@ -94,3 +94,16 @@ share_on: "Compartir en"
 share_via_email: "Compartir por email"
 copy_link: "Copiar enlace"
 link_copied: "Enlace copiado!"
+
+# --- Comentarios ---
+comments: Comentarios
+comments_login: "Inicia sesion para comentar"
+comments_login_with: "Iniciar sesion con"
+comments_logout: "Cerrar sesion"
+comments_placeholder: "Escribe un comentario..."
+comments_submit: "Publicar comentario"
+comments_reply: Responder
+comments_delete: Eliminar
+comments_deleted: "[comentario eliminado]"
+comments_no_comments: "Aun no hay comentarios. Se el primero!"
+comments_login_required: "Inicia sesion para dejar un comentario."

@@ -127,6 +127,42 @@
           {{ end }}
           {{ end }}
 
+          {{ block "page-comments" . }}
+          {{ if .config.comments_enabled }}
+          <section class="comments-section container-narrow" id="osg-comments"
+                   data-api-url="{{ .config.interactions_api_url }}"
+                   data-page-path="{{ get_url .page.path true false }}">
+            <h2 class="section-heading">{{ trans "comments" .lang }}</h2>
+
+            {{- /* Login buttons (shown by JS when user is not authenticated) */ -}}
+            <div class="comments-login" hidden>
+              <p class="comments-login-prompt">{{ trans "comments_login_required" .lang }}</p>
+              <div class="comments-login-buttons">
+                {{ range .config.comments_providers }}
+                <a class="comments-login-btn" data-provider="{{ .provider }}" href="#">
+                  {{ trans "comments_login_with" $.lang }} {{ .label }}
+                </a>
+                {{ end }}
+              </div>
+            </div>
+
+            {{- /* Comment form (shown by JS when user is authenticated) */ -}}
+            <form class="comments-form" hidden>
+              <div class="comments-form-user"></div>
+              <textarea class="comments-input" placeholder="{{ trans "comments_placeholder" .lang }}" rows="3" required></textarea>
+              <div class="comments-form-actions">
+                <button class="comments-submit" type="submit">{{ trans "comments_submit" .lang }}</button>
+              </div>
+            </form>
+
+            {{- /* Comment list (populated by JS) */ -}}
+            <div class="comments-list">
+              <p class="comments-empty">{{ trans "comments_no_comments" .lang }}</p>
+            </div>
+          </section>
+          {{ end }}
+          {{ end }}
+
           {{ block "page-nav" . }}
           {{- /* --- Prev / Next Navigation --- */ -}}
           {{ if or .prev_page .next_page }}
@@ -184,6 +220,7 @@
     {{ if .config.lightbox }}<script src="{{ get_url "/js/lightbox.js" false true }}"></script>{{ end }}
     {{ if .config.interactions_enabled }}<script src="{{ get_url "/js/interactions.js" false true }}"></script>{{ end }}
     {{ if .config.sharing }}<script src="{{ get_url "/js/share.js" false true }}"></script>{{ end }}
+    {{ if .config.comments_enabled }}<script src="{{ get_url "/js/comments.js" false true }}"></script>{{ end }}
     <script src="{{ get_url "/js/tabs.js" false true }}"></script>
     <script src="{{ get_url "/js/progress.js" false true }}"></script>
     {{ end }}

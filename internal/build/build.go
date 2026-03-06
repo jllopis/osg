@@ -794,7 +794,29 @@ func configView(cfg config.Config) map[string]any {
 		"taxonomies":           taxonomies,
 		"interactions_enabled": cfg.Interactions.Enabled,
 		"interactions_api_url": cfg.Interactions.APIURL,
+		"comments_enabled":     cfg.Interactions.Comments.Enabled && len(cfg.Interactions.Comments.Providers) > 0,
+		"comments_providers":   commentsProvidersView(cfg.Interactions.Comments),
 	}
+}
+
+// commentsProvidersView builds the template-friendly slice of comment
+// auth providers (provider name + display label).
+func commentsProvidersView(ccfg config.CommentsConfig) []map[string]any {
+	var providers []map[string]any
+	for _, p := range ccfg.Providers {
+		label := p.Provider
+		switch p.Provider {
+		case "github":
+			label = "GitHub"
+		case "google":
+			label = "Google"
+		}
+		providers = append(providers, map[string]any{
+			"provider": p.Provider,
+			"label":    label,
+		})
+	}
+	return providers
 }
 
 func languagesView(cfg config.Config) []map[string]any {

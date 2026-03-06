@@ -1,0 +1,29 @@
+# deploy/k8s/configmap.yaml — OSG configuration
+#
+# Stores the osg config.yaml used by the API server.
+# Edit the data section to match your site configuration.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: osg-config
+  labels:
+    app: osg
+data:
+  config.yaml: |
+    site_title: "My OSG Site"
+    base_url: "https://example.com"
+    interactions:
+      enabled: true
+      listen: ":8090"
+      db_path: "/data/interactions.db"
+      view_dedup_hours: 24
+      comments:
+        enabled: true
+        db_path: "/data/comments.db"
+        auth_session_days: 30
+        auth_callback_url: "https://example.com"
+        providers:
+          - provider: github
+            client_id: "REPLACE_ME"
+            client_secret: "REPLACE_ME"

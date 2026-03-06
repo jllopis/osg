@@ -1233,5 +1233,279 @@ El bloque share esta condicionado a `{{ if and .config.sharing .page.permalink }
 - Tests: `internal/config/config_test.go` (TestDefault_SharingEnabled, TestLoad_SharingDisabled)
 - Build: `internal/build/build.go` (sharing en configView), `build_test.go` (sharing en TestConfigView)
 
+## Comentarios (sistema de comentarios con OAuth2)
+
+Sistema de comentarios con autenticacion OAuth2 (GitHub, Google), hilos anidados con profundidad ilimitada y base de datos SQLite separada.
+
+### Arquitectura
+
+```
+Browser (comments.js)
+  |
+  |  GET  /api/v1/comments?page=/path          (publico)
+  |  POST /api/v1/comments                     (autenticado)
+  |  DELETE /api/v1/comments/{id}              (autenticado, solo propio)
+  |  GET  /api/v1/auth/me                      (cookie)
+  |  POST /api/v1/auth/logout                  (cookie)
+  |
+  v
+API Server (internal/api/)
+  |
+  v
+SQLite separada (comments.db)
+  users: id, provider, provider_id, name, avatar_url, timestamps
+  sessions: token, user_id, expires_at
+  comments: id, page_path, user_id, parent_id, body, deleted, timestamps
+```
+
+### Configuracion
+
+Seccion anidada bajo `interactions:` en `config.yaml`:
+
+```yaml
+interactions:
+  comments:
+    enabled: true                    # Activa comentarios (default: false)
+    db_path: ".osg/comments.db"      # BD SQLite separada de interactions.db
+    auth_session_days: 30            # Duracion de sesion (dias)
+    auth_callback_url: "https://misite.com"  # URL base para callbacks OAuth2
+    providers:
+      - provider: github
+        client_id: "..."
+        client_secret: "..."
+      - provider: google
+        client_id: "..."
+        client_secret: "..."
+```
+
+**Campos:**
+
+| Campo | Default | Descripcion |
+|-------|---------|-------------|
+| `enabled` | `false` | Activa el sistema de comentarios |
+| `db_path` | `".osg/comments.db"` | Ruta al fichero SQLite de comentarios (separada de interactions.db) |
+| `auth_session_days` | `30` | Dias de duracion de la sesion de autenticacion |
+| `auth_callback_url` | `""` | URL base para construir callbacks OAuth2 (https -> cookies seguras) |
+| `providers` | `[]` | Lista de proveedores OAuth2 (github, google) |
+
+Cada provider requiere `client_id` y `client_secret`. Providers invalidos (ni github ni google) producen error en `Load()`.
+
+### OAuth2 flow
+
+1. Usuario hace clic en "Login with GitHub/Google" → JS navega a `/api/v1/auth/{provider}?return_to=/current/page/`
+2. Server genera `state` aleatorio (crypto/rand), almacena `state|return_to` en cookie `osg_auth_state` (10 min, httpOnly, SameSite=Lax)
+3. Server redirige a la URL de autorizacion del provider (GitHub: `github.com/login/oauth/authorize`, Google: `accounts.google.com/o/oauth2/v2/auth`)
+4. Provider redirige a `/api/v1/auth/{provider}/callback?code=...&state=...`
+5. Server verifica state contra cookie, intercambia code por token, obtiene info de usuario
+6. Upsert user en BD (actualiza nombre/avatar si cambio), crea sesion (token aleatorio 32 bytes hex)
+7. Setea cookie `osg_session` (httpOnly, SameSite=Lax, 30 dias, Secure si `auth_callback_url` es https)
+8. Redirige al `return_to` original
+
+**Scopes:**
+- GitHub: `read:user` (nombre, avatar, login)
+- Google: `openid profile email` (nombre, avatar)
+
+### API Endpoints
+
+#### GET /api/v1/auth/{provider}
+
+Inicia flujo OAuth2. `provider` puede ser `github` o `google`. Query param `return_to` indica a donde redirigir tras login.
+
+#### GET /api/v1/auth/{provider}/callback
+
+Callback OAuth2. Verifica state, intercambia code, upsert user, crea sesion, redirige.
+
+#### GET /api/v1/auth/me
+
+Retorna el usuario autenticado (de la cookie `osg_session`). 401 si no hay sesion valida.
+
+```json
+// Response
+{ "id": 1, "name": "Joan", "avatar_url": "https://avatars...", "provider": "github" }
+```
+
+#### POST /api/v1/auth/logout
+
+Elimina sesion de la BD y borra cookie `osg_session`.
+
+#### GET /api/v1/comments?page=/path
+
+Lista comentarios de una pagina como arbol anidado. Publico (sin auth).
+
+```json
+// Response
+{
+  "comments": [
+    {
+      "id": 1,
+      "body": "Gran articulo!",
+      "author": { "name": "Joan", "avatar_url": "..." },
+      "created_at": "2025-03-06T10:00:00Z",
+      "deleted": false,
+      "replies": [
+        {
+          "id": 2,
+          "body": "Gracias!",
+          "parent_id": 1,
+          "author": { "name": "Ana", "avatar_url": "..." },
+          "created_at": "2025-03-06T11:00:00Z",
+          "deleted": false,
+          "replies": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+Los comentarios eliminados (soft-delete) se preservan en el arbol si tienen respuestas no eliminadas. Su body se vacia y el autor se anonimiza como "[deleted]". Los comentarios eliminados sin respuestas se podan del arbol.
+
+#### POST /api/v1/comments
+
+Crea un comentario. Requiere sesion valida.
+
+```json
+// Request
+{ "page_path": "/2025/03/06/mi-post/", "body": "Gran articulo!", "parent_id": null }
+
+// Response (comment object)
+{ "id": 3, "body": "Gran articulo!", "author": { ... }, "created_at": "...", "deleted": false }
+```
+
+Validacion: `page_path` obligatorio, `body` obligatorio y max 10000 caracteres, `parent_id` si presente debe existir y pertenecer a la misma pagina.
+
+#### DELETE /api/v1/comments/{id}
+
+Soft-delete de un comentario. Solo el autor puede eliminar sus propios comentarios. 403 si el usuario no es el autor.
+
+### CommentStore (BD separada)
+
+`internal/api/comment_store.go` — SQLite separada de interactions.db para facilitar migracion futura a PostgreSQL u otro RDBMS.
+
+**Schema:**
+
+```sql
+CREATE TABLE users (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider    TEXT NOT NULL,
+  provider_id TEXT NOT NULL,
+  name        TEXT NOT NULL,
+  avatar_url  TEXT DEFAULT '',
+  created_at  DATETIME DEFAULT (datetime('now')),
+  updated_at  DATETIME DEFAULT (datetime('now')),
+  UNIQUE(provider, provider_id)
+);
+
+CREATE TABLE sessions (
+  token      TEXT PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME DEFAULT (datetime('now'))
+);
+
+CREATE TABLE comments (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_path  TEXT NOT NULL,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  parent_id  INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+  body       TEXT NOT NULL,
+  deleted    BOOLEAN DEFAULT FALSE,
+  created_at DATETIME DEFAULT (datetime('now')),
+  updated_at DATETIME DEFAULT (datetime('now'))
+);
+CREATE INDEX idx_comments_page ON comments(page_path, created_at);
+```
+
+**Foreign keys**: habilitadas via `PRAGMA foreign_keys = ON`. WAL mode + busy timeout para concurrencia.
+
+**Tree building**: `buildCommentTree()` usa algoritmo de dos pasos: (1) crea mapa id→comment, (2) enlaza hijos. `pruneDeletedLeaves()` elimina recursivamente comentarios borrados sin respuestas.
+
+### Frontend (comments.js)
+
+IIFE con `"use strict"` y declaraciones `var` (patron de compatibilidad, igual que `interactions.js` y `share.js`).
+
+**Funcionalidad:**
+- Deteccion de autenticacion via `GET /api/v1/auth/me` al cargar
+- Si no autenticado: muestra botones de login (GitHub/Google segun providers configurados)
+- Si autenticado: muestra formulario de comentario + avatar + nombre + boton logout
+- Listado recursivo de comentarios con profundidad visual (clases CSS `comment-depth-N`)
+- Respuesta inline: formulario de respuesta debajo de cada comentario
+- Eliminacion de propios comentarios
+- `timeAgo()` para timestamps relativos ("hace 5 minutos", "hace 2 dias")
+- HTML escaping para prevenir XSS
+- `credentials: "include"` en todos los fetch para enviar cookies
+
+### CSS
+
+Seccion COMMENTS en `style.css` (~200 lineas):
+
+- `.comments-section`: borde superior, padding, margin-top
+- `.comments-login`: botones de login con iconos SVG de GitHub/Google
+- `.comment-form`: textarea + boton submit con estilo Nord
+- `.comment-list`: lista de comentarios
+- `.comment`: flex row con avatar + contenido, borde izquierdo sutil
+- `.comment-depth-1` a `.comment-depth-5`: margin-left incremental (0, 1.5rem, 3rem, 4.5rem, 6rem). Profundidad >5 se aplana visualmente
+- `.comment-author`: nombre bold + timestamp
+- `.comment-body`: texto del comentario
+- `.comment-actions`: responder + eliminar
+- `.comment-deleted`: texto en italic gris para comentarios eliminados
+- Responsive: en movil se reduce el margin-left de nesting
+
+### i18n
+
+| Clave | en | es |
+|-------|----|----|
+| `comments` | Comments | Comentarios |
+| `comments_login` | Log in to comment | Inicia sesion para comentar |
+| `comments_login_github` | Log in with GitHub | Iniciar sesion con GitHub |
+| `comments_login_google` | Log in with Google | Iniciar sesion con Google |
+| `comments_placeholder` | Write a comment... | Escribe un comentario... |
+| `comments_submit` | Post comment | Publicar comentario |
+| `comments_reply` | Reply | Responder |
+| `comments_delete` | Delete | Eliminar |
+| `comments_deleted` | This comment has been deleted. | Este comentario ha sido eliminado. |
+| `comments_logout` | Logout | Cerrar sesion |
+| `comments_none` | No comments yet. Be the first! | Aun no hay comentarios. Se el primero! |
+| `comments_reply_to` | Reply to | Responder a |
+| `comments_cancel` | Cancel | Cancelar |
+
+### Template gating
+
+El bloque `page-comments` esta condicionado a `{{ if .config.comments_enabled }}`. El script `comments.js` solo se carga con la misma condicion. Los providers disponibles se pasan como `comments_providers` en `configView()` (lista de mapas con `name` y `label`).
+
+### Despliegue
+
+#### Dockerfile
+
+Multi-stage build: `golang:1.25-alpine` (builder) → `alpine:3.21` (runtime). Non-root user `osg`, volumenes para `/data` y `/site`. Entrypoint: `osg api --config /etc/osg/config.yaml`.
+
+#### docker-compose.yml
+
+Servicio `osg-api` con volumen `osg-data` para persistir las BDs. Soporta override de config via variables de entorno o fichero montado.
+
+#### Kubernetes
+
+- `deploy/k8s/configmap.yaml`: config.yaml como ConfigMap
+- `deploy/k8s/pvc.yaml`: 1Gi PVC para datos SQLite
+- `deploy/k8s/deployment.yaml`: single replica, probes en `/api/v1/health`, resource limits, non-root securityContext
+- `deploy/k8s/service.yaml`: ClusterIP en port 8090
+
+### Archivos
+
+- CommentStore: `internal/api/comment_store.go` (SQLite, schema, users, sessions, comments, tree building)
+- Auth handlers: `internal/api/auth.go` (OAuth2 flow, BuildAuthProviders, HandleLogin/Callback/Me/Logout)
+- Comment handlers: `internal/api/comments.go` (HandleList/Create/Delete, validation)
+- Server: `internal/api/server.go` (5-arg NewServer, rutas condicionales)
+- Middleware: `internal/api/middleware.go` (CORS con withCredentials)
+- CLI: `internal/app/api.go` (RunAPI con CommentStore), `internal/app/serve.go` (StartAPIHandler 4 retornos)
+- Config: `internal/config/config.go` (CommentsConfig, AuthProviderConfig, normalizacion)
+- Build: `internal/build/build.go` (comments_enabled, comments_providers en configView)
+- JS: `internal/theme/default/static/js/comments.js` (IIFE, auth, CRUD, tree rendering)
+- Template: `internal/theme/default/templates/page.html` (bloque page-comments)
+- CSS: `internal/theme/default/static/style.css` (seccion COMMENTS)
+- i18n: `internal/theme/default/i18n/en.yaml`, `es.yaml` (13 claves)
+- Deployment: `Dockerfile`, `docker-compose.yml`, `deploy/k8s/*.yaml`
+- Tests: `comment_store_test.go` (25), `auth_test.go` (21), `comments_test.go` (19), `config_test.go` (6 nuevos)
+
 ## Open questions
 - (ninguna pendiente)

@@ -1,0 +1,16 @@
+# deploy/k8s/pvc.yaml — Persistent volume for SQLite databases
+#
+# Stores interactions.db and comments.db.
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: osg-data
+  labels:
+    app: osg
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

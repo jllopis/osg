@@ -140,6 +140,34 @@ type InteractionsConfig struct {
 	// per page. Within this window the same fingerprint only counts once
 	// as a unique view, though total views are always incremented.
 	ViewDedupHours int `koanf:"view_dedup_hours" yaml:"view_dedup_hours"`
+	// Comments holds settings for the comment system.
+	Comments CommentsConfig `koanf:"comments" yaml:"comments"`
+}
+
+// CommentsConfig holds settings for the comment system.
+type CommentsConfig struct {
+	// Enabled activates the comment system.
+	Enabled bool `koanf:"enabled" yaml:"enabled"`
+	// DBPath is the path to the comments SQLite database file.
+	// Separate from the interactions DB for future portability.
+	DBPath string `koanf:"db_path" yaml:"db_path"`
+	// AuthSessionDays is how long auth sessions last (in days).
+	AuthSessionDays int `koanf:"auth_session_days" yaml:"auth_session_days"`
+	// AuthCallbackURL is the base URL for OAuth callbacks
+	// (e.g. "https://mysite.com"). If empty, derived from request Host.
+	AuthCallbackURL string `koanf:"auth_callback_url" yaml:"auth_callback_url"`
+	// Providers lists the OAuth2 providers available for login.
+	Providers []AuthProviderConfig `koanf:"providers" yaml:"providers"`
+}
+
+// AuthProviderConfig describes a single OAuth2 provider.
+type AuthProviderConfig struct {
+	// Provider is the provider name: "github", "google".
+	Provider string `koanf:"provider" yaml:"provider"`
+	// ClientID is the OAuth2 client ID.
+	ClientID string `koanf:"client_id" yaml:"client_id"`
+	// ClientSecret is the OAuth2 client secret.
+	ClientSecret string `koanf:"client_secret" yaml:"client_secret"`
 }
 
 func Default() Config {
@@ -195,6 +223,11 @@ func Default() Config {
 			Listen:         ":8090",
 			DBPath:         ".osg/interactions.db",
 			ViewDedupHours: 24,
+			Comments: CommentsConfig{
+				Enabled:         false,
+				DBPath:          ".osg/comments.db",
+				AuthSessionDays: 30,
+			},
 		},
 	}
 }
@@ -302,6 +335,33 @@ func Load(path string) (Config, error) {
 		cfg.Interactions.ViewDedupHours = 24
 	}
 	cfg.Interactions.APIURL = strings.TrimSpace(cfg.Interactions.APIURL)
+
+	// Normalise comments config.
+	cfg.Interactions.Comments.DBPath = strings.TrimSpace(cfg.Interactions.Comments.DBPath)
+	if cfg.Interactions.Comments.DBPath == "" {
+		cfg.Interactions.Comments.DBPath = ".osg/comments.db"
+	}
+	if cfg.Interactions.Comments.AuthSessionDays <= 0 {
+		cfg.Interactions.Comments.AuthSessionDays = 30
+	}
+	cfg.Interactions.Comments.AuthCallbackURL = strings.TrimSpace(cfg.Interactions.Comments.AuthCallbackURL)
+	for i, p := range cfg.Interactions.Comments.Providers {
+		cfg.Interactions.Comments.Providers[i].Provider = strings.ToLower(strings.TrimSpace(p.Provider))
+		cfg.Interactions.Comments.Providers[i].ClientID = strings.TrimSpace(p.ClientID)
+		cfg.Interactions.Comments.Providers[i].ClientSecret = strings.TrimSpace(p.ClientSecret)
+		switch cfg.Interactions.Comments.Providers[i].Provider {
+		case "github", "google":
+			// valid
+		default:
+			return cfg, fmt.Errorf("interactions.comments.providers[%d].provider %q: must be github or google", i, p.Provider)
+		}
+		if cfg.Interactions.Comments.Providers[i].ClientID == "" {
+			return cfg, fmt.Errorf("interactions.comments.providers[%d].client_id is required", i)
+		}
+		if cfg.Interactions.Comments.Providers[i].ClientSecret == "" {
+			return cfg, fmt.Errorf("interactions.comments.providers[%d].client_secret is required", i)
+		}
+	}
 
 	return cfg, nil
 }
@@ -641,6 +701,24 @@ logging:
 #     - "https://mysite.com"
 #   view_dedup_hours: 24     # Dedup window: same fingerprint counts as one
 #                            # unique view per page within this period.
+#
+# --- Comments (nested under interactions) ---
+# OAuth2-authenticated comment system with threaded replies.
+# Uses a separate SQLite database for future portability.
+#
+#   comments:
+#     enabled: true
+#     db_path: ".osg/comments.db"     # Separate DB for comments.
+#     auth_session_days: 30            # Login session lifetime in days.
+#     auth_callback_url: ""            # Base URL for OAuth callbacks.
+#                                      # Empty = derived from request Host.
+#     providers:                       # OAuth2 providers for login.
+#       - provider: github
+#         client_id: "your_github_client_id"
+#         client_secret: "your_github_client_secret"
+#       - provider: google
+#         client_id: "your_google_client_id"
+#         client_secret: "your_google_client_secret"
 `) + "\n"
 }
 

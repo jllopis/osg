@@ -68,11 +68,14 @@ func RunServe(ctx context.Context, opts CLIOptions) error {
 
 	// Optionally embed the interactions API.
 	if opts.ServeAPI {
-		apiSrv, apiStore, err := StartAPIHandler(cfg.Interactions, logger)
+		apiSrv, apiStore, commentStore, err := StartAPIHandler(cfg.Interactions, logger)
 		if err != nil {
 			return err
 		}
 		defer apiStore.Close()
+		if commentStore != nil {
+			defer commentStore.Close()
+		}
 		// Mount API routes under /api/v1/.
 		mux.Handle("/api/v1/", apiSrv.Handler())
 		logger.Info("interactions API embedded", "db", cfg.Interactions.DBPath)
