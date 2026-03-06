@@ -289,6 +289,41 @@ Formato: [todo|doing|done] Tarea
 [done] (Favicon) head.html: <link rel="icon"> con fallback config.favicon > config.logo > SVG inline Nord blue
 [done] (Favicon) Documentado en DefaultConfigYAML(), dual-file sync head.html
 
+[done] (Permalinks) Placeholders extendidos en content_layout: {year}, {month}, {day}, {title} ademas de {date} y {slug}
+[done] (Permalinks) expandPlaceholders() funcion interna compartida, {title} pasa por slug.Slugify()
+[done] (Permalinks) osg.permalink en frontmatter: override per-page de URL con soporte de placeholders
+[done] (Permalinks) Precedencia: osg.permalink > osg.path > content_layout
+[done] (Permalinks) Resolucion de titulo: osg.title > fm.title > fm.name > filename
+[done] (Permalinks) 15 tests unitarios (BuildOutputPath, ExpandPermalink, defaults, edge cases)
+
+[done] (Interactions) InteractionsConfig struct: enabled, api_url, listen, db_path, cors_origins, view_dedup_hours
+[done] (Interactions) Defaults: enabled=false, listen=":8090", db_path=".osg/interactions.db", view_dedup_hours=24
+[done] (Interactions) Validacion y normalizacion en Load(), 3 tests config
+[done] (Interactions) internal/api/store.go: SQLite store con modernc.org/sqlite (pure Go, sin CGO)
+[done] (Interactions) Schema: page_views (dedup por fingerprint/dia) + page_votes (PK page_path+fingerprint)
+[done] (Interactions) RecordView(), Vote() (UPSERT, retract=delete), GetStats()
+[done] (Interactions) internal/api/validation.go: PageViewRequest y VoteRequest con validacion
+[done] (Interactions) internal/api/middleware.go: CORS middleware con allowlist de origenes
+[done] (Interactions) internal/api/server.go: 3 endpoints (pageview, vote, health), stats en respuesta
+[done] (Interactions) 14 tests store + 13 tests server + 12 tests validation = 39 tests API
+[done] (Interactions) internal/app/api.go: RunAPI() standalone + StartAPIHandler() para embedding
+[done] (Interactions) cmd/osg/main.go: osg api command + osg serve --api flag
+[done] (Interactions) internal/app/serve.go: refactored a ServeMux, monta API cuando --api
+[done] (Interactions) interactions.js: fingerprinting client-side (UUID + browser chars -> SHA-256), sin IP
+[done] (Interactions) page.html: bloque page-interactions con views, like/dislike (SVG icons)
+[done] (Interactions) style.css: seccion INTERACTIONS Nord-themed, responsive, a11y
+[done] (Interactions) i18n: claves interactions_like, interactions_dislike (en + es)
+[done] (Interactions) Dual-file sync: page.html, interactions.js, style.css, en.yaml, es.yaml
+
+[done] (Sharing) Copy-link icon next to article title (hover on desktop, always visible on mobile)
+[done] (Sharing) Share section below article: X, LinkedIn, Bluesky, Email, Copy link buttons
+[done] (Sharing) share.js: clipboard helper, resolveURL() for absolute URLs from relative permalinks
+[done] (Sharing) sharing: true config (default enabled), conditional JS/template gating via .config.sharing
+[done] (Sharing) i18n: 5 keys (share, share_on, share_via_email, copy_link, link_copied) en + es
+[done] (Sharing) CSS: title copy-link opacity animation, share buttons with brand colors on hover
+[done] (Sharing) 2 config tests (default enabled, YAML disable) + sharing key in TestConfigView
+[done] (Sharing) Dual-file sync: page.html, share.js, style.css, en.yaml, es.yaml
+
 [todo] (Official plugins) CI pipeline: compilar plugins-src/ y publicar .wasm como release assets
 [todo] (Official plugins) Documentar instalacion via osg plugin install <nombre>
 [todo] (Official plugins) osg init auto-instala plugins oficiales activos en plugins_enabled que falten en plugins_dir

@@ -86,6 +86,73 @@ osg:
 - **author**: `osg.author` > `author` top-level. Se muestra en formato **Autor** &bull; fecha en articulos y listados
 - **path**: solo `osg.path` (sin fallback top-level)
 - **menu**: solo `osg.menu` (sin fallback top-level)
+- **permalink**: solo `osg.permalink` (sin fallback top-level). Precedencia sobre `osg.path` y `content_layout`
+
+### Permalinks configurables
+
+OSG soporta placeholders extendidos tanto en `content_layout` (config global) como en `osg.permalink` (per-page):
+
+**Placeholders disponibles:**
+
+| Placeholder | Descripcion | Ejemplo |
+|-------------|-------------|---------|
+| `{date}` | Fecha completa YYYY/MM/DD | `2025/03/06` |
+| `{year}` | Ano 4 digitos | `2025` |
+| `{month}` | Mes 2 digitos | `03` |
+| `{day}` | Dia 2 digitos | `06` |
+| `{slug}` | Slug derivado del titulo/frontmatter | `mi-post` |
+| `{title}` | Titulo slugificado (via `slug.Slugify()`) | `mi-titulo-largo` |
+
+**Precedencia de URL:**
+
+1. `osg.permalink` (maxima precedencia, soporta placeholders)
+2. `osg.path` (URL fija, tambien setea `menu_title`)
+3. `content_layout` de config (patron global)
+
+**Diferencia entre `osg.permalink` y `osg.path`:**
+
+- `osg.permalink` es **puramente URL**: no tiene side-effects. Soporta placeholders como `{year}`, `{slug}`, etc.
+- `osg.path` ademas setea `menu_title` cuando `osg.menu=true`. No soporta placeholders.
+
+**Ejemplos en frontmatter:**
+
+```yaml
+---
+title: Mi Articulo Especial
+osg:
+  publish: true
+  permalink: "blog/{year}/{slug}"   # -> /blog/2025/mi-articulo-especial/
+---
+```
+
+```yaml
+---
+title: Guia de Instalacion
+osg:
+  publish: true
+  permalink: "docs/{title}"         # -> /docs/guia-de-instalacion/
+---
+```
+
+**Ejemplos de `content_layout` en config.yaml:**
+
+```yaml
+# Layout por defecto (fecha completa + slug)
+content_layout: "{date}/{slug}"           # -> /2025/03/06/mi-post/
+
+# Solo ano y slug
+content_layout: "{year}/{slug}"           # -> /2025/mi-post/
+
+# Prefijo blog + titulo
+content_layout: "blog/{year}/{month}/{title}"  # -> /blog/2025/03/mi-titulo/
+
+# Flat: solo slug
+content_layout: "{slug}"                  # -> /mi-post/
+```
+
+**Resolucion de titulo para `{title}`:**
+
+El placeholder `{title}` usa la misma cadena de precedencia que el titulo de pagina: `osg.title` > `fm.title` > `fm.name` > filename. El titulo se pasa por `slug.Slugify()` para generar URLs validas.
 
 ### Paginas standalone (osg.path + osg.menu)
 
@@ -610,6 +677,561 @@ El primer argumento posicional se asigna a `_pos`.
 - Tests: `internal/markdown/shortcode_test.go` (33 tests)
 - CSS: `style.css` (secciones ADMONITIONS, DETAILS, FIGURE, EMBEDS, TABS)
 - JS: `static/js/tabs.js` (zero-dependency, a11y, keyboard nav)
+
+## Interacciones (vistas y likes)
+
+Sistema de interacciones para articulos: contador de vistas (total + unicas) y votacion like/dislike.
+
+### Arquitectura
+
+```
+Browser (interactions.js)
+  |
+  |  POST /api/v1/pageview  { path, fp }
+  |  POST /api/v1/vote      { path, fp, vote }
+  |
+  v
+API Server (internal/api/)
+  |
+  v
+SQLite (modernc.org/sqlite, pure Go)
+  page_views: total + dedup por fingerprint/dia
+  page_votes: un voto por fingerprint/pagina
+```
+
+### Modos de ejecucion
+
+1. **Standalone**: `osg api` levanta solo el API server (para produccion con proxy inverso)
+2. **Embedded**: `osg serve --api` embebe la API en el mismo servidor de preview (para desarrollo)
+
+### Configuracion
+
+Seccion `interactions:` en `config.yaml`:
+
+```yaml
+interactions:
+  enabled: true                    # Activa vistas y likes (default: false)
+  api_url: ""                      # URL del API para el browser (vacio = same origin)
+  listen: ":8090"                  # Direccion del servidor standalone (osg api)
+  db_path: ".osg/interactions.db"  # Ruta del fichero SQLite
+  cors_origins:                    # Origenes permitidos para CORS
+    - "https://misite.com"
+  view_dedup_hours: 24             # Ventana de dedup para vistas unicas (horas)
+```
+
+**Campos:**
+
+| Campo | Default | Descripcion |
+|-------|---------|-------------|
+| `enabled` | `false` | Activa el sistema de interacciones |
+| `api_url` | `""` | URL base de la API vista desde el browser. Vacio = mismo origen (util con `osg serve --api`) |
+| `listen` | `":8090"` | Direccion para `osg api` standalone |
+| `db_path` | `".osg/interactions.db"` | Ruta al fichero SQLite (se crea automaticamente) |
+| `cors_origins` | `[]` | Lista de origenes CORS permitidos. Vacia = sin CORS headers |
+| `view_dedup_hours` | `24` | Horas de ventana para dedup de vistas unicas por fingerprint/pagina |
+
+### API Endpoints
+
+#### POST /api/v1/pageview
+
+Registra una vista de pagina. Siempre incrementa el total; la vista unica se dedup por fingerprint + dia.
+
+```json
+// Request
+{ "path": "/2025/03/06/mi-post/", "fp": "a1b2c3d4..." }
+
+// Response
+{ "views": 42, "unique": 28, "likes": 5, "dislikes": 1, "user_vote": 0 }
+```
+
+#### POST /api/v1/vote
+
+Registra un voto. `vote`: 1=like, -1=dislike, 0=retract (elimina voto previo).
+
+```json
+// Request (like)
+{ "path": "/2025/03/06/mi-post/", "fp": "a1b2c3d4...", "vote": 1 }
+
+// Response
+{ "views": 42, "unique": 28, "likes": 6, "dislikes": 1, "user_vote": 1 }
+```
+
+#### GET /api/v1/health
+
+```json
+{ "status": "ok" }
+```
+
+### Fingerprinting client-side
+
+El fingerprint se genera 100% en el browser, sin usar IP del servidor (usuarios detras de proxies comparten IP; IPs domesticas cambian).
+
+**Algoritmo:**
+
+1. UUID aleatorio generado y almacenado en `localStorage` (persistente por browser)
+2. Caracteristicas del browser: User-Agent, screen resolution, devicePixelRatio, timezone, language, platform, hardwareConcurrency, colorDepth
+3. Se concatena UUID + caracteristicas y se hashea con SHA-256 (via `crypto.subtle.digest`)
+
+Resultado: hash de 64 chars hex, estable para el mismo browser/dispositivo.
+
+**Privacidad:**
+- No se recoge IP del servidor
+- No se usan cookies
+- Respeta `navigator.doNotTrack` (si activo, no registra nada)
+- El fingerprint es un hash one-way, no reversible a datos personales
+
+### Schema SQLite
+
+```sql
+-- Vistas: una fila por visit (total), dedup por unique index
+CREATE TABLE page_views (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  page_path  TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  created_at DATETIME DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX idx_page_views_dedup
+  ON page_views(page_path, fingerprint, date(created_at));
+
+-- Votos: un voto por fingerprint/pagina
+CREATE TABLE page_votes (
+  page_path   TEXT NOT NULL,
+  fingerprint TEXT NOT NULL,
+  vote        INTEGER NOT NULL CHECK(vote IN (-1, 1)),
+  created_at  DATETIME DEFAULT (datetime('now')),
+  updated_at  DATETIME DEFAULT (datetime('now')),
+  PRIMARY KEY (page_path, fingerprint)
+);
+```
+
+**Dedup de vistas:** `INSERT OR IGNORE` + unique index. Dentro del mismo dia natural (UTC), el mismo fingerprint en la misma pagina solo genera una fila (una vista unica). `COUNT(*)` = vistas por dia-visitor, `COUNT(DISTINCT fingerprint)` = visitantes unicos.
+
+### UI en templates
+
+El bloque `page-interactions` se inserta entre `page-taxonomies` y `page-nav` en `page.html`:
+
+- **Icono de ojo** + contador de vistas
+- **Boton like** (pulgar arriba) + contador
+- **Boton dislike** (pulgar abajo) + contador
+- Estado visual: botones con `aria-pressed="true"` y clase `.active` cuando el usuario ha votado
+
+CSS: seccion INTERACTIONS en `style.css` (~80 lineas). Colores Nord, layout flex, responsive.
+
+JS condicional: solo se carga `interactions.js` si `interactions.enabled=true` en config.
+
+### Ejemplos de uso
+
+#### Desarrollo local (todo embebido)
+
+```yaml
+# config.yaml
+interactions:
+  enabled: true
+  # api_url vacio = mismo origen (osg serve --api)
+```
+
+```bash
+osg serve --api
+# Sirve el sitio en :1313 con API embebida
+# Las interacciones funcionan inmediatamente
+```
+
+#### Produccion (API standalone)
+
+```yaml
+# config.yaml
+interactions:
+  enabled: true
+  api_url: "https://api.misite.com"
+  listen: ":8090"
+  db_path: "/var/lib/osg/interactions.db"
+  cors_origins:
+    - "https://misite.com"
+    - "https://www.misite.com"
+```
+
+```bash
+# Servidor 1: sitio estatico servido por nginx/caddy
+# Servidor 2 (o mismo servidor, otro puerto):
+osg api
+# -> interactions API listening addr=:8090 db=/var/lib/osg/interactions.db
+```
+
+#### Detras de proxy inverso (nginx)
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name api.misite.com;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+### Despliegue en servidor propio
+
+Guia paso a paso para ejecutar la API de interacciones en un servidor dedicado
+(VPS, maquina propia, etc.) con el sitio estatico servido desde Cloudflare u
+otro CDN.
+
+#### 1. Compilar el binario
+
+```bash
+# En la maquina de desarrollo:
+GOOS=linux GOARCH=amd64 go build -o osg ./cmd/osg
+
+# Copiar al servidor:
+scp osg user@miservidor:/usr/local/bin/osg
+```
+
+#### 2. Configurar en el servidor
+
+Crear directorio de datos y config minimo:
+
+```bash
+sudo mkdir -p /var/lib/osg
+sudo chown osg:osg /var/lib/osg
+
+cat > /etc/osg/config.yaml << 'EOF'
+interactions:
+  enabled: true
+  listen: ":8090"
+  db_path: "/var/lib/osg/interactions.db"
+  cors_origins:
+    - "https://misite.com"
+    - "https://www.misite.com"
+EOF
+```
+
+La base de datos SQLite se crea automaticamente en el primer arranque.
+
+#### 3. Servicio systemd
+
+```ini
+# /etc/systemd/system/osg-api.service
+[Unit]
+Description=OSG Interactions API
+After=network.target
+
+[Service]
+Type=simple
+User=osg
+Group=osg
+WorkingDirectory=/var/lib/osg
+ExecStart=/usr/local/bin/osg api --config /etc/osg/config.yaml
+Restart=on-failure
+RestartSec=5
+
+# Seguridad
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/osg
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now osg-api
+sudo systemctl status osg-api
+# -> Active: active (running)
+# -> interactions API listening addr=:8090 db=/var/lib/osg/interactions.db
+```
+
+#### 4. Proxy inverso (Caddy o nginx)
+
+**Caddy** (opcion simple, HTTPS automatico):
+
+```
+api.misite.com {
+    reverse_proxy localhost:8090
+}
+```
+
+**nginx** (con certificado propio o Let's Encrypt):
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name api.misite.com;
+    ssl_certificate     /etc/letsencrypt/live/api.misite.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.misite.com/privkey.pem;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+#### 5. Configurar el sitio estatico
+
+En el `config.yaml` del sitio (el que se usa para `osg build`):
+
+```yaml
+interactions:
+  enabled: true
+  api_url: "https://api.misite.com"
+```
+
+`api_url` es la URL publica que el navegador del visitante usara para
+llamar a la API. Debe coincidir con el dominio del proxy inverso.
+
+Tras `osg build`, el HTML generado incluira el JS de interacciones que
+apunta a esa URL. No requiere rebuild para cambiar el servidor API (el
+JS lee `api_url` del atributo `data-api-url` en el HTML).
+
+#### 6. Verificar
+
+```bash
+# Desde cualquier maquina:
+curl https://api.misite.com/api/v1/health
+# -> {"status":"ok"}
+
+# Registrar una vista de prueba:
+curl -X POST https://api.misite.com/api/v1/pageview \
+  -H "Content-Type: application/json" \
+  -d '{"path":"/test/","fp":"abc123"}'
+# -> {"views":1,"unique":1,"likes":0,"dislikes":0,"user_vote":0}
+```
+
+#### Backup de la base de datos
+
+La BD es un unico fichero SQLite. Backup simple con cron:
+
+```bash
+# /etc/cron.daily/osg-backup
+#!/bin/sh
+sqlite3 /var/lib/osg/interactions.db ".backup /var/backups/osg/interactions-$(date +%Y%m%d).db"
+find /var/backups/osg -name "interactions-*.db" -mtime +30 -delete
+```
+
+### Despliegue con container OCI (Podman / Docker)
+
+Alternativa al despliegue con systemd: ejecutar `osg api` como container.
+Los comandos usan `podman`, pero son intercambiables con `docker`.
+
+#### Containerfile
+
+```dockerfile
+# -- Build stage --
+FROM docker.io/library/golang:1.25-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /osg ./cmd/osg
+
+# -- Runtime stage --
+FROM docker.io/library/alpine:3.21
+RUN apk add --no-cache sqlite ca-certificates \
+    && addgroup -S osg && adduser -S osg -G osg
+COPY --from=build /osg /usr/local/bin/osg
+USER osg
+EXPOSE 8090
+VOLUME ["/data"]
+ENTRYPOINT ["osg", "api"]
+CMD ["--config", "/etc/osg/config.yaml"]
+```
+
+`sqlite` se instala para disponer del CLI de backup (`.backup`). El
+binario Go no lo necesita (usa `modernc.org/sqlite`, pure Go).
+
+#### Construir la imagen
+
+```bash
+podman build -t osg-api:latest .
+```
+
+#### Ejecutar
+
+```bash
+# Crear volumen para persistir la BD
+podman volume create osg-data
+
+# Ejecutar con config minima via variables de entorno
+podman run -d \
+  --name osg-api \
+  --restart always \
+  -p 8090:8090 \
+  -v osg-data:/data \
+  -e OSG_INTERACTIONS__ENABLED=true \
+  -e OSG_INTERACTIONS__LISTEN=":8090" \
+  -e OSG_INTERACTIONS__DB_PATH="/data/interactions.db" \
+  -e 'OSG_INTERACTIONS__CORS_ORIGINS=https://misite.com,https://www.misite.com' \
+  osg-api:latest
+
+# Verificar
+podman logs osg-api
+# -> interactions API listening addr=:8090 db=/data/interactions.db
+
+curl http://localhost:8090/api/v1/health
+# -> {"status":"ok"}
+```
+
+Alternativa con fichero de config montado:
+
+```bash
+podman run -d \
+  --name osg-api \
+  --restart always \
+  -p 8090:8090 \
+  -v osg-data:/data \
+  -v ./config.yaml:/etc/osg/config.yaml:ro \
+  osg-api:latest
+```
+
+#### Compose (podman-compose / docker compose)
+
+```yaml
+# compose.yaml
+services:
+  osg-api:
+    build: .
+    container_name: osg-api
+    restart: always
+    ports:
+      - "8090:8090"
+    volumes:
+      - osg-data:/data
+      - ./config.yaml:/etc/osg/config.yaml:ro
+    environment:
+      - OSG_INTERACTIONS__ENABLED=true
+      - OSG_INTERACTIONS__DB_PATH=/data/interactions.db
+
+volumes:
+  osg-data:
+```
+
+```bash
+podman compose up -d
+```
+
+#### Backup de la BD en container
+
+```bash
+# Backup manual (copia el fichero SQLite del volumen)
+podman exec osg-api sqlite3 /data/interactions.db ".backup /data/backup.db"
+podman cp osg-api:/data/backup.db ./interactions-backup.db
+
+# Backup automatico con cron en el host
+# /etc/cron.daily/osg-container-backup
+#!/bin/sh
+podman exec osg-api sqlite3 /data/interactions.db \
+  ".backup /data/interactions-$(date +%Y%m%d).db"
+podman exec osg-api find /data -name "interactions-2*.db" -mtime +30 -delete
+```
+
+#### Actualizacion
+
+```bash
+# Reconstruir imagen con codigo nuevo
+podman build -t osg-api:latest .
+
+# Reemplazar container (la BD persiste en el volumen)
+podman stop osg-api && podman rm osg-api
+podman run -d \
+  --name osg-api \
+  --restart always \
+  -p 8090:8090 \
+  -v osg-data:/data \
+  -v ./config.yaml:/etc/osg/config.yaml:ro \
+  osg-api:latest
+```
+
+### Archivos
+
+- Store: `internal/api/store.go` (SQLite, schema, RecordView, Vote, GetStats)
+- Server: `internal/api/server.go` (HTTP handlers, routes)
+- Middleware: `internal/api/middleware.go` (CORS)
+- Validation: `internal/api/validation.go` (request types, validation)
+- CLI: `internal/app/api.go` (RunAPI, StartAPIHandler)
+- JS: `internal/theme/default/static/js/interactions.js` (fingerprinting, API calls, UI)
+- Template: `internal/theme/default/templates/page.html` (bloque page-interactions)
+- CSS: `internal/theme/default/static/style.css` (seccion INTERACTIONS)
+- Tests: `internal/api/store_test.go` (14), `server_test.go` (13), `validation_test.go` (12)
+
+## Sharing (boton compartir con popover)
+
+Boton compacto de compartir con popover desplegable (patron Medium). Al hacer clic en el boton "Compartir" aparece un dropdown con opciones de redes sociales y copiar enlace.
+
+### Configuracion
+
+```yaml
+# config.yaml
+sharing: true   # default: true
+```
+
+Campo `Sharing bool` en `Config` struct. Default `true` en `Default()`. Expuesto como `sharing` en `configView()` para templates.
+
+### Funcionalidad
+
+Boton unico `.share-toggle` con icono de red (circulos conectados) y texto "Compartir"/"Share". Al hacer clic, abre un popover (`.share-popover`) con las opciones:
+
+   - **X** (Twitter): `https://x.com/intent/tweet?url=<url>&text=<title>`
+   - **LinkedIn**: `https://www.linkedin.com/sharing/share-offsite/?url=<url>`
+   - **Bluesky**: `https://bsky.app/intent/compose?text=<title> <url>`
+   - **Email**: `mailto:?subject=<title>&body=<url>`
+   - *(separador)*
+   - **Copy link**: copia la URL al clipboard con feedback visual (check icon + texto "Enlace copiado!")
+
+El popover se cierra al hacer clic fuera o al pulsar Escape. El boton usa `aria-expanded` y `aria-haspopup` para accesibilidad.
+
+### Layout: barra de acciones unificada
+
+Interactions y sharing se fusionan en una sola barra `.article-actions`:
+
+```
+[eye + views] [like] [dislike]          [Compartir ▸]
+```
+
+- Izquierda: `.interactions-group` (vistas + votos juntos, flex row)
+- Derecha: `.share-wrap` (margin-left auto)
+- Si solo hay interactions (sharing disabled): la barra muestra solo vistas + votos
+- Si solo hay sharing (interactions disabled): la barra muestra solo el boton compartir
+- El bloque unico `page-actions` reemplaza los antiguos `page-interactions` + `page-share`
+
+### Resolucion de URLs
+
+Las URLs de sharing necesitan ser absolutas. `share.js` usa `resolveURL()` que crea un elemento `<a>` temporal para que el browser resuelva la URL relativa a absoluta (funciona incluso sin `base_url` en config).
+
+### Template gating
+
+El bloque share esta condicionado a `{{ if and .config.sharing .page.permalink }}`. El script `share.js` solo se carga con `{{ if .config.sharing }}`.
+
+### i18n
+
+| Clave | en | es |
+|-------|----|----|
+| `share` | Share | Compartir |
+| `share_on` | Share on | Compartir en |
+| `share_via_email` | Share via email | Compartir por email |
+| `copy_link` | Copy link | Copiar enlace |
+| `link_copied` | Link copied! | Enlace copiado! |
+
+### CSS
+
+- **ARTICLE ACTIONS BAR**: `.article-actions` (flex, space-between, borde, background surface). `.interactions-group` (flex row, vistas + votos). `.share-wrap` (margin-left auto, position relative).
+- **SHARE POPOVER**: `.share-toggle` (pill button, border-radius-full), `.share-popover` (absolute bottom-right, shadow-md, z-index 100), `.share-option` (fila con icono + texto, colores de marca en hover), `.share-divider` (hr entre opciones sociales y copy-link).
+
+### Archivos
+
+- JS: `internal/theme/default/static/js/share.js` (popover toggle, clipboard, resolveURL)
+- Template: `internal/theme/default/templates/page.html` (bloque page-actions)
+- CSS: `internal/theme/default/static/style.css` (secciones ARTICLE ACTIONS BAR y SHARE POPOVER)
+- i18n: `internal/theme/default/i18n/en.yaml`, `es.yaml` (5 claves)
+- Config: `internal/config/config.go` (Sharing bool, default true)
+- Tests: `internal/config/config_test.go` (TestDefault_SharingEnabled, TestLoad_SharingDisabled)
+- Build: `internal/build/build.go` (sharing en configView), `build_test.go` (sharing en TestConfigView)
 
 ## Open questions
 - (ninguna pendiente)

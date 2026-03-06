@@ -2703,3 +2703,248 @@ blockquote.quote > p {
   color: var(--accent);
   background: var(--accent-subtle);
 }
+
+/* ============================================================
+   TITLE PERMALINK
+   ============================================================ */
+.article-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.title-copy-link {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0;
+  color: var(--ink-muted);
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.title-copy-link svg {
+  width: 0.6em;
+  height: 0.6em;
+}
+
+.article-title-wrap:hover .title-copy-link,
+.title-copy-link:focus-visible {
+  opacity: 0.5;
+}
+
+.title-copy-link:hover,
+.title-copy-link:focus-visible {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* Mobile: always show the link icon */
+@media (max-width: 640px) {
+  .title-copy-link {
+    opacity: 0.35;
+  }
+}
+
+/* ============================================================
+   ARTICLE ACTIONS BAR (Interactions + Share)
+   ============================================================ */
+.article-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--sp-8);
+  padding: var(--sp-4) var(--sp-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  gap: var(--sp-4);
+}
+
+.interactions-group {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.interactions-views {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+}
+
+.interactions-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.interactions-votes {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.interactions-like-btn,
+.interactions-dislike-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  padding: var(--sp-1) var(--sp-3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  line-height: 1;
+}
+
+.interactions-like-btn:hover,
+.interactions-dislike-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.interactions-like-btn.active {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+  background: var(--accent-2-subtle);
+}
+
+.interactions-dislike-btn.active {
+  border-color: #bf616a;
+  color: #bf616a;
+  background: rgba(191, 97, 106, 0.10);
+}
+
+.interactions-like-btn:focus-visible,
+.interactions-dislike-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .article-actions {
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+  }
+}
+
+/* ============================================================
+   SHARE POPOVER
+   ============================================================ */
+.share-wrap {
+  position: relative;
+  display: inline-flex;
+  margin-left: auto;
+}
+
+.share-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  line-height: 1;
+}
+
+.share-toggle svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.share-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.share-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.share-toggle[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.share-popover {
+  position: absolute;
+  bottom: calc(100% + var(--sp-2));
+  right: 0;
+  min-width: 200px;
+  padding: var(--sp-2) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  z-index: 100;
+}
+
+.share-option {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-4);
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  line-height: 1.4;
+}
+
+.share-option svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.share-option:hover {
+  background: var(--accent-subtle);
+}
+
+.share-option:focus-visible {
+  outline: 2px solid var(--accent) inset;
+}
+
+/* Brand colors on hover */
+.share-x:hover         { color: #000; }
+[data-color-scheme="dark"] .share-x:hover { color: #fff; }
+.share-linkedin:hover  { color: #0a66c2; }
+.share-bluesky:hover   { color: #0085ff; }
+.share-email:hover     { color: var(--accent); }
+
+.share-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: var(--sp-2) var(--sp-4);
+}
+
+.share-copy.copied {
+  color: var(--accent-2);
+}

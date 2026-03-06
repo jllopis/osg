@@ -83,3 +83,14 @@ draft_banner: "You are viewing a draft. This page is not published."
 # These are Go time layout strings used by the date_format function.
 date_format_long: "January 2, 2006"
 date_format_short: "Jan 2, 2006"
+
+# --- Interactions ---
+interactions_like: Like
+interactions_dislike: Dislike
+
+# --- Sharing ---
+share: Share
+share_on: "Share on"
+share_via_email: "Share via email"
+copy_link: "Copy link"
+link_copied: "Link copied!"

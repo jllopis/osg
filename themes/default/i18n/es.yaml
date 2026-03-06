@@ -83,3 +83,14 @@ draft_banner: "Estas viendo un borrador. Esta pagina no esta publicada."
 # Cadenas de formato de fecha de Go usadas por la funcion date_format.
 date_format_long: "January 2, 2006"
 date_format_short: "Jan 2, 2006"
+
+# --- Interacciones ---
+interactions_like: Me gusta
+interactions_dislike: No me gusta
+
+# --- Compartir ---
+share: Compartir
+share_on: "Compartir en"
+share_via_email: "Compartir por email"
+copy_link: "Copiar enlace"
+link_copied: "Enlace copiado!"

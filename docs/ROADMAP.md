@@ -374,6 +374,68 @@
 - [done] Documentado en `DefaultConfigYAML()` (seccion Theme & appearance)
 - [done] Dual-file sync: head.html en internal/theme/ y themes/default/
 
+### Permalinks configurables (done)
+- [done] Placeholders extendidos en `content_layout`: `{year}`, `{month}`, `{day}`, `{title}` (ademas de `{date}` y `{slug}` existentes)
+- [done] `expandPlaceholders()` funcion interna compartida entre `BuildOutputPath` y `ExpandPermalink`
+- [done] `{title}` pasa por `slug.Slugify()` para URLs limpias
+- [done] `osg.permalink` en frontmatter: override per-page de URL con soporte de placeholders
+- [done] Precedencia: `osg.permalink` > `osg.path` > `content_layout`
+- [done] `osg.permalink` es solo URL (sin side-effects como `osg.path` que tambien setea `menu_title`)
+- [done] Resolucion de titulo para placeholders: osg.title > fm.title > fm.name > filename
+- [done] 15 tests unitarios (BuildOutputPath placeholders, ExpandPermalink, defaults, edge cases)
+
+### Interacciones: vistas y likes (done)
+- [done] `InteractionsConfig` struct en config.go: enabled, api_url, listen, db_path, cors_origins, view_dedup_hours
+- [done] Defaults: enabled=false, listen=":8090", db_path=".osg/interactions.db", view_dedup_hours=24
+- [done] Validacion y normalizacion en `Load()`: view_dedup_hours>=1, trailing slash en api_url
+- [done] `interactions_enabled` y `interactions_api_url` expuestos en `configView()` para templates
+- [done] 3 tests unitarios para config interactions (defaults, YAML loading, normalization)
+
+#### Backend: API server
+- [done] `internal/api/store.go`: SQLite store con `modernc.org/sqlite` (pure Go, sin CGO)
+- [done] Schema: `page_views` (page_path, fingerprint, created_at) + `page_votes` (page_path PK, fingerprint PK, vote, timestamps)
+- [done] `RecordView()`: INSERT total view + INSERT OR IGNORE para dedup por fingerprint/dia
+- [done] `Vote()`: UPSERT voto (1=like, -1=dislike, 0=retract delete)
+- [done] `GetStats()`: COUNT views, COUNT DISTINCT fingerprints (unique), SUM likes/dislikes, user_vote
+- [done] WAL mode + busy timeout para concurrencia
+- [done] `internal/api/validation.go`: PageViewRequest y VoteRequest con validacion (path, fingerprint, vote range)
+- [done] `internal/api/middleware.go`: CORS middleware con allowlist de origenes, preflight OPTIONS
+- [done] `internal/api/server.go`: HTTP server con 3 endpoints: POST /api/v1/pageview, POST /api/v1/vote, GET /api/v1/health
+- [done] Cada endpoint retorna stats completos: {views, unique, likes, dislikes, user_vote}
+- [done] 14 tests store + 13 tests server/CORS + 12 tests validation = 39 tests API
+
+#### CLI: comandos osg api y osg serve --api
+- [done] `internal/app/api.go`: RunAPI() servidor standalone, StartAPIHandler() para embedding
+- [done] `cmd/osg/main.go`: `APICmd` struct con --listen flag, `osg api` dispatch
+- [done] `ServeCmd.API` bool flag: `osg serve --api` embebe API endpoints en mismo servidor
+- [done] `internal/app/serve.go`: refactored de FileServer a ServeMux, monta API cuando --api activo
+- [done] Shell completion actualizado con `api` command
+
+#### Frontend: fingerprinting + UI
+- [done] `interactions.js`: client-side fingerprinting (UUID en localStorage + User-Agent, screen, devicePixelRatio, timezone, language, platform, hardwareConcurrency, colorDepth -> SHA-256)
+- [done] Sin IP address: usuarios detras de proxy comparten IP, IPs domesticas cambian
+- [done] Auto-registro de pageview al cargar pagina (respeta `navigator.doNotTrack`)
+- [done] Botones like/dislike con toggle, retract (voto 0), estado aria-pressed
+- [done] Actualizacion de contadores en tiempo real
+
+#### Templates y tema
+- [done] `page.html`: bloque `page-interactions` entre `page-taxonomies` y `page-nav`
+- [done] SVG icons inline: ojo (views), pulgar arriba (like), pulgar abajo (dislike)
+- [done] `style.css`: seccion INTERACTIONS (~80 lineas) con estilo Nord, responsive, focus-visible, active states
+- [done] i18n: claves `interactions_like` y `interactions_dislike` en en.yaml y es.yaml
+- [done] JS condicional: `{{ if .config.interactions_enabled }}<script src="interactions.js">{{ end }}`
+- [done] Dual-file sync: page.html, interactions.js, style.css, en.yaml, es.yaml
+
+### Sharing (social buttons + title copy-link) (done)
+- [done] Copy-link icon next to article `<h1>` (hover on desktop, always visible on mobile)
+- [done] Share section below article: X, LinkedIn, Bluesky, Email, Copy link buttons
+- [done] `share.js`: clipboard helper, `resolveURL()` for absolute URLs from relative permalinks
+- [done] `sharing: true` config (default enabled), conditional JS/template gating
+- [done] i18n: 5 keys (share, share_on, share_via_email, copy_link, link_copied)
+- [done] CSS: title copy-link opacity animation, share buttons with brand colors on hover
+- [done] 2 config tests (default enabled, YAML disable)
+- [done] Dual-file sync: page.html, share.js, style.css, en.yaml, es.yaml
+
 ### Official plugins — release assets (todo)
 
 Plugins mantenidos en el mismo repo (`plugins-src/`), compilados por CI,

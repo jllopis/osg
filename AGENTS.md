@@ -26,7 +26,8 @@ make test-coverage                         # tests + HTML coverage report
 ```
 cmd/osg/              CLI entry (Kong)
 internal/
-  app/                App struct, Version, CLI commands (init, tui, serve, new)
+  app/                App struct, Version, CLI commands (init, tui, serve, new, api)
+  api/                Interactions API: SQLite store, HTTP handlers, CORS, validation
   assets/             Sass pipeline, static copy, cachebust
   build/              HTML build: hierarchy, pagination, feeds, templates
   config/             Config struct, YAML loading, defaults, validation
@@ -108,7 +109,7 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
 ## Architecture Highlights
 
 - **osg frontmatter block**: Notes can have an `osg:` block in YAML frontmatter
-  with fields: `publish`, `featured`, `image`, `path`, `menu`, `abstract`, `author`
+  with fields: `publish`, `featured`, `image`, `path`, `permalink`, `menu`, `abstract`, `author`
 - **Standalone pages**: `osg.path` overrides the date-based content layout;
   `osg.menu: true` adds the page to nav and excludes it from post listings
 - **Summary strategies**: `summary_strategy` in config (auto/manual/ai);
@@ -158,6 +159,38 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
   relative paths don't resolve correctly.
 - **TUI**: Bubble Tea with 2-panel layout, slash commands, Nord palette
 
+- **Permalinks**: Configurable URL patterns with extended placeholders:
+  - `content_layout` supports `{date}`, `{year}`, `{month}`, `{day}`, `{slug}`, `{title}`
+  - `osg.permalink` per-page override (supports same placeholders)
+  - Precedence: `osg.permalink` > `osg.path` > `content_layout`
+  - `{title}` is run through `slug.Slugify()` for clean URLs
+  - `internal/content/content.go`: `BuildOutputPath`, `ExpandPermalink`, `expandPlaceholders`
+
+- **Interactions** (views + likes): Page interaction system with:
+  - SQLite backend (`modernc.org/sqlite`, pure Go, no CGO)
+  - `osg api` standalone server + `osg serve --api` embedded mode
+  - 3 API endpoints: `POST /api/v1/pageview`, `POST /api/v1/vote`, `GET /api/v1/health`
+  - Client-side fingerprinting (UUID in localStorage + browser characteristics → SHA-256)
+  - No IP address collection (intentional: proxied users share IPs)
+  - Respects `navigator.doNotTrack`
+  - View dedup: same fingerprint + same page + same day = one unique view
+  - Votes: like (+1), dislike (-1), retract (0), one vote per fingerprint per page
+  - Nord-styled UI at end of article: eye icon + view count, thumbs up/down buttons
+  - `internal/api/` package (store, server, middleware, validation)
+  - `internal/app/api.go` (RunAPI, StartAPIHandler)
+  - Config: `interactions:` block with `enabled`, `api_url`, `listen`, `db_path`, `cors_origins`, `view_dedup_hours`
+
+- **Sharing**: Compact share button with popover dropdown (Medium-style):
+  - Single "Share" button with network-nodes icon, toggles popover on click
+  - Popover options: X, LinkedIn, Bluesky, Email, Copy link (with divider)
+  - `share.js`: popover toggle, outside click/Escape close, clipboard, `resolveURL()`
+  - `sharing: true` config (default enabled), conditional JS loading
+  - Share URLs: X `intent/tweet`, LinkedIn `sharing/share-offsite`, Bluesky `intent/compose`
+  - i18n keys: `share`, `share_on`, `share_via_email`, `copy_link`, `link_copied`
+  - CSS: `.share-wrap` (relative), `.share-toggle` (pill button), `.share-popover` (absolute dropdown)
+  - Merged into unified `.article-actions` bar with interactions (views+votes left, share right)
+  - `internal/theme/default/static/js/share.js`, `page.html` block `page-actions`
+
 ## Current State (as of last session)
 
 All phases 1-16 complete plus stability/bugfix round.
@@ -166,9 +199,36 @@ Standalone Pages, `osg new`, i18n, Kairos AI summaries, AI cache all complete.
 Phase 13 (Draft preview), Phase 14 (Additional shortcodes), Phase 15 (Multi-language),
 and Phase 16 (Performance & benchmarks) complete.
 Test coverage expansion, shortcode docs, osg.title, menu_title, quote shortcode,
-and favicon support all complete.
+favicon support, configurable permalinks, interactions (views + likes), and
+sharing (social share popover) all complete.
 
 ### Recently completed (post v0.99)
+- **Sharing**: Social sharing buttons and title copy-link for articles.
+  Copy-link icon next to `<h1>` (hover on desktop, always visible on mobile).
+  Share section below article: X, LinkedIn, Bluesky, Email, Copy link buttons.
+  `share.js` with `resolveURL()` for absolute URLs from relative permalinks.
+  `sharing: true` config (default enabled), conditional JS/template gating.
+  i18n: 5 keys (share, share_on, share_via_email, copy_link, link_copied).
+  CSS: title copy-link animation, share buttons with brand hover colors.
+  2 config tests (default enabled, YAML disable). Dual-file sync.
+  **Redesigned** to Medium-style popover: single share button + dropdown.
+  Removed title copy-link from `<h1>`. Compact `.share-toggle` pill button
+  with network-nodes icon opens `.share-popover` (absolute positioned dropdown).
+  Options: X, LinkedIn, Bluesky, Email, Copy link with "copied" feedback.
+  Close on outside click or Escape. `aria-expanded`/`aria-haspopup` a11y.
+- **Permalinks**: Configurable URL patterns with extended placeholders.
+  `content_layout` supports `{date}`, `{year}`, `{month}`, `{day}`, `{slug}`, `{title}`.
+  `osg.permalink` per-page override with same placeholders.
+  Precedence: `osg.permalink` > `osg.path` > `content_layout`.
+  `{title}` slugified via `slug.Slugify()`. 15 tests.
+- **Interactions (views + likes)**: SQLite-backed page interaction system.
+  `internal/api/` package: store, server, CORS middleware, validation.
+  3 endpoints: `POST /api/v1/pageview`, `POST /api/v1/vote`, `GET /api/v1/health`.
+  Client-side fingerprinting (UUID + browser chars → SHA-256, no IP).
+  `osg api` standalone server + `osg serve --api` embedded mode.
+  `InteractionsConfig` in config: enabled, api_url, listen, db_path, cors_origins,
+  view_dedup_hours. Nord-styled UI block in `page.html`. interactions.js with
+  DoNotTrack support. 39 API tests + 3 config tests.
 - **Test coverage expansion**: 1,644 lines of new tests across 7 packages.
   date (100%), slug (100%), content (96.4%), vault (90.9%), config (88.9%),
   render (74.4%), theme (84.7%).
@@ -289,3 +349,4 @@ and favicon support all complete.
 - `github.com/fsnotify/fsnotify` - file watching
 - `github.com/tdewolff/minify` - HTML/CSS/JS minification
 - `github.com/jllopis/kairos` - AI/LLM framework (multi-provider: gemini, anthropic, openai, qwen, ollama)
+- `modernc.org/sqlite` - SQLite driver (pure Go, no CGO) for interactions API
