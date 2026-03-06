@@ -123,7 +123,7 @@ func testAuthHandlers(t *testing.T) (*AuthHandlers, *CommentStore) {
 	if err != nil {
 		t.Fatalf("NewCommentStore: %v", err)
 	}
-	t.Cleanup(func() { cs.Close() })
+	t.Cleanup(func() { _ = cs.Close() })
 
 	providers := map[string]*AuthProvider{
 		"github": {Name: "github"},
@@ -152,7 +152,7 @@ func TestHandleLogin_UnknownProvider(t *testing.T) {
 func TestHandleLogin_SetsCookieAndRedirects(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "comments.db")
 	cs, _ := NewCommentStore(dbPath, 30)
-	defer cs.Close()
+	defer func() { _ = cs.Close() }()
 
 	cfg := config.CommentsConfig{
 		Providers: []config.AuthProviderConfig{
@@ -200,7 +200,7 @@ func TestHandleLogin_SetsCookieAndRedirects(t *testing.T) {
 func TestHandleLogin_DefaultReturnTo(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "comments.db")
 	cs, _ := NewCommentStore(dbPath, 30)
-	defer cs.Close()
+	defer func() { _ = cs.Close() }()
 
 	cfg := config.CommentsConfig{
 		Providers: []config.AuthProviderConfig{
@@ -280,7 +280,7 @@ func TestHandleCallback_UnknownProvider(t *testing.T) {
 func TestHandleCallback_OAuthError(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "comments.db")
 	cs, _ := NewCommentStore(dbPath, 30)
-	defer cs.Close()
+	defer func() { _ = cs.Close() }()
 
 	cfg := config.CommentsConfig{
 		Providers: []config.AuthProviderConfig{
@@ -335,7 +335,7 @@ func TestHandleMe_Authenticated(t *testing.T) {
 	}
 
 	var resp map[string]any
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp["name"] != "Alice" {
 		t.Errorf("name = %v, want Alice", resp["name"])
 	}
@@ -398,7 +398,7 @@ func TestHandleLogout_NoSession(t *testing.T) {
 func TestGetUserFromRequest_NoCookie(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "comments.db")
 	cs, _ := NewCommentStore(dbPath, 30)
-	defer cs.Close()
+	defer func() { _ = cs.Close() }()
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	u := getUserFromRequest(req, cs)
@@ -410,7 +410,7 @@ func TestGetUserFromRequest_NoCookie(t *testing.T) {
 func TestGetUserFromRequest_EmptyCookie(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "comments.db")
 	cs, _ := NewCommentStore(dbPath, 30)
-	defer cs.Close()
+	defer func() { _ = cs.Close() }()
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.AddCookie(&http.Cookie{Name: "osg_session", Value: ""})
@@ -423,7 +423,7 @@ func TestGetUserFromRequest_EmptyCookie(t *testing.T) {
 func TestGetUserFromRequest_ValidSession(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "comments.db")
 	cs, _ := NewCommentStore(dbPath, 30)
-	defer cs.Close()
+	defer func() { _ = cs.Close() }()
 
 	user, _ := cs.UpsertUser("github", "1", "Alice", "", "")
 	token, _ := cs.CreateSession(user.ID)

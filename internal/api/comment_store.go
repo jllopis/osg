@@ -78,7 +78,7 @@ func NewCommentStore(dbPath string, authSessionDays int) (*CommentStore, error) 
 	}
 
 	if err := migrateComments(db); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("migrate comments db: %w", err)
 	}
 
@@ -235,7 +235,7 @@ func (s *CommentStore) ValidateSession(token string) (*User, error) {
 	}
 	if time.Now().UTC().After(expires) {
 		// Expired — clean up.
-		s.db.Exec(`DELETE FROM sessions WHERE token = ?`, token)
+		_, _ = s.db.Exec(`DELETE FROM sessions WHERE token = ?`, token)
 		return nil, nil
 	}
 
@@ -339,7 +339,7 @@ func (s *CommentStore) ListComments(pagePath string) ([]*Comment, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list comments: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var flat []*Comment
 	for rows.Next() {

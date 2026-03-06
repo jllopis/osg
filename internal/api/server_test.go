@@ -19,7 +19,7 @@ func testServer(t *testing.T) (*Server, *Store) {
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
-	t.Cleanup(func() { store.Close() })
+	t.Cleanup(func() { _ = store.Close() })
 
 	cfg := config.InteractionsConfig{
 		Enabled:        true,
@@ -53,7 +53,7 @@ func TestHandleHealth(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	var resp map[string]string
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp["status"] != "ok" {
 		t.Errorf("status = %q, want ok", resp["status"])
 	}
@@ -70,7 +70,7 @@ func TestHandlePageView_Success(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	var stats Stats
-	json.NewDecoder(rec.Body).Decode(&stats)
+	_ = json.NewDecoder(rec.Body).Decode(&stats)
 	if stats.Views != 1 {
 		t.Errorf("views = %d, want 1", stats.Views)
 	}
@@ -125,7 +125,7 @@ func TestHandleVote_Like(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	var stats Stats
-	json.NewDecoder(rec.Body).Decode(&stats)
+	_ = json.NewDecoder(rec.Body).Decode(&stats)
 	if stats.Likes != 1 {
 		t.Errorf("likes = %d, want 1", stats.Likes)
 	}
@@ -162,7 +162,7 @@ func TestHandleVote_Retract(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	var stats Stats
-	json.NewDecoder(rec.Body).Decode(&stats)
+	_ = json.NewDecoder(rec.Body).Decode(&stats)
 	if stats.Likes != 0 {
 		t.Errorf("likes = %d, want 0", stats.Likes)
 	}
@@ -184,7 +184,7 @@ func TestHandlePageView_ReturnsVoteInfo(t *testing.T) {
 	})
 
 	var stats Stats
-	json.NewDecoder(rec.Body).Decode(&stats)
+	_ = json.NewDecoder(rec.Body).Decode(&stats)
 	if stats.UserVote != 1 {
 		t.Errorf("user_vote = %d, want 1", stats.UserVote)
 	}
@@ -218,7 +218,7 @@ func TestCORS_AllowedOrigin(t *testing.T) {
 	}
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	store, _ := NewStore(dbPath, 24)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	srv := NewServer(store, cfg, slog.Default(), nil, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/pageview",
@@ -240,7 +240,7 @@ func TestCORS_Preflight(t *testing.T) {
 	}
 	dbPath := filepath.Join(t.TempDir(), "test.db")
 	store, _ := NewStore(dbPath, 24)
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 	srv := NewServer(store, cfg, slog.Default(), nil, nil)
 
 	req := httptest.NewRequest(http.MethodOptions, "/api/v1/pageview", nil)

@@ -16,7 +16,7 @@ func testCommentStore(t *testing.T) *CommentStore {
 	if err != nil {
 		t.Fatalf("NewCommentStore: %v", err)
 	}
-	t.Cleanup(func() { cs.Close() })
+	t.Cleanup(func() { _ = cs.Close() })
 	return cs
 }
 
@@ -46,7 +46,7 @@ func TestNewCommentStore_CreatesDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewCommentStore: %v", err)
 	}
-	defer cs.Close()
+	defer func() { _ = cs.Close() }()
 }
 
 func TestNewCommentStore_DefaultSessionDays(t *testing.T) {
@@ -55,7 +55,7 @@ func TestNewCommentStore_DefaultSessionDays(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewCommentStore: %v", err)
 	}
-	defer cs.Close()
+	defer func() { _ = cs.Close() }()
 	if cs.authSessionDays != 30 {
 		t.Errorf("authSessionDays = %d, want 30", cs.authSessionDays)
 	}
@@ -205,7 +205,7 @@ func TestValidateSession_ExpiredToken(t *testing.T) {
 
 	// Force-expire the session.
 	past := time.Now().UTC().Add(-1 * time.Hour).Format(time.RFC3339Nano)
-	cs.db.Exec(`UPDATE sessions SET expires_at = ? WHERE token = ?`, past, token)
+	_, _ = cs.db.Exec(`UPDATE sessions SET expires_at = ? WHERE token = ?`, past, token)
 
 	u, err := cs.ValidateSession(token)
 	if err != nil {
@@ -240,7 +240,7 @@ func TestCleanExpiredSessions(t *testing.T) {
 
 	// Expire token1.
 	past := time.Now().UTC().Add(-1 * time.Hour).Format(time.RFC3339Nano)
-	cs.db.Exec(`UPDATE sessions SET expires_at = ? WHERE token = ?`, past, token1)
+	_, _ = cs.db.Exec(`UPDATE sessions SET expires_at = ? WHERE token = ?`, past, token1)
 
 	if err := cs.CleanExpiredSessions(); err != nil {
 		t.Fatalf("CleanExpiredSessions: %v", err)
@@ -367,9 +367,9 @@ func TestListComments_FlatList(t *testing.T) {
 	cs := testCommentStore(t)
 	user := createTestUser(t, cs, "github", "1", "Alice")
 
-	cs.CreateComment("/posts/hello/", user.ID, 0, "First")
-	cs.CreateComment("/posts/hello/", user.ID, 0, "Second")
-	cs.CreateComment("/posts/hello/", user.ID, 0, "Third")
+	_, _ = cs.CreateComment("/posts/hello/", user.ID, 0, "First")
+	_, _ = cs.CreateComment("/posts/hello/", user.ID, 0, "Second")
+	_, _ = cs.CreateComment("/posts/hello/", user.ID, 0, "Third")
 
 	comments, err := cs.ListComments("/posts/hello/")
 	if err != nil {
@@ -390,7 +390,7 @@ func TestListComments_NestedTree(t *testing.T) {
 
 	root, _ := cs.CreateComment("/posts/hello/", alice.ID, 0, "Root comment")
 	reply1, _ := cs.CreateComment("/posts/hello/", bob.ID, root.ID, "Reply to root")
-	cs.CreateComment("/posts/hello/", alice.ID, reply1.ID, "Reply to reply")
+	_, _ = cs.CreateComment("/posts/hello/", alice.ID, reply1.ID, "Reply to reply")
 
 	comments, err := cs.ListComments("/posts/hello/")
 	if err != nil {
@@ -414,8 +414,8 @@ func TestListComments_DifferentPages(t *testing.T) {
 	cs := testCommentStore(t)
 	user := createTestUser(t, cs, "github", "1", "Alice")
 
-	cs.CreateComment("/posts/a/", user.ID, 0, "Page A")
-	cs.CreateComment("/posts/b/", user.ID, 0, "Page B")
+	_, _ = cs.CreateComment("/posts/a/", user.ID, 0, "Page A")
+	_, _ = cs.CreateComment("/posts/b/", user.ID, 0, "Page B")
 
 	commentsA, _ := cs.ListComments("/posts/a/")
 	commentsB, _ := cs.ListComments("/posts/b/")
@@ -433,7 +433,7 @@ func TestListComments_SoftDeletedLeafPruned(t *testing.T) {
 	user := createTestUser(t, cs, "github", "1", "Alice")
 
 	c, _ := cs.CreateComment("/posts/hello/", user.ID, 0, "To delete")
-	cs.SoftDeleteComment(c.ID)
+	_ = cs.SoftDeleteComment(c.ID)
 
 	comments, err := cs.ListComments("/posts/hello/")
 	if err != nil {
@@ -451,8 +451,8 @@ func TestListComments_SoftDeletedWithRepliesPreserved(t *testing.T) {
 	bob := createTestUser(t, cs, "github", "2", "Bob")
 
 	root, _ := cs.CreateComment("/posts/hello/", alice.ID, 0, "Root")
-	cs.CreateComment("/posts/hello/", bob.ID, root.ID, "Reply")
-	cs.SoftDeleteComment(root.ID)
+	_, _ = cs.CreateComment("/posts/hello/", bob.ID, root.ID, "Reply")
+	_ = cs.SoftDeleteComment(root.ID)
 
 	comments, err := cs.ListComments("/posts/hello/")
 	if err != nil {
@@ -578,7 +578,7 @@ func TestSession_CascadeDeleteUser(t *testing.T) {
 	token, _ := cs.CreateSession(user.ID)
 
 	// Delete the user directly.
-	cs.db.Exec(`DELETE FROM users WHERE id = ?`, user.ID)
+	_, _ = cs.db.Exec(`DELETE FROM users WHERE id = ?`, user.ID)
 
 	// Session should no longer resolve.
 	u, err := cs.ValidateSession(token)

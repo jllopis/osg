@@ -189,7 +189,9 @@ func openEditor(cfg config.Config, filePath string) error {
 	// Split the editor command in case it includes arguments
 	// (e.g. "code --wait" or "vim -u NONE").
 	parts := strings.Fields(editor)
-	args := append(parts[1:], filePath)
+	args := make([]string, 0, len(parts))
+	args = append(args, parts[1:]...)
+	args = append(args, filePath)
 
 	cmd := exec.Command(parts[0], args...)
 	cmd.Stdin = os.Stdin

@@ -147,13 +147,14 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 		pageLang := strings.ToLower(strings.TrimSpace(pickValue(fm, "lang", "language")))
 
 		var outputPath string
-		if osgPermalink != "" {
+		switch {
+		case osgPermalink != "":
 			// osg.permalink: highest precedence, supports placeholders
 			expanded := content.ExpandPermalink(osgPermalink, dateValue, slugValue, titleForPermalink)
 			outputPath = filepath.Join(cfg.ContentDir, expanded, "index.md")
-		} else if osgPath != "" {
+		case osgPath != "":
 			outputPath = filepath.Join(cfg.ContentDir, filepath.Clean(osgPath), "index.md")
-		} else {
+		default:
 			outputPath = content.BuildOutputPath(cfg.ContentDir, cfg.ContentLayout, dateValue, slugValue, titleForPermalink)
 		}
 

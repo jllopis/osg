@@ -331,14 +331,14 @@ func TestAddAndDeleteListItem(t *testing.T) {
 	}
 
 	cs.AddListItem()
-	val := cs.fieldValue("plugins_enabled")
+	cs.fieldValue("plugins_enabled")
 	// Should now be "search, " (the empty item gets ignored in display).
 	if !cs.dirtyFields["plugins_enabled"] {
 		t.Error("should be dirty after add")
 	}
 
 	cs.DeleteListItem()
-	val = cs.fieldValue("plugins_enabled")
+	val := cs.fieldValue("plugins_enabled")
 	if val != "search" {
 		t.Errorf("after delete = %q, want 'search'", val)
 	}
@@ -384,7 +384,7 @@ func TestSave_PreservesComments(t *testing.T) {
 	cs.StartEdit()
 	cs.fieldEditor.textInput.SetValue("Commented Title")
 	cs.ConfirmEdit()
-	cs.Save()
+	_ = cs.Save()
 
 	data, _ := os.ReadFile(path)
 	content := string(data)

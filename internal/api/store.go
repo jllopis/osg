@@ -46,7 +46,7 @@ func NewStore(dbPath string, viewDedupHours int) (*Store, error) {
 	}
 
 	if err := migrate(db); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("migrate db: %w", err)
 	}
 

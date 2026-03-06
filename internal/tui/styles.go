@@ -215,13 +215,6 @@ var (
 			Foreground(nordFg2).
 			Background(nordBg1)
 
-	cfgListItemStyle = lipgloss.NewStyle().
-				Foreground(nordFg0)
-
-	cfgListSelectedStyle = lipgloss.NewStyle().
-				Foreground(nordFg2).
-				Background(nordBg2)
-
 	cfgStructHeaderStyle = lipgloss.NewStyle().
 				Foreground(nordFrost1).
 				Bold(true)

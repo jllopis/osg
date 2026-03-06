@@ -90,7 +90,7 @@ func fetchGitHubUser(ctx context.Context, token *oauth2.Token) (*OAuthUserInfo, 
 	if err != nil {
 		return nil, fmt.Errorf("github user API: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -127,7 +127,7 @@ func fetchGoogleUser(ctx context.Context, token *oauth2.Token) (*OAuthUserInfo, 
 	if err != nil {
 		return nil, fmt.Errorf("google userinfo API: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -331,7 +331,7 @@ func (h *AuthHandlers) HandleMe(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandlers) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("osg_session")
 	if err == nil && cookie.Value != "" {
-		h.store.DeleteSession(cookie.Value)
+		_ = h.store.DeleteSession(cookie.Value)
 	}
 
 	// Clear the session cookie.

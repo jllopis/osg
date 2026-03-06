@@ -345,18 +345,19 @@ func (cs *ConfigScreen) renderHeader() string {
 
 func (cs *ConfigScreen) renderHintBar() string {
 	var hints []string
-	if cs.editing {
+	switch {
+	case cs.editing:
 		hints = append(hints,
 			hintKeyStyle.Render("Enter")+hintDescStyle.Render(" confirm"),
 			hintKeyStyle.Render("Esc")+hintDescStyle.Render(" cancel"),
 		)
-	} else if cs.confirmQuit {
+	case cs.confirmQuit:
 		hints = append(hints,
 			hintKeyStyle.Render("y")+hintDescStyle.Render(" save+quit"),
 			hintKeyStyle.Render("n")+hintDescStyle.Render(" quit"),
 			hintKeyStyle.Render("Esc")+hintDescStyle.Render(" cancel"),
 		)
-	} else {
+	default:
 		hints = append(hints,
 			hintKeyStyle.Render("Ctrl+S")+hintDescStyle.Render(" save"),
 			hintKeyStyle.Render("Esc")+hintDescStyle.Render(" back"),

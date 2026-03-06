@@ -13,7 +13,7 @@ func testStore(t *testing.T) *Store {
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
-	t.Cleanup(func() { store.Close() })
+	t.Cleanup(func() { _ = store.Close() })
 	return store
 }
 
@@ -31,7 +31,7 @@ func TestNewStore_CreatesDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewStore: %v", err)
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	if _, err := os.Stat(dir); err != nil {
 		t.Fatalf("expected directory to exist: %v", err)
@@ -57,7 +57,7 @@ func TestRecordView_DedupSameFingerprint(t *testing.T) {
 	store := testStore(t)
 
 	// Same fingerprint, same page — daily dedup means second insert is ignored.
-	store.RecordView("/posts/hello", "fp1")
+	_, _ = store.RecordView("/posts/hello", "fp1")
 	stats, err := store.RecordView("/posts/hello", "fp1")
 	if err != nil {
 		t.Fatalf("RecordView: %v", err)
@@ -74,7 +74,7 @@ func TestRecordView_DedupSameFingerprint(t *testing.T) {
 func TestRecordView_DifferentFingerprints(t *testing.T) {
 	store := testStore(t)
 
-	store.RecordView("/posts/hello", "fp1")
+	_, _ = store.RecordView("/posts/hello", "fp1")
 	stats, err := store.RecordView("/posts/hello", "fp2")
 	if err != nil {
 		t.Fatalf("RecordView: %v", err)
@@ -90,8 +90,8 @@ func TestRecordView_DifferentFingerprints(t *testing.T) {
 func TestRecordView_DifferentPages(t *testing.T) {
 	store := testStore(t)
 
-	store.RecordView("/posts/a", "fp1")
-	store.RecordView("/posts/b", "fp1")
+	_, _ = store.RecordView("/posts/a", "fp1")
+	_, _ = store.RecordView("/posts/b", "fp1")
 
 	statsA, _ := store.GetStats("/posts/a", "fp1")
 	statsB, _ := store.GetStats("/posts/b", "fp1")
@@ -143,7 +143,7 @@ func TestVote_Dislike(t *testing.T) {
 func TestVote_ChangeVote(t *testing.T) {
 	store := testStore(t)
 
-	store.Vote("/posts/hello", "fp1", 1)
+	_, _ = store.Vote("/posts/hello", "fp1", 1)
 	stats, err := store.Vote("/posts/hello", "fp1", -1)
 	if err != nil {
 		t.Fatalf("Vote: %v", err)
@@ -162,7 +162,7 @@ func TestVote_ChangeVote(t *testing.T) {
 func TestVote_Retract(t *testing.T) {
 	store := testStore(t)
 
-	store.Vote("/posts/hello", "fp1", 1)
+	_, _ = store.Vote("/posts/hello", "fp1", 1)
 	stats, err := store.Vote("/posts/hello", "fp1", 0)
 	if err != nil {
 		t.Fatalf("Vote: %v", err)
@@ -178,9 +178,9 @@ func TestVote_Retract(t *testing.T) {
 func TestVote_MultipleUsers(t *testing.T) {
 	store := testStore(t)
 
-	store.Vote("/posts/hello", "fp1", 1)
-	store.Vote("/posts/hello", "fp2", 1)
-	store.Vote("/posts/hello", "fp3", -1)
+	_, _ = store.Vote("/posts/hello", "fp1", 1)
+	_, _ = store.Vote("/posts/hello", "fp2", 1)
+	_, _ = store.Vote("/posts/hello", "fp3", -1)
 
 	stats, _ := store.GetStats("/posts/hello", "fp3")
 	if stats.Likes != 2 {
@@ -209,10 +209,10 @@ func TestGetStats_NoData(t *testing.T) {
 func TestGetStats_ViewsAndVotes(t *testing.T) {
 	store := testStore(t)
 
-	store.RecordView("/posts/hello", "fp1")
-	store.RecordView("/posts/hello", "fp2")
-	store.Vote("/posts/hello", "fp1", 1)
-	store.Vote("/posts/hello", "fp2", -1)
+	_, _ = store.RecordView("/posts/hello", "fp1")
+	_, _ = store.RecordView("/posts/hello", "fp2")
+	_, _ = store.Vote("/posts/hello", "fp1", 1)
+	_, _ = store.Vote("/posts/hello", "fp2", -1)
 
 	stats, err := store.GetStats("/posts/hello", "fp1")
 	if err != nil {

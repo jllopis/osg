@@ -21,7 +21,7 @@ func testCommentHandlers(t *testing.T) (*CommentHandlers, *CommentStore) {
 	if err != nil {
 		t.Fatalf("NewCommentStore: %v", err)
 	}
-	t.Cleanup(func() { cs.Close() })
+	t.Cleanup(func() { _ = cs.Close() })
 	h := NewCommentHandlers(cs, slog.Default())
 	return h, cs
 }
@@ -119,7 +119,7 @@ func TestHandleList_EmptyPage(t *testing.T) {
 	}
 
 	var resp CommentsResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if len(resp.Comments) != 0 {
 		t.Errorf("expected 0 comments, got %d", len(resp.Comments))
 	}
@@ -131,8 +131,8 @@ func TestHandleList_EmptyPage(t *testing.T) {
 func TestHandleList_WithComments(t *testing.T) {
 	h, cs := testCommentHandlers(t)
 	user := createTestUser(t, cs, "github", "1", "Alice")
-	cs.CreateComment("/posts/hello/", user.ID, 0, "Comment 1")
-	cs.CreateComment("/posts/hello/", user.ID, 0, "Comment 2")
+	_, _ = cs.CreateComment("/posts/hello/", user.ID, 0, "Comment 1")
+	_, _ = cs.CreateComment("/posts/hello/", user.ID, 0, "Comment 2")
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/comments?page=/posts/hello/", nil)
 	rec := httptest.NewRecorder()
@@ -143,7 +143,7 @@ func TestHandleList_WithComments(t *testing.T) {
 	}
 
 	var resp CommentsResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if len(resp.Comments) != 2 {
 		t.Errorf("expected 2 comments, got %d", len(resp.Comments))
 	}
@@ -162,7 +162,7 @@ func TestHandleList_IncludesAuthenticatedUser(t *testing.T) {
 	}
 
 	var resp CommentsResponse
-	json.NewDecoder(rec.Body).Decode(&resp)
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
 	if resp.User == nil {
 		t.Error("expected non-nil user when authenticated")
 	}
@@ -184,7 +184,7 @@ func TestHandleCreate_Success(t *testing.T) {
 	}
 
 	var c Comment
-	json.NewDecoder(rec.Body).Decode(&c)
+	_ = json.NewDecoder(rec.Body).Decode(&c)
 	if c.Body != "Great post!" {
 		t.Errorf("body = %q, want Great post!", c.Body)
 	}
@@ -300,7 +300,7 @@ func TestHandleCreate_TrimsBody(t *testing.T) {
 	}
 
 	var c Comment
-	json.NewDecoder(rec.Body).Decode(&c)
+	_ = json.NewDecoder(rec.Body).Decode(&c)
 	if c.Body != "trimmed" {
 		t.Errorf("body = %q, want trimmed", c.Body)
 	}
@@ -313,14 +313,9 @@ func TestHandleDelete_Success(t *testing.T) {
 	user := createTestUser(t, cs, "github", "1", "Alice")
 	comment, _ := cs.CreateComment("/posts/hello/", user.ID, 0, "To delete")
 
-	req := authenticatedRequest(t, cs, user.ID, http.MethodDelete, "/api/v1/comments/1", nil)
-	req.SetPathValue("id", "1")
-	rec := httptest.NewRecorder()
-
-	// Use the actual comment ID.
-	req = authenticatedRequest(t, cs, user.ID, http.MethodDelete, "/api/v1/comments/"+idStr(comment.ID), nil)
+	req := authenticatedRequest(t, cs, user.ID, http.MethodDelete, "/api/v1/comments/"+idStr(comment.ID), nil)
 	req.SetPathValue("id", idStr(comment.ID))
-	rec = httptest.NewRecorder()
+	rec := httptest.NewRecorder()
 	h.HandleDelete(rec, req)
 
 	if rec.Code != http.StatusOK {
