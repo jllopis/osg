@@ -6,6 +6,27 @@
       "author": "jllopis",
       "repo": "github.com/jllopis/osg-search",
       "version": "0.1.0"
+    },
+    {
+      "name": "llmstxt",
+      "description": "Generate llms.txt and llms-full.txt for LLM consumption",
+      "author": "jllopis",
+      "repo": "github.com/jllopis/osg-llmstxt",
+      "version": "0.1.0"
+    },
+    {
+      "name": "mermaid",
+      "description": "Client-side Mermaid diagram rendering via CDN",
+      "author": "jllopis",
+      "repo": "github.com/jllopis/osg-mermaid",
+      "version": "0.1.0"
+    },
+    {
+      "name": "archives",
+      "description": "Chronological archive pages grouped by year and month",
+      "author": "jllopis",
+      "repo": "github.com/jllopis/osg-archives",
+      "version": "0.1.0"
     }
   ]
 }

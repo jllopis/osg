@@ -377,6 +377,6 @@ Formato: [todo|doing|done] Tarea
 [done] (Official plugins) Documentar instalacion via osg plugin install <nombre>
 [done] (Official plugins) osg init auto-instala plugins oficiales activos en plugins_enabled que falten en plugins_dir
 
-[todo] (Archives) Genera /archive/ cronologico por ano/mes, paginacion configurable
-[todo] (LLMS.txt) Genera /llms.txt con contenido del sitio para LLMs, configurable
-[todo] (Mermaid) Client-side: content.transform reescribe bloques mermaid, inyecta mermaid.js CDN
+[done] (Archives) Genera /archive/ cronologico por ano/mes con paginas por ano
+[done] (LLMS.txt) Genera /llms.txt y /llms-full.txt con contenido del sitio para LLMs
+[done] (Mermaid) Client-side: content.transform reescribe bloques mermaid, build.finished genera mermaid-init.js CDN loader

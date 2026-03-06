@@ -54,6 +54,9 @@ docs/                 Specs and plans (DESIGN, TEMPLATES, TAXONOMIES, etc.)
 themes/default/       Runtime theme (extracted from embedded on each build)
 plugins-src/
   search/             Bundled search plugin source (Rust WASM, embedded in binary)
+  llmstxt/            Official llms.txt plugin (generates /llms.txt and /llms-full.txt)
+  mermaid/            Official mermaid plugin (client-side diagram rendering)
+  archives/           Official archives plugin (chronological archive pages)
 examples/
   sample-site/        Minimal CI example site (vault_path: "")
   plugins/
@@ -400,13 +403,27 @@ sharing (social share popover), and comments (OAuth2 + threaded replies) all com
   5 EnsureOfficialPlugins tests (empty args, skip bundled, skip installed,
   download from index, not in index).
 
+### Recently completed (official plugins)
+- **LLMS.txt plugin** (`plugins-src/llmstxt/`): Generates `/llms.txt` (summary with
+  links) and `/llms-full.txt` (full plain-text content) following llms.txt spec.
+  Hook: `build.finished`. Separates menu pages from posts, date-sorted descending,
+  excludes drafts, strips HTML to plain text, decodes entities.
+- **Mermaid plugin** (`plugins-src/mermaid/`): Client-side Mermaid diagram rendering.
+  Hook `content.transform`: rewrites ` ```mermaid ` code blocks to `<pre class="mermaid">`.
+  Hook `build.finished`: generates `/js/mermaid-init.js` that lazy-loads mermaid.js
+  v11.4.1 from CDN only when diagrams exist on the page. Auto-detects dark/light theme
+  via `prefers-color-scheme`. `securityLevel: 'strict'`.
+- **Archives plugin** (`plugins-src/archives/`): Generates `/archive/index.html`
+  (full chronological listing with year navigation) and `/archive/YYYY/index.html`
+  (per-year pages with month grouping). Nord-styled CSS, responsive, dark/light mode.
+  Hook: `build.finished`. Excludes drafts and menu pages.
+- All three registered in `plugins-index.json`, Makefile targets added
+  (`plugins-llmstxt`, `plugins-mermaid`, `plugins-archives`, `plugins-all`,
+  `install-plugins`). CI auto-discovers new `plugins-src/*/` directories.
+- Documentation: PLUGINS.md updated with full sections for each plugin.
+
 ### Backlog (planned, not started)
-- Actual official plugins (archives, llms.txt, mermaid): source in `plugins-src/`,
-  compiled by CI, published as GitHub release assets. User installs with
-  `osg plugin install <name>`. Only `search` is embedded in binary.
-- Paginated archives plugin
-- LLMS.txt Generator plugin
-- Mermaid diagrams plugin (client-side: mermaid.js CDN + content.transform hook)
+- (No remaining plugin backlog items)
 
 ## Key Dependencies
 

@@ -30,7 +30,7 @@ SERVE_ADDR ?= :1313
 INSTALL_PATH := $(HOME)/.local/bin
 
 .PHONY: all build build-all clean test test-coverage lint fmt vet tidy deps run init update-content serve tui install uninstall version help
-.PHONY: plugins plugins-search plugins-example-feed install-plugins
+.PHONY: plugins plugins-search plugins-llmstxt plugins-mermaid plugins-archives plugins-example-feed install-plugins
 
 ## Default target
 all: tidy fmt vet test build
@@ -157,18 +157,42 @@ help:
 ## Build bundled WASM plugins (from plugins-src/)
 plugins: plugins-search
 
+## Build all official WASM plugins (from plugins-src/)
+plugins-all: plugins-search plugins-llmstxt plugins-mermaid plugins-archives
+
 ## Build search plugin (bundled, Rust WASM)
 plugins-search:
 	@echo "Building search plugin..."
 	@cd plugins-src/search && ./build.sh
 	@echo "Built: plugins-src/search/search.wasm"
 
+## Build llmstxt plugin (official, Rust WASM)
+plugins-llmstxt:
+	@echo "Building llmstxt plugin..."
+	@cd plugins-src/llmstxt && ./build.sh
+	@echo "Built: plugins-src/llmstxt/llmstxt.wasm"
+
+## Build mermaid plugin (official, Rust WASM)
+plugins-mermaid:
+	@echo "Building mermaid plugin..."
+	@cd plugins-src/mermaid && ./build.sh
+	@echo "Built: plugins-src/mermaid/mermaid.wasm"
+
+## Build archives plugin (official, Rust WASM)
+plugins-archives:
+	@echo "Building archives plugin..."
+	@cd plugins-src/archives && ./build.sh
+	@echo "Built: plugins-src/archives/archives.wasm"
+
 ## Install compiled plugins into plugins/ directory
-install-plugins: plugins
-	@echo "Installing bundled plugins..."
+install-plugins: plugins-all
+	@echo "Installing plugins..."
 	@mkdir -p plugins
 	@cp plugins-src/search/search.wasm plugins/
-	@echo "Installed: plugins/search.wasm"
+	@cp plugins-src/llmstxt/llmstxt.wasm plugins/
+	@cp plugins-src/mermaid/mermaid.wasm plugins/
+	@cp plugins-src/archives/archives.wasm plugins/
+	@echo "Installed: plugins/*.wasm"
 
 ## Build example feed plugin (reference only, not bundled)
 plugins-example-feed:

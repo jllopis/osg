@@ -5,7 +5,7 @@ Permitir ampliar OSG mediante plugins WASM seguros (Wazero), con hooks sobre el 
 
 ## Directorio
 - `plugins/`: colocar archivos `.wasm`
-- `plugins-src/`: codigo fuente de plugins bundled (search)
+- `plugins-src/`: codigo fuente de plugins (search, llmstxt, mermaid, archives)
 - `examples/plugins/`: plugins de referencia (feed)
 
 ## Instalar vs activar
@@ -29,11 +29,17 @@ necesitan.
 
 **Plugins oficiales actuales:**
 - **search**: (bundled + release asset) full-text search
+- **llmstxt**: genera `/llms.txt` y `/llms-full.txt` para consumo por LLMs
+- **mermaid**: renderizado client-side de diagramas Mermaid via CDN
+- **archives**: paginas de archivo cronologico agrupadas por ano/mes
 
 **Instalacion manual:**
 ```bash
 # Descargar el .wasm de la ultima release
 osg plugin install github.com/jllopis/osg-search
+osg plugin install github.com/jllopis/osg-llmstxt
+osg plugin install github.com/jllopis/osg-mermaid
+osg plugin install github.com/jllopis/osg-archives
 
 # Descargar una version especifica
 osg plugin install github.com/jllopis/osg-search@v1.0.0
@@ -65,9 +71,13 @@ Los plugins en `plugins-src/` se compilan automaticamente por GitHub Actions:
 
 Para compilar localmente:
 ```bash
-make plugins          # compila todos los plugins en plugins-src/
+make plugins          # compila plugins bundled (search)
+make plugins-all      # compila todos los plugins en plugins-src/
 make plugins-search   # compila solo search
-make install-plugins  # compila y copia a plugins/
+make plugins-llmstxt  # compila solo llmstxt
+make plugins-mermaid  # compila solo mermaid
+make plugins-archives # compila solo archives
+make install-plugins  # compila todos y copia a plugins/
 ```
 
 ### CLI
@@ -342,6 +352,181 @@ cd plugins-src/search
 O con make:
 ```bash
 make plugins-search
+```
+
+---
+
+## Plugin LLMS.txt (oficial)
+
+El plugin **llmstxt** genera archivos de texto optimizados para consumo por modelos de lenguaje (LLMs), siguiendo la especificacion [llms.txt](https://llmstxt.org/).
+
+### Funcionalidad
+- Genera `/llms.txt` — resumen del sitio con titulo, enlace y descripcion de cada pagina
+- Genera `/llms-full.txt` — version completa con el contenido plain-text de cada pagina
+- Separa paginas standalone (menu) de posts normales
+- Ordena posts por fecha descendente
+- Excluye borradores automaticamente
+- Convierte HTML a texto plano (strip tags, decode entities)
+
+### Formato de salida
+
+**llms.txt** (resumen):
+```
+# Site Title
+
+> Site description
+
+## Pages
+
+- [About](/about): Short description of the about page
+
+## Posts
+
+- [My First Post](/2025/01/my-first-post): Summary of the post
+- [Another Post](/2024/12/another-post): Summary text
+```
+
+**llms-full.txt** (completo):
+```
+# Site Title
+
+> Site description
+
+## Posts
+
+### My First Post
+
+Date: 2025-01-15
+URL: https://example.com/2025/01/my-first-post
+
+Full plain text content of the post...
+
+---
+```
+
+### Activacion
+```yaml
+plugins_enabled: ["llmstxt"]
+```
+
+### Hook
+- `build.finished` — genera los archivos en `public_dir`
+
+### Build desde fuente
+```bash
+cd plugins-src/llmstxt
+./build.sh
+# Genera: llmstxt.wasm
+```
+
+O con make:
+```bash
+make plugins-llmstxt
+```
+
+---
+
+## Plugin Mermaid (oficial)
+
+El plugin **mermaid** permite incluir diagramas [Mermaid](https://mermaid.js.org/) en notas Markdown, renderizados client-side via CDN.
+
+### Funcionalidad
+- Transforma bloques ` ```mermaid ` en Markdown a `<pre class="mermaid">` HTML
+- Genera `/js/mermaid-init.js` — loader que carga mermaid.js solo si hay diagramas
+- Auto-deteccion de tema dark/light via `prefers-color-scheme`
+- Security: `securityLevel: 'strict'`
+- CDN: jsdelivr.net, mermaid v11.4.1
+
+### Uso en Markdown
+
+En cualquier nota Obsidian:
+
+````markdown
+```mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action]
+    B -->|No| D[End]
+```
+````
+
+El plugin transforma esto en HTML que mermaid.js renderiza como diagrama SVG interactivo.
+
+### Integracion con el tema
+
+Para que `mermaid-init.js` se cargue en las paginas, agregar al template `base.html` o `page.html`:
+
+```html
+<script src="/js/mermaid-init.js" defer></script>
+```
+
+El script detecta automaticamente si hay diagramas en la pagina y solo carga mermaid.js del CDN cuando es necesario (lazy loading).
+
+### Activacion
+```yaml
+plugins_enabled: ["mermaid"]
+```
+
+### Hooks
+- `content.transform` — reescribe bloques mermaid en el Markdown de cada pagina
+- `build.finished` — genera `mermaid-init.js` en `public_dir/js/`
+
+### Build desde fuente
+```bash
+cd plugins-src/mermaid
+./build.sh
+# Genera: mermaid.wasm
+```
+
+O con make:
+```bash
+make plugins-mermaid
+```
+
+---
+
+## Plugin Archives (oficial)
+
+El plugin **archives** genera paginas de archivo cronologico con todos los posts del sitio, agrupados por ano y mes.
+
+### Funcionalidad
+- Genera `/archive/index.html` — pagina principal con listado completo y navegacion por anos
+- Genera `/archive/YYYY/index.html` — pagina por ano con agrupacion por mes
+- Muestra fecha, titulo y resumen de cada post
+- Navegacion entre anos y link de vuelta al home
+- CSS Nord-styled con dark/light mode auto
+- Layout responsive (grid en desktop, stack en movil)
+- Excluye borradores y paginas de menu
+
+### Resultado
+
+```
+/archive/
+/archive/index.html     — listado completo con navegacion
+/archive/2025/
+/archive/2025/index.html — posts de 2025 por mes
+/archive/2024/
+/archive/2024/index.html — posts de 2024 por mes
+```
+
+### Activacion
+```yaml
+plugins_enabled: ["archives"]
+```
+
+### Hook
+- `build.finished` — genera las paginas HTML en `public_dir/archive/`
+
+### Build desde fuente
+```bash
+cd plugins-src/archives
+./build.sh
+# Genera: archives.wasm
+```
+
+O con make:
+```bash
+make plugins-archives
 ```
 
 ---

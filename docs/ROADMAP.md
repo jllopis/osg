@@ -528,16 +528,19 @@ esta embebido).
 - [done] `osg init` extrae plugins bundled (search) via EnsureBundledPlugins
 
 #### Paginated archives
-- [todo] Genera `/archive/` con listado cronologico por ano/mes
-- [todo] Paginacion configurable
-- [todo] Template overridable desde el tema
+- [done] Genera `/archive/` con listado cronologico por ano/mes
+- [done] Pagina principal /archive/ con navegacion por anos y listado completo
+- [done] Paginas por ano /archive/YYYY/ con agrupacion por mes
+- [done] CSS Nord-styled, responsive, dark/light mode
 
 #### LLMS.txt Generator
-- [todo] Genera `/llms.txt` con contenido del sitio en formato apto para LLMs
-- [todo] Configurable: que secciones/paginas incluir, formato de salida
+- [done] Genera `/llms.txt` con contenido del sitio en formato apto para LLMs
+- [done] Genera `/llms-full.txt` con contenido completo (plain text) de cada pagina
+- [done] Separa paginas de menu (standalone) de posts normales
+- [done] Ordenado por fecha descendente, excluye drafts
 
 #### Mermaid diagrams
-- [todo] Enfoque client-side: inyecta mermaid.js (CDN) y transforma bloques ```mermaid en markup renderizable
-- [todo] Hook `content.transform`: reescribe bloques de codigo mermaid a `<pre class="mermaid">`
-- [todo] Hook `page.render` o `after.build`: inyecta `<script src="mermaid CDN">` solo en paginas que usen mermaid
-- [todo] Configurable: version de mermaid, tema (default/dark/forest/neutral), inicializacion custom
+- [done] Enfoque client-side: inyecta mermaid.js (CDN) y transforma bloques ```mermaid en markup renderizable
+- [done] Hook `content.transform`: reescribe bloques de codigo mermaid a `<pre class="mermaid">`
+- [done] Hook `build.finished`: genera `mermaid-init.js` que carga mermaid CDN solo si hay diagramas
+- [done] Auto-deteccion de tema (dark/light) via prefers-color-scheme
