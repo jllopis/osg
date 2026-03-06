@@ -13,6 +13,11 @@ func (m Model) View() string {
 		return "OSG loading..."
 	}
 
+	// Config editor takes over the full screen when active.
+	if m.configActive && m.configScreen != nil {
+		return m.configScreen.View()
+	}
+
 	header := m.renderHeader()
 	hintBar := m.renderHintBar()
 
@@ -37,11 +42,23 @@ func (m Model) View() string {
 	// Input line.
 	inputLine := m.renderInputLine()
 
+	// Log panel (between body and input when visible).
+	logView := m.logPanel.View()
+
 	// Autocomplete overlay (appears above input if visible).
 	if m.acVisible && len(m.acMatches) > 0 {
 		acPopup := m.renderAutocomplete()
+		if logView != "" {
+			return lipgloss.JoinVertical(lipgloss.Left,
+				header, body, logView, acPopup, inputLine, hintBar)
+		}
 		return lipgloss.JoinVertical(lipgloss.Left,
 			header, body, acPopup, inputLine, hintBar)
+	}
+
+	if logView != "" {
+		return lipgloss.JoinVertical(lipgloss.Left,
+			header, body, logView, inputLine, hintBar)
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left,

@@ -73,6 +73,7 @@ type Config struct {
 	CompileSass       bool               `koanf:"compile_sass" yaml:"compile_sass"`
 	TUIPrefix         string             `koanf:"tui_prefix" yaml:"tui_prefix"`
 	TUIPrefixMs       int                `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
+	TUILogModifier    string             `koanf:"tui_log_modifier" yaml:"tui_log_modifier"`
 	ServeWatch        bool               `koanf:"serve_watch" yaml:"serve_watch"`
 	ServeReload       bool               `koanf:"serve_live_reload" yaml:"serve_live_reload"`
 	ServeDebounce     int                `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
@@ -191,6 +192,7 @@ func Default() Config {
 		CompileSass:       false,
 		TUIPrefix:         "space",
 		TUIPrefixMs:       600,
+		TUILogModifier:    "shift",
 		ServeWatch:        true,
 		ServeReload:       true,
 		ServeDebounce:     300,
@@ -361,6 +363,17 @@ func Load(path string) (Config, error) {
 		if cfg.Interactions.Comments.Providers[i].ClientSecret == "" {
 			return cfg, fmt.Errorf("interactions.comments.providers[%d].client_secret is required", i)
 		}
+	}
+
+	// Normalise and validate tui_log_modifier.
+	cfg.TUILogModifier = strings.ToLower(strings.TrimSpace(cfg.TUILogModifier))
+	switch cfg.TUILogModifier {
+	case "alt", "shift":
+		// valid
+	case "":
+		cfg.TUILogModifier = "shift"
+	default:
+		return cfg, fmt.Errorf("invalid tui_log_modifier %q: must be alt or shift", cfg.TUILogModifier)
 	}
 
 	return cfg, nil
@@ -628,8 +641,11 @@ serve_debounce_ms: 300
 # -----------------------------------------------------------------------------
 # tui_prefix: Key used as prefix in the interactive TUI ("space" or "ctrl").
 # tui_prefix_ms: Milliseconds to wait for a second key after prefix.
+# tui_log_modifier: Modifier key for log panel navigation ("alt" or "shift").
+#   "shift" works everywhere; use "alt" if your terminal sends Meta for Option.
 tui_prefix: space
 tui_prefix_ms: 600
+tui_log_modifier: shift
 
 # -----------------------------------------------------------------------------
 # Diagnostics

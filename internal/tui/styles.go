@@ -109,12 +109,30 @@ func badge(text string, fg lipgloss.Color, bg lipgloss.Color) string {
 		Render(text)
 }
 
-// serveBadge returns a RUNNING/STOPPED badge.
+// serveBadge returns a RUNNING/STOPPED badge for the dev server.
 func serveBadge(running bool) string {
 	if running {
 		return badge("RUNNING", nordBg0, nordGreen)
 	}
 	return badge("STOPPED", nordFg0, nordBg2)
+}
+
+// apiBadge returns a RUNNING/STOPPED badge for the API server.
+func apiBadge(running bool) string {
+	if running {
+		return badge("RUNNING", nordBg0, nordFrost1)
+	}
+	return badge("STOPPED", nordFg0, nordBg2)
+}
+
+// serveModeName returns a human-readable label for the serve mode.
+func serveModeName(mode string) string {
+	switch mode {
+	case "api":
+		return "static+api"
+	default:
+		return "static"
+	}
 }
 
 // Autocomplete popup styles.
@@ -123,6 +141,90 @@ var (
 	acSelectedStyle = lipgloss.NewStyle().Foreground(nordFg2).Background(nordBg2).Bold(true)
 	acNormalStyle   = lipgloss.NewStyle().Foreground(nordFg0)
 	acHintStyle     = lipgloss.NewStyle().Foreground(nordBg3)
+)
+
+// Log panel styles.
+var (
+	logTabActiveStyle   = lipgloss.NewStyle().Foreground(nordFg2).Background(nordBg2).Bold(true)
+	logTabInactiveStyle = lipgloss.NewStyle().Foreground(nordBg3)
+	logPanelTitleStyle  = lipgloss.NewStyle().Foreground(nordFrost1).Bold(true)
+	logPanelSepStyle    = lipgloss.NewStyle().Foreground(nordBg2)
+	logPanelScrollStyle = lipgloss.NewStyle().Foreground(nordBg3)
+	logPanelEmptyStyle  = lipgloss.NewStyle().Foreground(nordBg3).Italic(true)
+)
+
+// Config screen styles.
+var (
+	cfgHeaderStyle = lipgloss.NewStyle().
+			Background(nordBg1).
+			Foreground(nordFg2).
+			Bold(true).
+			Padding(0, 1)
+
+	cfgDirtyStyle = lipgloss.NewStyle().
+			Foreground(nordOrange).
+			Bold(true)
+
+	cfgSectionListStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(nordBg2).
+				Padding(0, 1)
+
+	cfgSectionActiveStyle = lipgloss.NewStyle().
+				Foreground(nordFg2).
+				Background(nordBg2).
+				Bold(true)
+
+	cfgSectionNormalStyle = lipgloss.NewStyle().
+				Foreground(nordFg0)
+
+	cfgFieldPanelStyle = lipgloss.NewStyle().
+				Padding(0, 1)
+
+	cfgFieldLabelStyle = lipgloss.NewStyle().
+				Foreground(nordFrost2).
+				Bold(true)
+
+	cfgFieldValueStyle = lipgloss.NewStyle().
+				Foreground(nordFg0)
+
+	cfgFieldDescStyle = lipgloss.NewStyle().
+				Foreground(nordBg3).
+				Italic(true)
+
+	cfgFieldSelectedStyle = lipgloss.NewStyle().
+				Foreground(nordFg2).
+				Background(nordBg2)
+
+	cfgFieldEditingStyle = lipgloss.NewStyle().
+				Foreground(nordFg2).
+				Background(nordFrost2)
+
+	cfgSensitiveStyle = lipgloss.NewStyle().
+				Foreground(nordBg3)
+
+	cfgHintBarStyle = lipgloss.NewStyle().
+			Background(nordBg1).
+			Foreground(nordBg3).
+			Padding(0, 1)
+
+	cfgConfirmStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(nordOrange).
+			Padding(1, 2).
+			Foreground(nordFg2).
+			Background(nordBg1)
+
+	cfgListItemStyle = lipgloss.NewStyle().
+				Foreground(nordFg0)
+
+	cfgListSelectedStyle = lipgloss.NewStyle().
+				Foreground(nordFg2).
+				Background(nordBg2)
+
+	cfgStructHeaderStyle = lipgloss.NewStyle().
+				Foreground(nordFrost1).
+				Bold(true)
 )
 
 // labelStyle returns the style for a given log label.

@@ -347,8 +347,16 @@ serve_debounce_ms: 300
 # -----------------------------------------------------------------------------
 # tui_prefix: Key used as prefix in the interactive TUI ("space" or "ctrl").
 # tui_prefix_ms: Milliseconds to wait for a second key after prefix.
+# tui_log_modifier: Modifier key for log panel navigation ("shift" or "alt").
+#   "shift" (default) — works on all platforms and terminals.
+#   "alt"   — use only if your terminal sends Option/Alt as Meta (Esc+).
+#             On macOS, Option does NOT work as Meta by default.
+#             To enable it: iTerm2 → Profiles → Keys → Left/Right Option → Esc+
+#             or Terminal.app → Preferences → Profiles → Keyboard →
+#             "Use Option as Meta key".
 tui_prefix: space
 tui_prefix_ms: 600
+tui_log_modifier: shift
 
 # -----------------------------------------------------------------------------
 # Diagnostics

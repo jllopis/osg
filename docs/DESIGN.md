@@ -1509,3 +1509,171 @@ Servicio `osg-api` con volumen `osg-data` para persistir las BDs. Soporta overri
 
 ## Open questions
 - (ninguna pendiente)
+
+## TUI avanzado (Fase 17)
+
+El TUI de Bubble Tea se ha ampliado con gestion de servicios, panel de logs,
+y editor de configuracion modal. Las funcionalidades se organizan en 6 fases
+(A-F) documentadas en `docs/TUI-ENHANCEMENTS.md`.
+
+### Arquitectura
+
+```
++------------------------------------------------------------------+
+|  Header: title  badges (serve/api running, mode, addresses)      |
++---------------+--------------------------------------------------+
+|               |                                                  |
+|   Sidebar     |   Viewport (output log + history)                |
+|   - Project   |                                                  |
+|   - Workflow   |                                                  |
+|   - Services  |                                                  |
+|   - Plugins   |                                                  |
+|   - Build     |                                                  |
+|               +--------------------------------------------------+
+|               |   Log Panel (togglable, F7)                      |
+|               |   Tabs: Serve | API | All                        |
++---------------+--------------------------------------------------+
+|  Input: slash commands                                           |
++------------------------------------------------------------------+
+|  Hint Bar: contextual hints segun modo activo                    |
++------------------------------------------------------------------+
+```
+
+El Config Editor es un modal full-screen separado (F8):
+
+```
++------------------------------------------------------------------+
+|  Config Editor (modified*)            Ctrl+S save  Esc back      |
++-------------------+----------------------------------------------+
+|  Sections         |  Fields                                      |
+|  > General      |  site_title: [My Site]                       |
+|    Paths          |  base_url: [https://...]                     |
+|    Content        |  description: [...]                          |
+|    Logging        |  include_drafts: false  (Space toggle)       |
+|    ...            |  ...                                         |
++-------------------+----------------------------------------------+
+|  Ctrl+S save  Tab panel  Enter edit  ^/v nav  Space toggle       |
++------------------------------------------------------------------+
+```
+
+### Modulos
+
+Fase A - **Sistema de logs multi-canal** (`logsink.go`):
+- `LogSink` con `source` tag (general/serve/api)
+- `TaggedLine` struct: `Source` + `Line`
+- `MergeChannels()`: fan-in de multiples sinks en un canal unico
+- Buffers por source en Model: `serveMessages`, `apiMessages`
+
+Fase B - **Gestion de procesos serve/api** (`update.go`, `commands.go`):
+- `Actions.ServeWithAPI`: lanza dev server con API embebida
+- `Actions.RunAPI`: lanza API server standalone
+- 3 modos: `/serve` (static), `/serve --api` (embebido), `/api` (standalone)
+- `/stop serve|api` para detener servicios
+- F5 (serve toggle), F6 (api toggle), badges en header y sidebar
+
+Fase C - **Panel de logs** (`logpanel.go`):
+- Panel inferior togglable (F7 o `/logs`)
+- Viewport propio con scroll independiente (Mod+Up/Down, Mod = configurable)
+- Tabs: Serve, API, All (Mod+Left/Right)
+- Tecla modificadora configurable via `tui_log_modifier`: "shift" (defecto) o "alt"
+- Altura: ~1/3 terminal, clamped 4-20 lineas
+- Focus mode: cuando el log panel tiene foco, hint bar cambia
+
+Fase D - **Infraestructura de config** (`config/schema.go`, `config/yamlnode.go`):
+- `ConfigSchema()`: 24 secciones con todos los campos tipados
+- `FieldType` enum: String, Bool, Int, StringList, IntList, StringMap, Struct, StructList
+- CRUD via `yaml.Node`: `LoadNode`, `SaveNode`, `GetNodeValue`, `SetNodeValue`,
+  `SetNodeSequence`, `GetNodeSequence`, `DeleteNodeKey`
+- Preservacion de comentarios YAML via round-trip con `gopkg.in/yaml.v3`
+
+Fase E - **Editor de config modal** (`configscreen.go`, `configfields.go`):
+- `ConfigScreen`: full-screen modal con panel izquierdo (secciones) + derecho (campos)
+- Navegacion: Up/Down por secciones/campos, Tab entre paneles
+- Edicion inline: Enter para editar, Esc para cancelar, Enter para confirmar
+- Bool toggle con Space, listas con add (a) / delete (d)
+- `FieldEditor`: text input con validacion por tipo (int, bool, options)
+- Dirty tracking por campo, indicador visual `(modified*)`
+- Save explicito con Ctrl+S; Esc con cambios sin guardar muestra confirmacion (y/n/Esc)
+- Campos sensibles (passwords, secrets) con masking
+
+Fase F - **Integracion y pulido** (`statusbar.go`, update.go):
+- Hint bar contextual: cambia segun modo normal/log-focus/config
+- Config reload: al guardar, `reloadOptionsFromConfig()` actualiza sidebar
+- Status bar muestra estado de servicios running con direcciones
+
+### Keybindings
+
+| Tecla | Accion |
+|-------|--------|
+| F5 | Toggle serve (static) |
+| F6 | Toggle API (standalone) |
+| F7 | Toggle log panel |
+| F8 | Abrir/cerrar config editor |
+| Mod+Up/Down | Scroll log panel (Mod = Shift por defecto) |
+| Mod+Left/Right | Cambiar tab log panel |
+| Ctrl+S | Guardar config (en editor) |
+| Tab | Cambiar panel (sidebar/config sections/fields) |
+| Esc | Cerrar modal / volver |
+
+### Configuracion TUI
+
+Tres opciones en `config.yaml`:
+
+```yaml
+tui_prefix: space       # Tecla prefijo ("space" o "ctrl")
+tui_prefix_ms: 600      # Timeout en ms para la segunda tecla tras el prefijo
+tui_log_modifier: shift  # Tecla modificadora para el log panel ("shift" o "alt")
+```
+
+#### tui_log_modifier
+
+Controla que tecla modificadora se usa para navegar el log panel (scroll y
+cambio de tabs). Valores posibles: `"shift"` (por defecto) o `"alt"`.
+
+**`shift` (recomendado)** — Funciona en todos los terminales y sistemas
+operativos sin configuracion adicional. Las combinaciones son Shift+Up/Down
+para scroll y Shift+Left/Right para cambiar de tab.
+
+**`alt`** — Usa Alt+flechas en lugar de Shift+flechas. Puede ser preferible
+si Shift+flechas interfiere con otros atajos (tmux, screen).
+
+> **Nota para macOS**: La tecla Option (⌥) de macOS **NO** funciona como
+> Alt/Meta por defecto en la mayoria de terminales. Option+flechas produce
+> caracteres especiales Unicode en lugar de enviar secuencias `alt+up`, etc.
+>
+> Para que `tui_log_modifier: alt` funcione en macOS hay que configurar el
+> terminal manualmente:
+>
+> - **iTerm2**: Preferences → Profiles → Keys → Left/Right Option key → **Esc+**
+> - **Terminal.app**: Preferences → Profiles → Keyboard → activar **"Use Option as Meta key"**
+> - **Ghostty**: `macos-option-as-alt = true` en config
+> - **Kitty**: `macos_option_as_alt yes` en `kitty.conf`
+> - **Alacritty**: no tiene equivalente directo; Option no envia Meta
+>
+> Si no se configura el terminal, las combinaciones Alt+flecha simplemente no
+> tendran efecto. No hay error: el TUI funcionara normalmente pero las teclas
+> de navegacion del log panel no responderan. En ese caso usar `shift`.
+
+### Slash commands
+
+| Comando | Descripcion |
+|---------|-------------|
+| `/serve [--api]` | Lanza dev server (opcionalmente con API embebida) |
+| `/api` | Lanza API server standalone |
+| `/stop [serve\|api]` | Detiene servicios |
+| `/logs` | Toggle panel de logs |
+| `/config` | Abre editor de configuracion |
+
+### Archivos
+
+- LogSink: `internal/tui/logsink.go` (TaggedLine, MergeChannels)
+- Log panel: `internal/tui/logpanel.go` (LogPanel, LogTab)
+- Config screen: `internal/tui/configscreen.go` (ConfigScreen)
+- Field editor: `internal/tui/configfields.go` (FieldEditor)
+- Schema: `internal/config/schema.go` (ConfigSchema, 24 secciones)
+- YAML node CRUD: `internal/config/yamlnode.go` (LoadNode, SaveNode, etc.)
+- Commands: `internal/tui/commands.go` (/serve, /api, /stop, /logs, /config)
+- Keys: `internal/tui/keys.go` (F5-F8)
+- Styles: `internal/tui/styles.go` (14+ config styles, log panel styles)
+- Status bar: `internal/tui/statusbar.go` (hint bar contextual)
+- Tests: `logsink_test.go`, `logpanel_test.go`, `configscreen_test.go`, `schema_test.go`, `yamlnode_test.go`

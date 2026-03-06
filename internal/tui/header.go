@@ -16,10 +16,19 @@ func (m Model) renderHeader() string {
 		left += "  " + lipgloss.NewStyle().Foreground(nordFg0).Render(m.options.SiteTitle)
 	}
 
-	// Center/right: serve badge + build stats.
+	// Center/right: serve badge + API badge + build stats.
 	var right string
 	if m.serveRunning {
 		right = serveBadge(true) + " " + defaultAddr(m.options.ServeAddr)
+		if m.serveMode == "api" {
+			right += "  " + lipgloss.NewStyle().Foreground(nordFrost2).Render("+api")
+		}
+	}
+	if m.apiRunning {
+		if right != "" {
+			right += "  "
+		}
+		right += apiBadge(true) + " " + defaultAPIAddr(m.options.APIAddr)
 	}
 
 	if m.lastBuild != nil {

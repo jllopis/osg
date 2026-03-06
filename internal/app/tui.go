@@ -38,63 +38,75 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		defer history.Close()
 	}
 
-	logSink := tui.NewLogSink(history)
+	// Three log sinks: general (for init/update/build/doctor), serve, api.
+	generalSink := tui.NewLogSink("general", history)
+	serveSink := tui.NewLogSink("serve", history)
+	apiSink := tui.NewLogSink("api", history)
 
-	withLog := func() CLIOptions {
+	withLog := func(sink *tui.LogSink) CLIOptions {
 		clone := opts
-		clone.LogWriter = logSink
+		clone.LogWriter = sink
 		return clone
 	}
 
 	actions := tui.Actions{
 		Init: func(actionCtx context.Context) error {
-			return RunInit(actionCtx, withLog())
+			return RunInit(actionCtx, withLog(generalSink))
 		},
 		Update: func(actionCtx context.Context) error {
-			return RunUpdateContent(actionCtx, withLog())
+			return RunUpdateContent(actionCtx, withLog(generalSink))
 		},
 		Build: func(actionCtx context.Context) error {
-			return RunBuild(actionCtx, withLog())
+			return RunBuild(actionCtx, withLog(generalSink))
 		},
 		Serve: func(actionCtx context.Context) error {
-			return RunServe(actionCtx, withLog())
+			return RunServe(actionCtx, withLog(serveSink))
+		},
+		ServeWithAPI: func(actionCtx context.Context) error {
+			o := withLog(serveSink)
+			o.ServeAPI = true
+			return RunServe(actionCtx, o)
+		},
+		RunAPI: func(actionCtx context.Context) error {
+			apiOpts := APIOptions{Listen: cfg.Interactions.Listen}
+			return RunAPI(actionCtx, withLog(apiSink), apiOpts)
 		},
 		Doctor: func(actionCtx context.Context) error {
-			return RunDoctor(actionCtx, withLog())
+			return RunDoctor(actionCtx, withLog(generalSink))
 		},
 		ThemeInit: func(actionCtx context.Context, name string, parent string) error {
-			return RunThemeInit(actionCtx, withLog(), name, parent)
+			return RunThemeInit(actionCtx, withLog(generalSink), name, parent)
 		},
 		ThemeList: func(actionCtx context.Context) error {
-			return RunThemeList(actionCtx, withLog(), logSink)
+			return RunThemeList(actionCtx, withLog(generalSink), generalSink)
 		},
 		PluginEnable: func(actionCtx context.Context, name string) error {
-			return RunPluginEnable(actionCtx, withLog(), name)
+			return RunPluginEnable(actionCtx, withLog(generalSink), name)
 		},
 		PluginDisable: func(actionCtx context.Context, name string) error {
-			return RunPluginDisable(actionCtx, withLog(), name)
+			return RunPluginDisable(actionCtx, withLog(generalSink), name)
 		},
 		PluginToggle: func(actionCtx context.Context, name string) error {
-			return RunPluginToggle(actionCtx, withLog(), name)
+			return RunPluginToggle(actionCtx, withLog(generalSink), name)
 		},
 		PluginInstall: func(actionCtx context.Context, path string, name string) error {
-			return RunPluginInstall(actionCtx, withLog(), path, name)
+			return RunPluginInstall(actionCtx, withLog(generalSink), path, name)
 		},
 		PluginList: func(actionCtx context.Context) error {
-			return RunPluginList(actionCtx, withLog(), logSink)
+			return RunPluginList(actionCtx, withLog(generalSink), generalSink)
 		},
 		PluginInit: func(actionCtx context.Context, name string, dir string, lang string) error {
-			return RunPluginInit(actionCtx, withLog(), name, dir, lang)
+			return RunPluginInit(actionCtx, withLog(generalSink), name, dir, lang)
 		},
 		PluginSearch: func(actionCtx context.Context, query string) error {
-			return RunPluginSearch(actionCtx, withLog(), query, logSink)
+			return RunPluginSearch(actionCtx, withLog(generalSink), query, generalSink)
 		},
 		PluginUpdate: func(actionCtx context.Context, name string) error {
-			return RunPluginUpdate(actionCtx, withLog(), name, logSink)
+			return RunPluginUpdate(actionCtx, withLog(generalSink), name, generalSink)
 		},
 		NewPost: func(actionCtx context.Context, title string) error {
 			postOpts := NewPostOptions{Title: title}
-			return RunNew(actionCtx, withLog(), postOpts)
+			return RunNew(actionCtx, withLog(generalSink), postOpts)
 		},
 		Version: VersionInfo,
 	}
@@ -105,16 +117,18 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		ContentDir:     cfg.ContentDir,
 		PublicDir:      cfg.PublicDir,
 		ServeAddr:      opts.ServeAddr,
+		APIAddr:        cfg.Interactions.Listen,
 		LogPath:        historyPath(history),
 		SiteTitle:      cfg.SiteTitle,
 		PrefixKey:      cfg.TUIPrefix,
 		PrefixMs:       cfg.TUIPrefixMs,
+		LogModifier:    cfg.TUILogModifier,
 		Plugins:        listPlugins(cfg.PluginsDir),
 		EnabledPlugins: cfg.PluginsEnabled,
 		HasContent:     pathExists(cfg.ContentDir),
 	}
 
-	return tui.Run(ctx, actions, options, logSink, history)
+	return tui.Run(ctx, actions, options, history, generalSink, serveSink, apiSink)
 }
 
 func listPlugins(dir string) []string {

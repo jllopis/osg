@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"osg/internal/config"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -22,9 +24,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.recalcLayout()
+		if m.configActive && m.configScreen != nil {
+			m.configScreen.Resize(msg.Width, msg.Height)
+		}
 		return m, nil
 
 	case tea.KeyMsg:
+		// If config editor is active, delegate all keys there.
+		if m.configActive && m.configScreen != nil {
+			return m.handleConfigKey(msg)
+		}
+
 		// Global keys (non-input).
 		switch {
 		case key.Matches(msg, keys.Quit):
@@ -40,6 +50,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.messages = m.messages[:0]
 			m.appendMessage("SYS", "Output cleared")
 			return m, nil
+
+		case key.Matches(msg, keys.ToggleServe):
+			return m.toggleServe("static")
+
+		case key.Matches(msg, keys.ToggleAPI):
+			return m.toggleAPI()
+
+		case key.Matches(msg, keys.ToggleLogs):
+			m.logPanel.Toggle()
+			if m.logPanel.Visible() {
+				m.logFocus = true
+				m.syncLogPanel()
+			} else {
+				m.logFocus = false
+			}
+			m.recalcLayout()
+			return m, nil
+
+		case key.Matches(msg, keys.ToggleConfig):
+			return m.openConfigEditor()
 		}
 
 		// Autocomplete navigation takes priority over Submit when popup is visible.
@@ -86,6 +116,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.acSelected = 0
 		}
 
+		// Log panel navigation (when visible).
+		if m.logPanel.Visible() && !m.acVisible {
+			switch msg.String() {
+			case logModKey(m, "up"):
+				m.logPanel.ScrollUp(1)
+				return m, nil
+			case logModKey(m, "down"):
+				m.logPanel.ScrollDown(1)
+				return m, nil
+			case logModKey(m, "left"):
+				m.logPanel.PrevTab()
+				m.syncLogPanel()
+				return m, nil
+			case logModKey(m, "right"):
+				m.logPanel.NextTab()
+				m.syncLogPanel()
+				return m, nil
+			}
+		}
+
 		// Scrolling viewport (when not in autocomplete).
 		if !m.acVisible {
 			switch {
@@ -112,7 +162,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case logLineMsg:
-		m.appendParsedLog(msg.line)
+		m.appendParsedLog(msg.source, msg.line)
 		if m.logCh != nil {
 			cmds = append(cmds, listenLogCmd(m.logCh))
 		}
@@ -148,8 +198,12 @@ const minMainWidth = 30
 
 func (m *Model) recalcLayout() {
 	// Header = 1 line, input = 1 line, hint bar = 1 line, borders = 0
-	// Viewport height = total - 3
-	vpHeight := m.height - 3
+	// Viewport height = total - 3 - logPanelHeight (if visible)
+	logH := 0
+	if m.logPanel.Visible() {
+		logH = PanelHeight(m.height)
+	}
+	vpHeight := m.height - 3 - logH
 	if vpHeight < 1 {
 		vpHeight = 1
 	}
@@ -165,6 +219,12 @@ func (m *Model) recalcLayout() {
 		m.viewport.Height = vpHeight
 		m.viewport.SetContent(m.renderOutput())
 		m.viewport.GotoBottom()
+	}
+
+	// Resize log panel to full width.
+	if m.logPanel.Visible() {
+		m.logPanel.Resize(m.width, logH)
+		m.syncLogPanel()
 	}
 
 	// Input width matches main panel.
@@ -227,13 +287,18 @@ func (m Model) handleSubmit() (Model, tea.Cmd) {
 	case "build":
 		return m.startTask(taskBuild)
 	case "serve":
-		return m.toggleServe()
-	case "stop":
-		if !m.serveRunning {
-			m.appendMessage("INFO", "Server is not running")
-			return m, nil
+		// Check for --api flag.
+		serveMode := "static"
+		for _, arg := range args {
+			if arg == "--api" {
+				serveMode = "api"
+			}
 		}
-		return m.toggleServe()
+		return m.toggleServe(serveMode)
+	case "api":
+		return m.toggleAPI()
+	case "stop":
+		return m.handleStop(args)
 	case "doctor":
 		return m.runSimpleAction("Doctor", m.actions.Doctor)
 	case "next":
@@ -244,6 +309,21 @@ func (m Model) handleSubmit() (Model, tea.Cmd) {
 		return m.handlePluginCommand(args)
 	case "new":
 		return m.handleNewCommand(args)
+	case "logs":
+		m.logPanel.Toggle()
+		if m.logPanel.Visible() {
+			m.logFocus = true
+			m.syncLogPanel()
+			mod := logModLabel(m)
+			m.appendMessage("INFO", fmt.Sprintf("Log panel opened (%s+↑↓ scroll, %s+←→ tabs)", mod, mod))
+		} else {
+			m.logFocus = false
+			m.appendMessage("INFO", "Log panel closed")
+		}
+		m.recalcLayout()
+		return m, nil
+	case "config":
+		return m.openConfigEditor()
 	case "version":
 		return m.handleVersionCommand()
 	case "clear":
@@ -266,7 +346,10 @@ func (m Model) handleSubmit() (Model, tea.Cmd) {
 
 func (m Model) startTask(kind taskKind) (Model, tea.Cmd) {
 	if kind == taskServe {
-		return m.toggleServe()
+		return m.toggleServe("static")
+	}
+	if kind == taskAPI {
+		return m.toggleAPI()
 	}
 
 	idx := stepIndexForTask(kind)
@@ -295,7 +378,7 @@ func (m Model) startTask(kind taskKind) (Model, tea.Cmd) {
 	return m, tea.Batch(cmd, m.spinner.Tick)
 }
 
-func (m Model) toggleServe() (Model, tea.Cmd) {
+func (m Model) toggleServe(mode string) (Model, tea.Cmd) {
 	if m.serveRunning {
 		if m.serveCancel != nil {
 			m.serveCancel()
@@ -306,22 +389,68 @@ func (m Model) toggleServe() (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	action := m.actions.Serve
-	if action == nil {
-		m.appendMessage("ERROR", "Serve action not available")
-		return m, nil
+	var action func(context.Context) error
+	switch mode {
+	case "api":
+		action = m.actions.ServeWithAPI
+		if action == nil {
+			m.appendMessage("ERROR", "Serve with API action not available")
+			return m, nil
+		}
+	default: // "static"
+		action = m.actions.Serve
+		if action == nil {
+			m.appendMessage("ERROR", "Serve action not available")
+			return m, nil
+		}
 	}
 
 	serveCtx, cancel := context.WithCancel(context.Background())
 	m.serveCancel = cancel
 	m.serveRunning = true
+	m.serveMode = mode
 	m.setStepStatus(taskServe, StepRunning)
 	m.setStepStart(taskServe, time.Now())
-	m.appendMessage("PROGRESS", fmt.Sprintf("Starting preview server on %s...", defaultAddr(m.options.ServeAddr)))
-	m.appendHistory("ACTION", fmt.Sprintf("Serve started on %s", defaultAddr(m.options.ServeAddr)))
+
+	modeLabel := "static"
+	if mode == "api" {
+		modeLabel = "static+api"
+	}
+	m.appendMessage("PROGRESS", fmt.Sprintf("Starting preview server on %s (mode: %s)...", defaultAddr(m.options.ServeAddr), modeLabel))
+	m.appendHistory("ACTION", fmt.Sprintf("Serve started on %s (mode: %s)", defaultAddr(m.options.ServeAddr), modeLabel))
 	m.lastAction = "Serve started"
 
 	cmd := runTaskCmd(serveCtx, action, taskServe)
+	return m, tea.Batch(cmd, m.spinner.Tick)
+}
+
+func (m Model) toggleAPI() (Model, tea.Cmd) {
+	if m.apiRunning {
+		if m.apiCancel != nil {
+			m.apiCancel()
+		}
+		m.appendMessage("PROGRESS", "Stopping standalone API...")
+		m.appendHistory("ACTION", "API stop requested")
+		m.lastAction = "API stop requested"
+		return m, nil
+	}
+
+	action := m.actions.RunAPI
+	if action == nil {
+		m.appendMessage("ERROR", "API action not available")
+		return m, nil
+	}
+
+	apiCtx, cancel := context.WithCancel(context.Background())
+	m.apiCancel = cancel
+	m.apiRunning = true
+	m.setStepStatus(taskAPI, StepRunning)
+	m.setStepStart(taskAPI, time.Now())
+	m.appendMessage("PROGRESS", fmt.Sprintf("Starting standalone API on %s...", defaultAPIAddr(m.options.APIAddr)))
+	m.appendHistory("ACTION", fmt.Sprintf("API started on %s", defaultAPIAddr(m.options.APIAddr)))
+	m.lastAction = "API started"
+
+	cmd := runTaskCmd(apiCtx, action, taskAPI)
 	return m, tea.Batch(cmd, m.spinner.Tick)
 }
 
@@ -330,6 +459,7 @@ func (m Model) finishTask(msg taskFinishedMsg) (Model, tea.Cmd) {
 
 	if msg.kind == taskServe {
 		m.serveRunning = false
+		m.serveMode = ""
 		m.setStepStatus(taskServe, StepPending)
 		m.setStepLast(taskServe, time.Since(m.stepStart(taskServe)))
 		if msg.err != nil {
@@ -340,6 +470,22 @@ func (m Model) finishTask(msg taskFinishedMsg) (Model, tea.Cmd) {
 			m.appendMessage("INFO", "Serve stopped")
 			m.appendHistory("ACTION", "Serve stopped")
 			m.lastAction = "Serve stopped"
+		}
+		return m, nil
+	}
+
+	if msg.kind == taskAPI {
+		m.apiRunning = false
+		m.setStepStatus(taskAPI, StepPending)
+		m.setStepLast(taskAPI, time.Since(m.stepStart(taskAPI)))
+		if msg.err != nil {
+			m.appendMessage("ERROR", fmt.Sprintf("API stopped: %v", msg.err))
+			m.appendHistory("ERROR", fmt.Sprintf("API stopped: %v", msg.err))
+			m.lastAction = "API error"
+		} else {
+			m.appendMessage("INFO", "API stopped")
+			m.appendHistory("ACTION", "API stopped")
+			m.lastAction = "API stopped"
 		}
 		return m, nil
 	}
@@ -401,6 +547,30 @@ func (m Model) finishSimpleAction(msg simpleActionFinishedMsg) (Model, tea.Cmd) 
 
 // ---- Sub-command handlers ----
 
+func (m Model) handleStop(args []string) (Model, tea.Cmd) {
+	target := "serve" // default if no argument
+	if len(args) > 0 {
+		target = strings.ToLower(args[0])
+	}
+	switch target {
+	case "serve":
+		if !m.serveRunning {
+			m.appendMessage("INFO", "Server is not running")
+			return m, nil
+		}
+		return m.toggleServe("static") // mode is ignored when stopping
+	case "api":
+		if !m.apiRunning {
+			m.appendMessage("INFO", "API is not running")
+			return m, nil
+		}
+		return m.toggleAPI()
+	default:
+		m.appendMessage("ERROR", "Usage: /stop serve|api")
+		return m, nil
+	}
+}
+
 func (m Model) handleNext() (Model, tea.Cmd) {
 	next := m.nextActionKind()
 	switch next {
@@ -411,7 +581,7 @@ func (m Model) handleNext() (Model, tea.Cmd) {
 	case taskBuild:
 		return m.startTask(taskBuild)
 	case taskServe:
-		return m.toggleServe()
+		return m.toggleServe("static")
 	default:
 		m.appendMessage("INFO", "No next action")
 		return m, nil
@@ -649,4 +819,234 @@ func (m Model) runSimpleAction(label string, action func(context.Context) error)
 	m.appendMessage("PROGRESS", fmt.Sprintf("%s started", label))
 	m.lastAction = label + " started"
 	return m, runSimpleActionCmd(context.Background(), label, action)
+}
+
+// ---- Config editor ----
+
+// openConfigEditor opens the config editor modal.
+func (m Model) openConfigEditor() (Model, tea.Cmd) {
+	path := m.options.ConfigPath
+	if strings.TrimSpace(path) == "" {
+		path = "config.yaml"
+	}
+	cs, err := NewConfigScreen(path)
+	if err != nil {
+		m.appendMessage("ERROR", fmt.Sprintf("Cannot open config: %v", err))
+		return m, nil
+	}
+	cs.Resize(m.width, m.height)
+	m.configScreen = cs
+	m.configActive = true
+	m.appendHistory("ACTION", "Config editor opened")
+	return m, nil
+}
+
+// closeConfigEditor closes the config editor modal.
+func (m *Model) closeConfigEditor() {
+	m.configActive = false
+	m.configScreen = nil
+}
+
+// handleConfigKey processes key events when the config editor is active.
+func (m Model) handleConfigKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	cs := m.configScreen
+	keyStr := msg.String()
+
+	// Ctrl+C always quits.
+	if key.Matches(msg, keys.Quit) {
+		m.appendHistory("EXIT", "User quit")
+		return m, tea.Quit
+	}
+
+	// Confirmation dialog takes priority.
+	if cs.ConfirmQuitVisible() {
+		return m.handleConfigConfirmKey(keyStr)
+	}
+
+	// Editing mode: delegate to field editor.
+	if cs.Editing() {
+		return m.handleConfigEditKey(msg)
+	}
+
+	// Normal navigation.
+	switch keyStr {
+	case "ctrl+s":
+		if err := cs.Save(); err != nil {
+			m.appendMessage("ERROR", fmt.Sprintf("Config save failed: %v", err))
+		} else {
+			m.appendMessage("INFO", "Config saved")
+			m.appendHistory("ACTION", "Config saved")
+			m.reloadOptionsFromConfig(cs)
+		}
+		return m, nil
+
+	case "esc":
+		if cs.IsDirty() {
+			cs.ShowConfirmQuit()
+		} else {
+			m.closeConfigEditor()
+			m.appendMessage("INFO", "Config editor closed")
+		}
+		return m, nil
+
+	case "tab":
+		cs.SwitchPanel()
+		return m, nil
+
+	case "up":
+		if cs.FocusPanel() == "sections" {
+			cs.MoveSection(-1)
+		} else {
+			cs.MoveField(-1)
+		}
+		return m, nil
+
+	case "down":
+		if cs.FocusPanel() == "sections" {
+			cs.MoveSection(1)
+		} else {
+			cs.MoveField(1)
+		}
+		return m, nil
+
+	case "enter":
+		if cs.FocusPanel() == "fields" {
+			field, ok := cs.currentField()
+			if ok && field.Type == config.FieldBool {
+				cs.ToggleBool()
+			} else if ok {
+				cs.StartEdit()
+			}
+		} else {
+			// In section panel, Enter switches to fields.
+			cs.SwitchPanel()
+		}
+		return m, nil
+
+	case " ":
+		if cs.FocusPanel() == "fields" {
+			field, ok := cs.currentField()
+			if ok && field.Type == config.FieldBool {
+				cs.ToggleBool()
+			}
+		}
+		return m, nil
+
+	case "a":
+		if cs.FocusPanel() == "fields" {
+			cs.AddListItem()
+		}
+		return m, nil
+
+	case "d":
+		if cs.FocusPanel() == "fields" {
+			cs.DeleteListItem()
+		}
+		return m, nil
+	}
+
+	return m, nil
+}
+
+// handleConfigEditKey handles key events while a field is being edited.
+func (m Model) handleConfigEditKey(msg tea.KeyMsg) (Model, tea.Cmd) {
+	cs := m.configScreen
+	keyStr := msg.String()
+
+	switch keyStr {
+	case "enter":
+		if err := cs.fieldEditor.Validate(); err != nil {
+			// Stay in edit mode — error shown in view.
+			return m, nil
+		}
+		cs.ConfirmEdit()
+		return m, nil
+	case "esc":
+		cs.CancelEdit()
+		return m, nil
+	default:
+		// Forward the actual tea.Msg to the text input for proper handling.
+		cs.fieldEditor.textInput, _ = cs.fieldEditor.textInput.Update(msg)
+		return m, nil
+	}
+}
+
+// handleConfigConfirmKey handles key events in the unsaved-changes dialog.
+func (m Model) handleConfigConfirmKey(keyStr string) (Model, tea.Cmd) {
+	cs := m.configScreen
+	switch keyStr {
+	case "y":
+		if err := cs.Save(); err != nil {
+			m.appendMessage("ERROR", fmt.Sprintf("Config save failed: %v", err))
+			cs.HideConfirmQuit()
+		} else {
+			m.appendMessage("INFO", "Config saved and editor closed")
+			m.appendHistory("ACTION", "Config saved and editor closed")
+			m.closeConfigEditor()
+		}
+		return m, nil
+	case "n":
+		m.closeConfigEditor()
+		m.appendMessage("INFO", "Config editor closed (changes discarded)")
+		return m, nil
+	case "esc":
+		cs.HideConfirmQuit()
+		return m, nil
+	}
+	return m, nil
+}
+
+// reloadOptionsFromConfig updates m.options fields from the in-memory
+// config node after a successful save, so the sidebar reflects changes
+// immediately.
+func (m *Model) reloadOptionsFromConfig(cs *ConfigScreen) {
+	if v := cs.GetValue("site_title"); v != "" {
+		m.options.SiteTitle = v
+	}
+	if v := cs.GetValue("vault_path"); v != "" {
+		m.options.VaultPath = v
+	}
+	if v := cs.GetValue("public_dir"); v != "" {
+		m.options.PublicDir = v
+	}
+	if v := cs.GetValue("content_dir"); v != "" {
+		m.options.ContentDir = v
+	}
+	if v := cs.GetValue("serve_addr"); v != "" {
+		m.options.ServeAddr = v
+	}
+	if v := cs.GetValue("interactions.listen"); v != "" {
+		m.options.APIAddr = v
+	}
+
+	// Reload enabled plugins list.
+	if plugins, ok := cs.GetSequence("plugins_enabled"); ok {
+		m.enabledPlugins = normalizePluginSet(plugins)
+	}
+
+	// Reload log modifier.
+	if v := cs.GetValue("tui_log_modifier"); v != "" {
+		m.options.LogModifier = v
+	}
+}
+
+// logModKey returns the Bubble Tea key string for the configured log modifier
+// combined with a direction (e.g. "alt+up", "shift+down").
+func logModKey(m Model, dir string) string {
+	mod := m.options.LogModifier
+	if mod == "" {
+		mod = "shift"
+	}
+	return mod + "+" + dir
+}
+
+// logModLabel returns a human-readable short label for the configured
+// log modifier ("Alt" or "Shift").
+func logModLabel(m Model) string {
+	switch m.options.LogModifier {
+	case "alt":
+		return "Alt"
+	default:
+		return "Shift"
+	}
 }

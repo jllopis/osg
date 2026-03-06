@@ -26,7 +26,9 @@ type Actions struct {
 	Init          func(context.Context) error
 	Update        func(context.Context) error
 	Build         func(context.Context) error
-	Serve         func(context.Context) error
+	Serve         func(context.Context) error // static-only dev server
+	ServeWithAPI  func(context.Context) error // dev server + embedded API
+	RunAPI        func(context.Context) error // standalone API server
 	Doctor        func(context.Context) error
 	ThemeInit     func(context.Context, string, string) error
 	ThemeList     func(context.Context) error
@@ -49,10 +51,12 @@ type Options struct {
 	ContentDir     string
 	PublicDir      string
 	ServeAddr      string
+	APIAddr        string // address for standalone API server
 	LogPath        string
 	SiteTitle      string
 	PrefixKey      string // kept for compat, unused in new TUI
 	PrefixMs       int    // kept for compat, unused in new TUI
+	LogModifier    string // "alt" (default) or "shift" — modifier key for log panel navigation
 	Plugins        []string
 	EnabledPlugins []string
 	HasContent     bool
@@ -109,6 +113,7 @@ const (
 	taskUpdate
 	taskBuild
 	taskServe
+	taskAPI
 )
 
 // ---- Tea messages ----
@@ -131,7 +136,8 @@ type simpleActionFinishedMsg struct {
 }
 
 type logLineMsg struct {
-	line string
+	source string
+	line   string
 }
 
 // ---- Model ----
@@ -149,6 +155,11 @@ type Model struct {
 	// Serve
 	serveRunning bool
 	serveCancel  context.CancelFunc
+	serveMode    string // "" | "static" | "api" (serve+api embedded)
+
+	// Standalone API
+	apiRunning bool
+	apiCancel  context.CancelFunc
 
 	// State
 	lastAction     string
@@ -159,12 +170,24 @@ type Model struct {
 	lastDoctor     *DoctorSummary
 	enabledPlugins map[string]bool
 
+	// Per-source message buffers for the log panel.
+	serveMessages []Message
+	apiMessages   []Message
+
+	// Log panel
+	logPanel LogPanel
+	logFocus bool // true when log panel has keyboard focus
+
+	// Config editor modal
+	configScreen *ConfigScreen
+	configActive bool // true when config modal is shown
+
 	// Components
 	input   textinput.Model
 	spinner spinner.Model
 	actions Actions
 	options Options
-	logCh   <-chan string
+	logCh   <-chan TaggedLine
 	history *History
 
 	// Autocomplete
@@ -173,11 +196,22 @@ type Model struct {
 	acSelected int
 }
 
-// New creates a new Model, wired to the given actions, options, sink and history.
-func New(actions Actions, options Options, sink *LogSink, history *History) Model {
-	var logCh <-chan string
-	if sink != nil {
-		logCh = sink.Channel()
+// New creates a new Model, wired to the given actions, options, sinks and history.
+// Pass one or more LogSinks; their channels are merged into a single fan-in
+// channel. Pass nil for sinks that are not needed.
+func New(actions Actions, options Options, history *History, sinks ...*LogSink) Model {
+	var logCh <-chan TaggedLine
+	// Filter out nil sinks and merge.
+	var live []*LogSink
+	for _, s := range sinks {
+		if s != nil {
+			live = append(live, s)
+		}
+	}
+	if len(live) == 1 {
+		logCh = live[0].Channel()
+	} else if len(live) > 1 {
+		logCh = MergeChannels(live...)
 	}
 
 	input := textinput.New()
@@ -194,11 +228,13 @@ func New(actions Actions, options Options, sink *LogSink, history *History) Mode
 
 	m := Model{
 		sidebarVisible: true,
+		logPanel:       NewLogPanel(),
 		steps: []Step{
 			{Name: "Init", Status: StepPending},
 			{Name: "Update content", Status: StepPending},
 			{Name: "Build", Status: StepPending},
 			{Name: "Serve", Status: StepPending},
+			{Name: "API", Status: StepPending},
 		},
 		messages: []Message{
 			{Label: "SYS", Text: "OSG ready", Time: now},
@@ -217,8 +253,8 @@ func New(actions Actions, options Options, sink *LogSink, history *History) Mode
 }
 
 // Run starts the Bubble Tea program. This is the entry point called by app/tui.go.
-func Run(ctx context.Context, actions Actions, options Options, sink *LogSink, history *History) error {
-	model := New(actions, options, sink, history)
+func Run(ctx context.Context, actions Actions, options Options, history *History, sinks ...*LogSink) error {
+	model := New(actions, options, history, sinks...)
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -238,13 +274,13 @@ func (m Model) Init() tea.Cmd {
 
 // ---- Tea commands ----
 
-func listenLogCmd(ch <-chan string) tea.Cmd {
+func listenLogCmd(ch <-chan TaggedLine) tea.Cmd {
 	return func() tea.Msg {
-		line, ok := <-ch
+		tl, ok := <-ch
 		if !ok {
 			return nil
 		}
-		return logLineMsg{line: line}
+		return logLineMsg{source: tl.Source, line: tl.Line}
 	}
 }
 
@@ -350,6 +386,8 @@ func stepIndexForTask(kind taskKind) int {
 		return 2
 	case taskServe:
 		return 3
+	case taskAPI:
+		return 4
 	default:
 		return -1
 	}
@@ -365,6 +403,8 @@ func taskLabel(kind taskKind) string {
 		return "Build"
 	case taskServe:
 		return "Serve"
+	case taskAPI:
+		return "API"
 	default:
 		return "Task"
 	}
@@ -434,12 +474,26 @@ func (m *Model) appendHistory(label string, text string) {
 	m.history.Append(label, text)
 }
 
-func (m *Model) appendParsedLog(line string) {
+func (m *Model) appendParsedLog(source, line string) {
 	m.captureSummaries(line)
 	msg := parseLogLine(line)
 	m.messages = append(m.messages, msg)
+	// Route to per-source buffer for the log panel.
+	switch source {
+	case "serve":
+		m.serveMessages = append(m.serveMessages, msg)
+		if len(m.serveMessages) > maxMessages {
+			m.serveMessages = m.serveMessages[len(m.serveMessages)-maxMessages:]
+		}
+	case "api":
+		m.apiMessages = append(m.apiMessages, msg)
+		if len(m.apiMessages) > maxMessages {
+			m.apiMessages = m.apiMessages[len(m.apiMessages)-maxMessages:]
+		}
+	}
 	m.trimMessages()
 	m.syncViewport()
+	m.syncLogPanel()
 }
 
 func (m *Model) trimMessages() {
@@ -455,6 +509,14 @@ func (m *Model) syncViewport() {
 	}
 	m.viewport.SetContent(m.renderOutput())
 	m.viewport.GotoBottom()
+}
+
+func (m *Model) syncLogPanel() {
+	if !m.logPanel.Visible() {
+		return
+	}
+	msgs := MessagesForTab(m.logPanel.Tab(), m.serveMessages, m.apiMessages, m.messages)
+	m.logPanel.SetContent(msgs)
 }
 
 func (m *Model) captureSummaries(line string) {
@@ -617,6 +679,13 @@ func defaultValue(value string) string {
 func defaultConfig(value string) string {
 	if strings.TrimSpace(value) == "" {
 		return "config.yaml"
+	}
+	return value
+}
+
+func defaultAPIAddr(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return ":8090"
 	}
 	return value
 }

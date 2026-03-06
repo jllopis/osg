@@ -38,9 +38,16 @@ func (m Model) renderSidebar(height int) string {
 	}
 	sections = append(sections, "")
 
-	// -- Serve section --
-	sections = append(sections, sectionTitleStyle.Render("  Serve"))
-	sections = append(sections, fmt.Sprintf("  %s  %s", serveBadge(m.serveRunning), defaultAddr(m.options.ServeAddr)))
+	// -- Services section --
+	sections = append(sections, sectionTitleStyle.Render("  Services"))
+	serveStatus := serveBadge(m.serveRunning)
+	serveInfo := defaultAddr(m.options.ServeAddr)
+	if m.serveRunning && m.serveMode != "" {
+		serveInfo += "  mode: " + serveModeName(m.serveMode)
+	}
+	sections = append(sections, fmt.Sprintf("  serve %s  %s", serveStatus, serveInfo))
+	apiStatus := apiBadge(m.apiRunning)
+	sections = append(sections, fmt.Sprintf("  api   %s  %s", apiStatus, defaultAPIAddr(m.options.APIAddr)))
 	sections = append(sections, "")
 
 	// -- Plugins section --

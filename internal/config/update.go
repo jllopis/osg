@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 )
 
+// UpdatePluginsEnabled updates the plugins_enabled list in the given config
+// file, preserving all YAML comments and formatting.
 func UpdatePluginsEnabled(path string, enabled []string) error {
 	path = strings.TrimSpace(path)
 	if path == "" {
@@ -17,30 +17,25 @@ func UpdatePluginsEnabled(path string, enabled []string) error {
 
 	enabled = normalizePluginNames(enabled)
 
-	doc := map[string]any{}
-	if data, err := os.ReadFile(path); err == nil {
-		_ = yaml.Unmarshal(data, &doc)
-	} else if os.IsNotExist(err) {
-		_ = yaml.Unmarshal([]byte(DefaultConfigYAML()), &doc)
-	} else {
+	// If the file doesn't exist, create it from the default template first.
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && filepath.Dir(path) != "." {
+			return err
+		}
+		if err := os.WriteFile(path, []byte(DefaultConfigYAML()), 0o644); err != nil {
+			return err
+		}
+	} else if err != nil {
 		return err
 	}
 
-	if doc == nil {
-		doc = map[string]any{}
-	}
-	doc["plugins_enabled"] = enabled
-
-	out, err := yaml.Marshal(doc)
+	doc, err := LoadNode(path)
 	if err != nil {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && filepath.Dir(path) != "." {
-		return err
-	}
-
-	return os.WriteFile(path, out, 0o644)
+	SetNodeSequence(doc, "plugins_enabled", enabled)
+	return SaveNode(path, doc)
 }
 
 func normalizePluginNames(input []string) []string {

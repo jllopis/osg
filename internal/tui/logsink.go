@@ -11,25 +11,41 @@ type Writer interface {
 	Write([]byte) (int, error)
 }
 
+// TaggedLine is a log line annotated with the source that produced it.
+type TaggedLine struct {
+	Source string
+	Line   string
+}
+
 // LogSink bridges slog JSON output via an io.Writer into a channel
-// consumed by the TUI model.
+// consumed by the TUI model. Each sink carries a source tag so the
+// TUI can route messages to the appropriate log panel.
 type LogSink struct {
 	mu     sync.Mutex
 	buf    bytes.Buffer
-	ch     chan string
+	ch     chan TaggedLine
 	writer Writer
+	source string
 }
 
-// NewLogSink creates a LogSink that also writes through to writer (may be nil).
-func NewLogSink(writer Writer) *LogSink {
+// NewLogSink creates a LogSink tagged with source that also writes through to
+// writer (may be nil). The source string identifies the origin of the log
+// lines (e.g. "general", "serve", "api").
+func NewLogSink(source string, writer Writer) *LogSink {
 	return &LogSink{
-		ch:     make(chan string, 200),
+		ch:     make(chan TaggedLine, 200),
 		writer: writer,
+		source: source,
 	}
 }
 
-// Channel returns the read-only channel for log lines.
-func (s *LogSink) Channel() <-chan string {
+// Source returns the source tag for this sink.
+func (s *LogSink) Source() string {
+	return s.source
+}
+
+// Channel returns the read-only channel for tagged log lines.
+func (s *LogSink) Channel() <-chan TaggedLine {
 	return s.ch
 }
 
@@ -55,9 +71,36 @@ func (s *LogSink) Write(p []byte) (int, error) {
 			_, _ = s.writer.Write([]byte(line + "\n"))
 		}
 		select {
-		case s.ch <- line:
+		case s.ch <- TaggedLine{Source: s.source, Line: line}:
 		default:
 		}
 	}
 	return n, nil
+}
+
+// MergeChannels fans-in multiple LogSink channels into a single read-only
+// channel. The returned channel is closed when all source channels are
+// drained and closed. This is useful for the TUI to listen on one channel
+// that aggregates all log sources.
+func MergeChannels(sinks ...*LogSink) <-chan TaggedLine {
+	out := make(chan TaggedLine, 200)
+	var wg sync.WaitGroup
+	for _, s := range sinks {
+		if s == nil {
+			continue
+		}
+		wg.Add(1)
+		ch := s.Channel()
+		go func() {
+			defer wg.Done()
+			for tl := range ch {
+				out <- tl
+			}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	return out
 }

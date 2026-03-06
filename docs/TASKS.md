@@ -352,6 +352,27 @@ Formato: [todo|doing|done] Tarea
 [done] (Comments) docker-compose.yml con osg-data volume
 [done] (Comments) deploy/k8s/: configmap, pvc, deployment (health probes), service
 
+[done] (TUI-A) Refactor LogSink con campo source (general/serve/api)
+[done] (TUI-A) taggedLogLineMsg reemplaza logLineMsg en el Model
+[done] (TUI-A) 3 LogSinks en RunTUI (general, serve, api), mensajes separados
+[done] (TUI-A) Tests multi-canal logsink
+
+[done] (TUI-B) Model: apiRunning, apiCancel, serveMode; Actions: ServeWithAPI, RunAPI
+[done] (TUI-B) Slash commands: /serve --api, /api, /stop serve, /stop api
+[done] (TUI-B) Teclas F5 (serve), F6 (api); sidebar Services; header badges
+
+[done] (TUI-C) LogPanel componente: viewport propio, tabs Serve/API/All
+[done] (TUI-C) Toggle F7 y /logs, layout panel inferior, foco independiente
+
+[done] (TUI-D) ConfigSchema() en config/schema.go: secciones, campos, tipos, descripciones
+[done] (TUI-D) yaml.Node helpers en config/yamlnode.go: LoadNode, Get/SetNodeValue, SaveNode
+[done] (TUI-D) Refactorizar UpdatePluginsEnabled para preservar comentarios YAML
+
+[done] (TUI-E) ConfigScreenModel: layout 2 paneles, editores inline por tipo
+[done] (TUI-E) Dirty state, Ctrl+S save, Esc unsaved dialog, /config, F8
+
+[done] (TUI-F) Status bar contextual, config reload tras guardar, docs
+
 [todo] (Official plugins) CI pipeline: compilar plugins-src/ y publicar .wasm como release assets
 [todo] (Official plugins) Documentar instalacion via osg plugin install <nombre>
 [todo] (Official plugins) osg init auto-instala plugins oficiales activos en plugins_enabled que falten en plugins_dir

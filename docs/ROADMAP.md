@@ -465,6 +465,50 @@
 - [done] docker-compose.yml con osg-data volume
 - [done] deploy/k8s/: configmap, pvc, deployment (health probes, resource limits), service
 
+### Phase 17 — TUI Enhancements: Server Management + Config Editor (done)
+
+Spec: `docs/TUI-ENHANCEMENTS.md`
+
+#### Fase A: Multi-channel log system
+- [done] Refactor LogSink con campo source (general/serve/api)
+- [done] taggedLogLineMsg reemplaza logLineMsg
+- [done] 3 LogSinks en RunTUI (general, serve, api)
+- [done] Model almacena mensajes separados por fuente
+- [done] Tests multi-canal
+
+#### Fase B: Serve + API process management
+- [done] Nuevos campos Model: apiRunning, apiCancel, serveMode
+- [done] Nuevas Actions: ServeWithAPI, RunAPI
+- [done] Slash commands: /serve --api, /api, /stop serve, /stop api
+- [done] Teclas dedicadas: F5 (serve), F6 (api)
+- [done] Sidebar seccion "Services" con badges
+- [done] Header badges separados [SERVE] [API]
+
+#### Fase C: Log panel
+- [done] Componente LogPanel con viewport propio y tabs (Serve/API/All)
+- [done] Toggle con F7 y /logs
+- [done] Layout: panel inferior 1/3 de terminal
+- [done] Foco independiente (Shift+up/down para log panel)
+- [done] Estilos Nord para tabs y panel
+
+#### Fase D: Config infrastructure
+- [done] ConfigSchema() en internal/config/schema.go: secciones, campos, tipos, descripciones
+- [done] yaml.Node helpers en internal/config/yamlnode.go: LoadNode, GetNodeValue, SetNodeValue, SaveNode
+- [done] Refactorizar UpdatePluginsEnabled para preservar comentarios YAML
+- [done] Tests schema + yamlnode round-trip
+
+#### Fase E: Config editor modal screen
+- [done] ConfigScreenModel: layout 2 paneles (secciones + campos)
+- [done] Editores inline por tipo: String, Bool, Int, Dropdown, StringList, IntList, StringMap, StructList
+- [done] Dirty state tracking con indicador visual
+- [done] Ctrl+S save con yaml.Node, Esc con dialogo unsaved changes
+- [done] Slash command /config, tecla F8
+
+#### Fase F: Integration and polish
+- [done] Status bar contextual por modo (normal/config/logs)
+- [done] Config reload tras guardar (actualizar sidebar)
+- [done] Docs: DESIGN.md seccion TUI, AGENTS.md modulos nuevos
+
 ### Official plugins — release assets (todo)
 
 Plugins mantenidos en el mismo repo (`plugins-src/`), compilados por CI,

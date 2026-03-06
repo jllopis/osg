@@ -235,16 +235,21 @@ func TestUpdatePluginsEnabled_StripWasmExtension(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	data, err := os.ReadFile(path)
+	// Parse the YAML node and check the plugins_enabled values directly
+	// (avoid scanning the whole file, which includes comments with ".wasm").
+	doc, err := LoadNode(path)
 	if err != nil {
-		t.Fatalf("read file: %v", err)
+		t.Fatalf("load node: %v", err)
 	}
-	content := string(data)
-	if strings.Contains(content, ".wasm") {
-		t.Error("expected .wasm extension to be stripped")
+	val, ok := GetNodeValue(doc, "plugins_enabled")
+	if !ok {
+		t.Fatal("plugins_enabled key not found in YAML")
 	}
-	if !strings.Contains(content, "myplugin") {
-		t.Error("expected 'myplugin' in output")
+	if val != "myplugin" {
+		t.Errorf("expected plugins_enabled to contain 'myplugin', got %q", val)
+	}
+	if strings.Contains(val, ".wasm") {
+		t.Error("expected .wasm extension to be stripped from value")
 	}
 }
 
@@ -832,5 +837,80 @@ interactions:
 	}
 	if !strings.Contains(err.Error(), "client_secret is required") {
 		t.Errorf("error = %q, want 'client_secret is required'", err.Error())
+	}
+}
+
+// --- TUI log modifier config tests ---
+
+func TestDefault_TUILogModifier(t *testing.T) {
+	t.Parallel()
+	cfg := Default()
+	if cfg.TUILogModifier != "shift" {
+		t.Errorf("TUILogModifier = %q, want 'shift'", cfg.TUILogModifier)
+	}
+}
+
+func TestLoad_TUILogModifierAlt(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `tui_log_modifier: alt`)
+	cfg, err := Load(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.TUILogModifier != "alt" {
+		t.Errorf("TUILogModifier = %q, want 'alt'", cfg.TUILogModifier)
+	}
+}
+
+func TestLoad_TUILogModifierShift(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `tui_log_modifier: shift`)
+	cfg, err := Load(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.TUILogModifier != "shift" {
+		t.Errorf("TUILogModifier = %q, want 'shift'", cfg.TUILogModifier)
+	}
+}
+
+func TestLoad_TUILogModifierEmptyDefaultsToShift(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `tui_log_modifier: ""`)
+	cfg, err := Load(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.TUILogModifier != "shift" {
+		t.Errorf("TUILogModifier = %q, want 'shift' (default for empty)", cfg.TUILogModifier)
+	}
+}
+
+func TestLoad_TUILogModifierInvalid(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `tui_log_modifier: ctrl`)
+	_, err := Load(filepath.Join(dir, "config.yaml"))
+	if err == nil {
+		t.Fatal("expected error for invalid tui_log_modifier")
+	}
+	if !strings.Contains(err.Error(), "must be alt or shift") {
+		t.Errorf("error = %q, want 'must be alt or shift'", err.Error())
+	}
+}
+
+func TestLoad_TUILogModifierNormalizesCase(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `tui_log_modifier: "  SHIFT  "`)
+	cfg, err := Load(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.TUILogModifier != "shift" {
+		t.Errorf("TUILogModifier = %q, want 'shift' (normalized)", cfg.TUILogModifier)
 	}
 }

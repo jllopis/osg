@@ -47,7 +47,7 @@ internal/
   summary/            Auto-summary: Extract/Noop/AI providers
   taxonomy/           Taxonomy builder (tags, categories, etc.)
   theme/              Theme embed (//go:embed), EnsureDefaultTheme()
-  tui/                Bubble Tea TUI (12 modules: viewport, sidebar, etc.)
+  tui/                Bubble Tea TUI (18 modules: viewport, sidebar, logpanel, configscreen, etc.)
   vault/              Vault reader, image index, file discovery
   wikilink/           Wikilink -> Markdown rewriter (![[img|alt]])
 docs/                 Specs and plans (DESIGN, TEMPLATES, TAXONOMIES, etc.)
@@ -158,6 +158,15 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
   path for plugin compatibility. WASI mount maps host `/` to guest `/`, so
   relative paths don't resolve correctly.
 - **TUI**: Bubble Tea with 2-panel layout, slash commands, Nord palette
+  - **Service management**: F5/F6 toggle serve/API, 3 modes (static, serve+api, standalone api)
+  - **Log panel**: F7 toggleable bottom panel, tabs Serve/API/All, independent scroll
+  - **Config editor**: F8 full-screen modal, 24 config sections, inline editing,
+    `yaml.Node` round-trip preserves YAML comments, dirty tracking, Ctrl+S save
+  - **Multi-channel logs**: `LogSink` with source tags, `MergeChannels()` fan-in
+  - **Config schema**: `ConfigSchema()` with 8 field types (String, Bool, Int,
+    StringList, IntList, StringMap, Struct, StructList)
+  - Slash commands: `/serve [--api]`, `/api`, `/stop`, `/logs`, `/config`
+  - Contextual hint bar changes per mode (normal/log-focus/config)
 
 - **Permalinks**: Configurable URL patterns with extended placeholders:
   - `content_layout` supports `{date}`, `{year}`, `{month}`, `{day}`, `{slug}`, `{title}`
@@ -220,6 +229,23 @@ favicon support, configurable permalinks, interactions (views + likes),
 sharing (social share popover), and comments (OAuth2 + threaded replies) all complete.
 
 ### Recently completed (post v0.99)
+- **TUI enhancements (Phase 17)**: Full TUI overhaul with service management,
+  log panel, and config editor. 6 phases (A-F) documented in `docs/TUI-ENHANCEMENTS.md`.
+  Phase A: Multi-channel `LogSink` with source tags (general/serve/api),
+  `TaggedLine` struct, `MergeChannels()` fan-in, per-source message buffers.
+  Phase B: Process management for serve + API (3 modes: static, serve+api,
+  standalone api), F5/F6 toggles, `/serve [--api]`, `/api`, `/stop` commands,
+  badges in header/sidebar. Phase C: Log panel component (`logpanel.go`) with
+  own viewport, tabs (Serve/API/All), Shift+arrow navigation, F7 toggle.
+  Phase D: Config infrastructure — `ConfigSchema()` with 24 sections covering
+  all config fields, `yaml.Node` CRUD (`LoadNode`/`SaveNode`/`GetNodeValue`/
+  `SetNodeValue`/`SetNodeSequence`/`GetNodeSequence`/`DeleteNodeKey`) preserving
+  YAML comments. Phase E: Config editor modal (`configscreen.go`, `configfields.go`)
+  — full-screen 2-panel editor with section navigation, inline field editing,
+  bool toggle, list add/delete, validation per type, dirty tracking, Ctrl+S save,
+  confirm dialog on unsaved Esc. Phase F: Contextual hint bar (changes per
+  mode: normal/log-focus/config), config reload after save updates sidebar,
+  status bar shows running service addresses. 60+ TUI tests, 15+ config tests.
 - **Sharing**: Social sharing buttons and title copy-link for articles.
   Copy-link icon next to `<h1>` (hover on desktop, always visible on mobile).
   Share section below article: X, LinkedIn, Bluesky, Email, Copy link buttons.
