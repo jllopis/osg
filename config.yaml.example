@@ -245,6 +245,24 @@ serve_debounce_ms: 300
 #     - "https://mysite.com"
 #   view_dedup_hours: 24     # Dedup window: same fingerprint counts as one
 #                            # unique view per page within this period.
+#
+# --- Comments (nested under interactions) ---
+# OAuth2-authenticated comment system with threaded replies.
+# Uses a separate SQLite database for future portability.
+#
+#   comments:
+#     enabled: true
+#     db_path: ".osg/comments.db"     # Separate DB for comments.
+#     auth_session_days: 30            # Login session lifetime in days.
+#     auth_callback_url: ""            # Base URL for OAuth callbacks.
+#                                      # Empty = derived from request Host.
+#     providers:                       # OAuth2 providers for login.
+#       - provider: github
+#         client_id: "your_github_client_id"
+#         client_secret: "your_github_client_secret"
+#       - provider: google
+#         client_id: "your_google_client_id"
+#         client_secret: "your_google_client_secret"
 
 # -----------------------------------------------------------------------------
 # Deployment (osg deploy)
