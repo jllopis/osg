@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"osg/internal/publish"
+	slugpkg "osg/internal/slug"
 
 	"gopkg.in/yaml.v3"
 )
@@ -139,16 +141,40 @@ func RenderMarkdown(frontmatter map[string]any, body []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func BuildOutputPath(contentDir string, layout string, datePath string, slug string) string {
+// BuildOutputPath expands placeholders in layout and returns the content file path.
+// Supported placeholders: {date}, {year}, {month}, {day}, {slug}, {title}.
+func BuildOutputPath(contentDir, layout string, pageDate time.Time, pageSlug, title string) string {
 	if strings.TrimSpace(layout) == "" {
 		layout = "{date}/{slug}"
 	}
+	expanded := expandPlaceholders(layout, pageDate, pageSlug, title)
+	return filepath.Join(contentDir, filepath.Clean(expanded), "index.md")
+}
 
-	path := strings.ReplaceAll(layout, "{date}", datePath)
-	path = strings.ReplaceAll(path, "{slug}", slug)
-	path = strings.TrimLeft(path, "/\\")
+// ExpandPermalink expands placeholders in a permalink pattern and returns
+// a clean relative path suitable for content directory placement.
+// Supported placeholders: {date}, {year}, {month}, {day}, {slug}, {title}.
+func ExpandPermalink(pattern string, pageDate time.Time, pageSlug, title string) string {
+	return filepath.Clean(expandPlaceholders(pattern, pageDate, pageSlug, title))
+}
 
-	return filepath.Join(contentDir, filepath.Clean(path), "index.md")
+// expandPlaceholders replaces permalink placeholders in a pattern string.
+func expandPlaceholders(pattern string, pageDate time.Time, pageSlug, title string) string {
+	year := fmt.Sprintf("%04d", pageDate.Year())
+	month := fmt.Sprintf("%02d", int(pageDate.Month()))
+	day := fmt.Sprintf("%02d", pageDate.Day())
+	datePath := year + "/" + month + "/" + day
+
+	path := strings.ReplaceAll(pattern, "{date}", datePath)
+	path = strings.ReplaceAll(path, "{year}", year)
+	path = strings.ReplaceAll(path, "{month}", month)
+	path = strings.ReplaceAll(path, "{day}", day)
+	path = strings.ReplaceAll(path, "{slug}", pageSlug)
+	if strings.Contains(path, "{title}") {
+		path = strings.ReplaceAll(path, "{title}", slugpkg.Slugify(title))
+	}
+
+	return strings.TrimLeft(path, "/\\")
 }
 
 func pickString(fm map[string]any, keys ...string) string {

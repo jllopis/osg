@@ -1,9 +1,13 @@
 package content
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestBuildOutputPath(t *testing.T) {
-	path := BuildOutputPath("content", "{date}/{slug}", "2025/11/02", "my-post")
+	d := time.Date(2025, 11, 2, 0, 0, 0, 0, time.UTC)
+	path := BuildOutputPath("content", "{date}/{slug}", d, "my-post", "My Post")
 	if path != "content/2025/11/02/my-post/index.md" {
 		t.Fatalf("unexpected path: %s", path)
 	}
@@ -485,16 +489,120 @@ func TestPickBool(t *testing.T) {
 // --- BuildOutputPath ---
 
 func TestBuildOutputPathEmptyLayout(t *testing.T) {
-	path := BuildOutputPath("content", "", "2025/01/02", "my-post")
+	d := time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)
+	path := BuildOutputPath("content", "", d, "my-post", "My Post")
 	if path != "content/2025/01/02/my-post/index.md" {
 		t.Fatalf("expected default layout, got %q", path)
 	}
 }
 
 func TestBuildOutputPathCustomLayout(t *testing.T) {
-	path := BuildOutputPath("out", "{slug}", "2025/01/02", "hello")
+	d := time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)
+	path := BuildOutputPath("out", "{slug}", d, "hello", "Hello World")
 	if path != "out/hello/index.md" {
 		t.Fatalf("expected slug-only layout, got %q", path)
+	}
+}
+
+// --- New placeholder tests ---
+
+func TestBuildOutputPath_YearMonthDay(t *testing.T) {
+	d := time.Date(2025, 3, 6, 0, 0, 0, 0, time.UTC)
+	path := BuildOutputPath("content", "{year}/{month}/{slug}", d, "my-post", "")
+	if path != "content/2025/03/my-post/index.md" {
+		t.Fatalf("expected year/month/slug layout, got %q", path)
+	}
+}
+
+func TestBuildOutputPath_YearSlug(t *testing.T) {
+	d := time.Date(2025, 7, 15, 0, 0, 0, 0, time.UTC)
+	path := BuildOutputPath("content", "{year}/{slug}", d, "hello", "")
+	if path != "content/2025/hello/index.md" {
+		t.Fatalf("expected year/slug layout, got %q", path)
+	}
+}
+
+func TestBuildOutputPath_DayMonthYear(t *testing.T) {
+	d := time.Date(2025, 12, 25, 0, 0, 0, 0, time.UTC)
+	path := BuildOutputPath("out", "{day}-{month}-{year}/{slug}", d, "xmas", "")
+	if path != "out/25-12-2025/xmas/index.md" {
+		t.Fatalf("expected day-month-year layout, got %q", path)
+	}
+}
+
+func TestBuildOutputPath_TitlePlaceholder(t *testing.T) {
+	d := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	path := BuildOutputPath("content", "posts/{title}", d, "custom-slug", "My Great Post")
+	if path != "content/posts/my-great-post/index.md" {
+		t.Fatalf("expected title-based path, got %q", path)
+	}
+}
+
+func TestBuildOutputPath_TitleWithSpecialChars(t *testing.T) {
+	d := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	path := BuildOutputPath("content", "{title}", d, "slug", "¡Hola, Mundo! ¿Qué tal?")
+	expected := "content/hola-mundo-qué-tal/index.md"
+	if path != expected {
+		t.Fatalf("expected %q, got %q", expected, path)
+	}
+}
+
+func TestBuildOutputPath_AllPlaceholders(t *testing.T) {
+	d := time.Date(2025, 3, 6, 0, 0, 0, 0, time.UTC)
+	path := BuildOutputPath("content", "{year}/{month}/{day}/{title}/{slug}", d, "my-slug", "My Title")
+	if path != "content/2025/03/06/my-title/my-slug/index.md" {
+		t.Fatalf("expected all-placeholder layout, got %q", path)
+	}
+}
+
+func TestBuildOutputPath_DateAndYearNotConflict(t *testing.T) {
+	// {date} expands to YYYY/MM/DD; {year} should also work independently
+	d := time.Date(2025, 6, 15, 0, 0, 0, 0, time.UTC)
+	path := BuildOutputPath("content", "{date}/{slug}", d, "post", "")
+	if path != "content/2025/06/15/post/index.md" {
+		t.Fatalf("expected date layout, got %q", path)
+	}
+}
+
+// --- ExpandPermalink tests ---
+
+func TestExpandPermalink_Literal(t *testing.T) {
+	d := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	got := ExpandPermalink("guides/my-guide", d, "slug", "Title")
+	if got != "guides/my-guide" {
+		t.Fatalf("expected literal path, got %q", got)
+	}
+}
+
+func TestExpandPermalink_WithPlaceholders(t *testing.T) {
+	d := time.Date(2025, 3, 6, 0, 0, 0, 0, time.UTC)
+	got := ExpandPermalink("blog/{year}/{slug}", d, "my-post", "My Post Title")
+	if got != "blog/2025/my-post" {
+		t.Fatalf("expected expanded path, got %q", got)
+	}
+}
+
+func TestExpandPermalink_WithTitle(t *testing.T) {
+	d := time.Date(2025, 3, 6, 0, 0, 0, 0, time.UTC)
+	got := ExpandPermalink("{year}/{title}", d, "slug", "My Great Post")
+	if got != "2025/my-great-post" {
+		t.Fatalf("expected title expansion, got %q", got)
+	}
+}
+
+func TestExpandPermalink_StripsLeadingSlash(t *testing.T) {
+	d := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	got := ExpandPermalink("/about", d, "about", "About")
+	if got != "about" {
+		t.Fatalf("expected leading slash stripped, got %q", got)
+	}
+}
+
+func TestExpandPermalink_EmptyTitle(t *testing.T) {
+	d := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	got := ExpandPermalink("{title}", d, "slug", "")
+	if got != "untitled" {
+		t.Fatalf("expected 'untitled' for empty title, got %q", got)
 	}
 }
 

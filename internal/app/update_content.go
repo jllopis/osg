@@ -131,16 +131,30 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 		dateValue := date.Derive(fm, info)
 		slugValue := slug.Derive(fm, info.Name())
 		osgPath := publish.GetOSGString(fm, "path")
+		osgPermalink := publish.GetOSGString(fm, "permalink")
+
+		// Resolve title for permalink placeholders
+		// Precedence: osg.title > fm.title > fm.name > filename
+		titleForPermalink := publish.GetOSGString(fm, "title")
+		if titleForPermalink == "" {
+			titleForPermalink = pickValue(fm, "title", "name")
+		}
+		if titleForPermalink == "" {
+			titleForPermalink = strings.TrimSuffix(info.Name(), filepath.Ext(info.Name()))
+		}
 
 		// Determine the page language for content path placement.
 		pageLang := strings.ToLower(strings.TrimSpace(pickValue(fm, "lang", "language")))
 
 		var outputPath string
-		if osgPath != "" {
+		if osgPermalink != "" {
+			// osg.permalink: highest precedence, supports placeholders
+			expanded := content.ExpandPermalink(osgPermalink, dateValue, slugValue, titleForPermalink)
+			outputPath = filepath.Join(cfg.ContentDir, expanded, "index.md")
+		} else if osgPath != "" {
 			outputPath = filepath.Join(cfg.ContentDir, filepath.Clean(osgPath), "index.md")
 		} else {
-			datePath := date.FormatPath(dateValue)
-			outputPath = content.BuildOutputPath(cfg.ContentDir, cfg.ContentLayout, datePath, slugValue)
+			outputPath = content.BuildOutputPath(cfg.ContentDir, cfg.ContentLayout, dateValue, slugValue, titleForPermalink)
 		}
 
 		// For non-default languages, inject /{lang}/ prefix into the content
