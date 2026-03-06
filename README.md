@@ -108,6 +108,7 @@ color_scheme: auto          # auto | light | dark
 default_language: es        # BCP-47 language code
 vault_path: "../my-vault/"
 default_editor: ""          # editor for osg new (falls back to $EDITOR)
+new_notes_dir: ""           # subfolder in vault for osg new (empty = vault root)
 ```
 
 ### Obsidian frontmatter

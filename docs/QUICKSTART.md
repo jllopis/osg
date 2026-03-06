@@ -33,7 +33,8 @@ Por defecto, `osg` sin comando lanza la TUI.
 osg new "Mi Nuevo Post"
 ```
 
-Crea un fichero `Mi Nuevo Post.md` en el vault con frontmatter pre-configurado:
+Crea un fichero `Mi Nuevo Post.md` en el vault (o en la subcarpeta configurada
+en `new_notes_dir`) con frontmatter pre-configurado:
 
 ```yaml
 ---
@@ -60,6 +61,7 @@ Todos los campos `osg:` aparecen como comentarios YAML listos para descomentar.
 osg new "Post" --tags tech,go    # Con tags
 osg new "Post" --publish         # Publicado (no draft)
 osg new "Post" --no-editor       # No abrir editor despues de crear
+osg new "Post" --notes-dir 02_Notes  # Crear en subcarpeta del vault
 osg new "Post" --dry-run         # Solo muestra que haria
 ```
 

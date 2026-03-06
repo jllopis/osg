@@ -457,6 +457,198 @@ func TestConfigSchemaHasDefaultEditor(t *testing.T) {
 	}
 }
 
+func TestConfigSchemaHasNewNotesDir(t *testing.T) {
+	t.Parallel()
+
+	_, ok := config.FindField("new_notes_dir")
+	if !ok {
+		t.Error("new_notes_dir not found in ConfigSchema")
+	}
+}
+
+// --- new_notes_dir tests ---
+
+func TestRunNew_NewNotesDirFromConfig(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	vaultPath := filepath.Join(root, "vault")
+	if err := os.MkdirAll(vaultPath, 0o755); err != nil {
+		t.Fatalf("mkdir vault: %v", err)
+	}
+
+	cfgPath := filepath.Join(root, "config.yaml")
+	cfgContent := `vault_path: "` + vaultPath + `"` + "\n" +
+		`new_notes_dir: "02_Notes"` + "\n"
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	opts := CLIOptions{ConfigPath: cfgPath}
+	postOpts := NewPostOptions{Title: "Note In Subdir"}
+
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
+		t.Fatalf("RunNew failed: %v", err)
+	}
+
+	// File should be in vault/02_Notes/
+	outputPath := filepath.Join(vaultPath, "02_Notes", "Note In Subdir.md")
+	if _, err := os.Stat(outputPath); err != nil {
+		t.Errorf("file should exist at %s: %v", outputPath, err)
+	}
+
+	// Should NOT exist at vault root.
+	rootPath := filepath.Join(vaultPath, "Note In Subdir.md")
+	if _, err := os.Stat(rootPath); err == nil {
+		t.Error("file should not exist at vault root when new_notes_dir is set")
+	}
+}
+
+func TestRunNew_NewNotesDirAutoCreate(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	vaultPath := filepath.Join(root, "vault")
+	if err := os.MkdirAll(vaultPath, 0o755); err != nil {
+		t.Fatalf("mkdir vault: %v", err)
+	}
+
+	cfgPath := filepath.Join(root, "config.yaml")
+	cfgContent := `vault_path: "` + vaultPath + `"` + "\n" +
+		`new_notes_dir: "deep/nested/notes"` + "\n"
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	opts := CLIOptions{ConfigPath: cfgPath}
+	postOpts := NewPostOptions{Title: "Deep Note"}
+
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
+		t.Fatalf("RunNew failed: %v", err)
+	}
+
+	outputPath := filepath.Join(vaultPath, "deep", "nested", "notes", "Deep Note.md")
+	if _, err := os.Stat(outputPath); err != nil {
+		t.Errorf("file should exist at %s (auto-created dir): %v", outputPath, err)
+	}
+}
+
+func TestRunNew_NewNotesDirCLIOverride(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	vaultPath := filepath.Join(root, "vault")
+	if err := os.MkdirAll(vaultPath, 0o755); err != nil {
+		t.Fatalf("mkdir vault: %v", err)
+	}
+
+	cfgPath := filepath.Join(root, "config.yaml")
+	cfgContent := `vault_path: "` + vaultPath + `"` + "\n" +
+		`new_notes_dir: "02_Notes"` + "\n"
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	opts := CLIOptions{ConfigPath: cfgPath}
+	postOpts := NewPostOptions{Title: "CLI Dir", NotesDir: "Drafts"}
+
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
+		t.Fatalf("RunNew failed: %v", err)
+	}
+
+	// Should use CLI override, not config.
+	outputPath := filepath.Join(vaultPath, "Drafts", "CLI Dir.md")
+	if _, err := os.Stat(outputPath); err != nil {
+		t.Errorf("file should exist at %s (CLI override): %v", outputPath, err)
+	}
+
+	// Should NOT be in config dir.
+	configPath := filepath.Join(vaultPath, "02_Notes", "CLI Dir.md")
+	if _, err := os.Stat(configPath); err == nil {
+		t.Error("file should not exist in config new_notes_dir when CLI --notes-dir overrides it")
+	}
+}
+
+func TestRunNew_NewNotesDirEmpty(t *testing.T) {
+	t.Parallel()
+
+	// When new_notes_dir is empty, files go to vault root (default behavior).
+	cfgPath, vaultPath := writeNewConfig(t)
+	opts := CLIOptions{ConfigPath: cfgPath}
+	postOpts := NewPostOptions{Title: "Root Note"}
+
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
+		t.Fatalf("RunNew failed: %v", err)
+	}
+
+	outputPath := filepath.Join(vaultPath, "Root Note.md")
+	if _, err := os.Stat(outputPath); err != nil {
+		t.Errorf("file should exist at vault root: %v", err)
+	}
+}
+
+func TestRunNew_NewNotesDirDryRun(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	vaultPath := filepath.Join(root, "vault")
+	if err := os.MkdirAll(vaultPath, 0o755); err != nil {
+		t.Fatalf("mkdir vault: %v", err)
+	}
+
+	cfgPath := filepath.Join(root, "config.yaml")
+	cfgContent := `vault_path: "` + vaultPath + `"` + "\n" +
+		`new_notes_dir: "02_Notes"` + "\n"
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	opts := CLIOptions{ConfigPath: cfgPath, DryRun: true}
+	postOpts := NewPostOptions{Title: "Dry Run Subdir"}
+
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
+		t.Fatalf("RunNew dry-run failed: %v", err)
+	}
+
+	// File should NOT be created in dry-run.
+	outputPath := filepath.Join(vaultPath, "02_Notes", "Dry Run Subdir.md")
+	if _, err := os.Stat(outputPath); err == nil {
+		t.Error("file should not exist in dry-run mode")
+	}
+}
+
+func TestConfigNewNotesDir(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	cfgPath := filepath.Join(root, "config.yaml")
+	cfgContent := `vault_path: "/tmp"
+new_notes_dir: "02_Notes"
+`
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load config: %v", err)
+	}
+
+	if cfg.NewNotesDir != "02_Notes" {
+		t.Errorf("NewNotesDir = %q; want \"02_Notes\"", cfg.NewNotesDir)
+	}
+}
+
+func TestConfigNewNotesDirDefault(t *testing.T) {
+	t.Parallel()
+
+	// Default config should have empty NewNotesDir.
+	cfg := config.Default()
+	if cfg.NewNotesDir != "" {
+		t.Errorf("Default().NewNotesDir = %q; want empty", cfg.NewNotesDir)
+	}
+}
+
 // writeNewConfig creates a minimal config with a vault directory and returns
 // the config path and vault path.
 func writeNewConfig(t *testing.T) (cfgPath string, vaultPath string) {

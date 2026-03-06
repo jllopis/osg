@@ -67,10 +67,11 @@ type APICmd struct {
 }
 
 type NewCmd struct {
-	Title   string   `arg:"" help:"Post title"`
-	Tags    []string `help:"Comma-separated tags" short:"t" sep:","`
-	Publish bool     `help:"Mark as published (default: draft)"`
-	Editor  *bool    `help:"Open in editor after creation (auto-detected from default_editor config or $EDITOR)" negatable:""`
+	Title    string   `arg:"" help:"Post title"`
+	Tags     []string `help:"Comma-separated tags" short:"t" sep:","`
+	Publish  bool     `help:"Mark as published (default: draft)"`
+	Editor   *bool    `help:"Open in editor after creation (auto-detected from default_editor config or $EDITOR)" negatable:""`
+	NotesDir string   `help:"Subdirectory within the vault for the new note (overrides new_notes_dir config)" name:"notes-dir"`
 }
 
 type ThemeCmd struct {
@@ -194,9 +195,10 @@ func main() {
 		runErr = app.RunDeploy(context.Background(), opts, deployOpts)
 	case strings.HasPrefix(command, "new"):
 		postOpts := app.NewPostOptions{
-			Title:   cli.New.Title,
-			Tags:    cli.New.Tags,
-			Publish: cli.New.Publish,
+			Title:    cli.New.Title,
+			Tags:     cli.New.Tags,
+			Publish:  cli.New.Publish,
+			NotesDir: cli.New.NotesDir,
 		}
 		// Editor flag: explicit --editor/--no-editor wins.
 		// When not set (nil), auto-detect: open editor if default_editor

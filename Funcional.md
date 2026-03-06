@@ -253,6 +253,7 @@ osg new "Mi Nuevo Post" --publish                 # crea como publicado
 osg new "Mi Nuevo Post" --tags filosofia,logica   # con tags
 osg new "Mi Nuevo Post" --dry-run                 # muestra que haria sin escribir
 osg new "Mi Nuevo Post" --no-editor               # no abrir editor
+osg new "Mi Nuevo Post" --notes-dir 02_Notes      # crear en subcarpeta del vault
 ```
 
 **Desde el TUI:**
@@ -261,7 +262,7 @@ osg new "Mi Nuevo Post" --no-editor               # no abrir editor
 /new Mi Nuevo Post
 ```
 
-El comando genera un fichero `{Title}.md` en la raiz del vault (convencion Obsidian: ficheros planos con nombres legibles). El frontmatter generado incluye todos los campos reconocidos del bloque `osg`, con los campos inactivos como comentarios YAML:
+El comando genera un fichero `{Title}.md` en el vault. Por defecto se crea en la raiz del vault (convencion Obsidian: ficheros planos con nombres legibles). Si `new_notes_dir` esta configurado en `config.yaml`, se crea en `{vault_path}/{new_notes_dir}/{Title}.md`. El directorio se crea automaticamente si no existe. Se puede hacer override puntual con `--notes-dir`.
 
 ```yaml
 ---
@@ -297,6 +298,17 @@ Tras crear el fichero, `osg new` intenta abrir un editor:
 - **`--no-editor`**: omite la apertura del editor siempre
 - **`--editor`**: fuerza la apertura; si no hay editor configurado, muestra warning (no-fatal)
 - Soporta comandos con argumentos (ej. `"code --wait"`, `"vim -u NONE"`)
+
+**Carpeta de destino:**
+
+Por defecto las notas se crean en la raiz del vault. Se puede configurar una subcarpeta:
+
+```yaml
+# config.yaml
+new_notes_dir: "02_Notes"    # crea notas en vault/02_Notes/
+```
+
+Override puntual: `osg new "Post" --notes-dir Drafts`. Prioridad: `--notes-dir` > `new_notes_dir` config > raiz del vault.
 
 ### Internacionalizacion (i18n) de plantillas
 

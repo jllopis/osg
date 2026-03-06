@@ -240,8 +240,10 @@ sharing (social share popover), and comments (OAuth2 + threaded replies) all com
   file creation: `default_editor` config > `$EDITOR` env > silent skip.
   `--editor`/`--no-editor` negatable CLI flag with auto-detect default.
   `resolveEditor()` and `openEditor()` with non-fatal errors (file always created).
-  `DefaultEditor` field in Config struct, "Editor" section in `ConfigSchema()`.
-  22 tests (9 original + 13 new).
+  `DefaultEditor` field in Config struct, "New Post" section in `ConfigSchema()`.
+  `NewNotesDir` config field (`new_notes_dir`) for destination subfolder within
+  vault. `--notes-dir` CLI override. Priority: CLI > config > vault root.
+  Directory auto-created via `MkdirAll`. 30 tests (9 original + 21 new).
 - **TUI enhancements (Phase 17)**: Full TUI overhaul with service management,
   log panel, and config editor. 6 phases (A-F) documented in `docs/TUI-ENHANCEMENTS.md`.
   Phase A: Multi-channel `LogSink` with source tags (general/serve/api),

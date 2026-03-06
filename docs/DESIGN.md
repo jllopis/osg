@@ -545,6 +545,7 @@ Flags (osg new):
 - --tags (comma-separated list)
 - --publish (default: false -> draft)
 - --editor / --no-editor (negatable; auto-detect por defecto)
+- --notes-dir (subdirectorio destino dentro del vault; override de new_notes_dir config)
 
 Flags (osg build):
 - --force-ai-summaries (regenera summaries AI ignorando cache, requiere confirmacion)
@@ -563,6 +564,7 @@ osg new "Mi Nuevo Post" --tags filosofia,logica   # con tags
 osg new "Mi Nuevo Post" --dry-run                 # solo muestra que haria
 osg new "Mi Nuevo Post" --vault-path /otro/vault  # override de vault
 osg new "Mi Nuevo Post" --no-editor               # no abrir editor
+osg new "Mi Nuevo Post" --notes-dir 02_Notes      # crear en subcarpeta del vault
 ```
 
 ### TUI
@@ -627,16 +629,30 @@ export EDITOR=vim
 
 ### Ruta del fichero
 
-El fichero se crea en `{vault_path}/{Title}.md` (convencion Obsidian: ficheros planos con nombres legibles). Si el fichero ya existe, el comando retorna error.
+Por defecto, el fichero se crea en `{vault_path}/{Title}.md` (convencion Obsidian: ficheros planos con nombres legibles).
+
+Si `new_notes_dir` esta configurado (o se pasa `--notes-dir`), la ruta es `{vault_path}/{new_notes_dir}/{Title}.md`. El directorio se crea automaticamente si no existe. Prioridad: `--notes-dir` CLI > `new_notes_dir` config > raiz del vault.
+
+Si el fichero ya existe, el comando retorna error.
+
+Configuracion:
+
+```yaml
+# En config.yaml:
+new_notes_dir: "02_Notes"    # subcarpeta dentro del vault
+
+# O override puntual:
+osg new "Post" --notes-dir Drafts
+```
 
 ### Implementacion
 
-- `internal/app/new.go`: `RunNew()` con `NewPostOptions` (Title, Tags, Publish, Editor, EditorAuto)
+- `internal/app/new.go`: `RunNew()` con `NewPostOptions` (Title, Tags, Publish, Editor, EditorAuto, NotesDir)
 - `internal/app/new.go`: `buildFrontmatter()` genera YAML manual con comentarios
 - `internal/app/new.go`: `yamlScalar()` entrecomilla valores YAML con caracteres especiales
 - `internal/app/new.go`: `resolveEditor()` resuelve editor (config > $EDITOR)
 - `internal/app/new.go`: `openEditor()` ejecuta editor interactivo
-- `cmd/osg/main.go`: `NewCmd` struct con Kong, `Editor *bool` negatable, dispatch en switch
+- `cmd/osg/main.go`: `NewCmd` struct con Kong, `Editor *bool` negatable, `NotesDir` string, dispatch en switch
 - TUI: `/new` registrado en `commands.go`, handler en `update.go`, closure en `app/tui.go`
 
 ## Decisions (trade-offs)

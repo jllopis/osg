@@ -86,8 +86,11 @@ Formato: [todo|doing|done] Tarea
 [done] (osg new) Auto-apertura de editor: default_editor config > $EDITOR env > skip silencioso
 [done] (osg new) --editor/--no-editor flag (negatable) con auto-detect por defecto
 [done] (osg new) resolveEditor() y openEditor() en new.go; errores no-fatales
-[done] (osg new) DefaultEditor field en Config + seccion "Editor" en ConfigSchema()
-[done] (osg new) 22 tests unitarios (9 originales + 13 nuevos)
+[done] (osg new) DefaultEditor field en Config + seccion "New Post" en ConfigSchema()
+[done] (osg new) new_notes_dir config: carpeta destino dentro del vault para notas nuevas
+[done] (osg new) --notes-dir CLI override (prioridad: CLI > config > vault root)
+[done] (osg new) auto-creacion de directorio destino via MkdirAll
+[done] (osg new) 30 tests unitarios (9 originales + 21 nuevos)
 
 [done] (i18n) Package internal/i18n/: Bundle struct, New(), LoadDir(), Trans(), DateFormat()
 [done] (i18n) Ficheros de traduccion en.yaml y es.yaml (~31 claves cada uno)

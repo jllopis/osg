@@ -19,9 +19,10 @@ import (
 type NewPostOptions struct {
 	Title      string
 	Tags       []string
-	Publish    bool // true = osg.publish: true, false = osg.publish: "draft"
-	Editor     bool // open in editor after creation
-	EditorAuto bool // true when Editor was auto-detected (not explicit --editor)
+	Publish    bool   // true = osg.publish: true, false = osg.publish: "draft"
+	Editor     bool   // open in editor after creation
+	EditorAuto bool   // true when Editor was auto-detected (not explicit --editor)
+	NotesDir   string // CLI override for new_notes_dir config
 }
 
 // RunNew creates a new Markdown note in the vault with osg frontmatter.
@@ -53,10 +54,20 @@ func RunNew(_ context.Context, opts CLIOptions, postOpts NewPostOptions) error {
 
 	content := buildFrontmatter(title, now, postOpts)
 
-	// File path: vault_path/{Title}.md
+	// Resolve destination directory: CLI --notes-dir > config new_notes_dir > vault root.
+	baseDir := vaultPath
+	notesDir := postOpts.NotesDir
+	if notesDir == "" {
+		notesDir = cfg.NewNotesDir
+	}
+	if notesDir != "" {
+		baseDir = filepath.Join(vaultPath, notesDir)
+	}
+
+	// File path: baseDir/{Title}.md
 	// Use the original title as filename (Obsidian convention).
 	filename := title + ".md"
-	outputPath := filepath.Join(vaultPath, filename)
+	outputPath := filepath.Join(baseDir, filename)
 
 	if _, err := os.Stat(outputPath); err == nil {
 		return fmt.Errorf("file already exists: %s", outputPath)

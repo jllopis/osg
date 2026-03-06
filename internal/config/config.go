@@ -93,6 +93,7 @@ type Config struct {
 	DefaultLanguage   string             `koanf:"default_language" yaml:"default_language"`
 	Languages         []LanguageConfig   `koanf:"languages" yaml:"languages"`
 	DefaultEditor     string             `koanf:"default_editor" yaml:"default_editor"`
+	NewNotesDir       string             `koanf:"new_notes_dir" yaml:"new_notes_dir"`
 	DoctorProfile     string             `koanf:"doctor_profile" yaml:"doctor_profile"`
 	Social            map[string]string  `koanf:"social" yaml:"social"`
 	Copyright         string             `koanf:"copyright" yaml:"copyright"`
@@ -465,12 +466,18 @@ content_layout: "{date}/{slug}"
 include_drafts: false
 
 # -----------------------------------------------------------------------------
-# Editor
+# New Post (osg new)
 # -----------------------------------------------------------------------------
 # default_editor: Editor command to open new posts after creation with "osg new".
 #                 If empty, falls back to the $EDITOR environment variable.
 #                 Examples: "code", "vim", "nvim", "nano", "subl"
 # default_editor: ""
+# new_notes_dir: Subdirectory within the vault where "osg new" creates notes.
+#                Relative to vault_path. If empty, notes are created at the
+#                vault root (Obsidian default). The directory is auto-created
+#                if it does not exist.
+#                Examples: "02_Notes", "Posts", "drafts"
+# new_notes_dir: ""
 
 # -----------------------------------------------------------------------------
 # Theme & appearance

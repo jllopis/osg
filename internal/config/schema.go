@@ -80,10 +80,11 @@ func ConfigSchema() []ConfigSection {
 			},
 		},
 		{
-			Name:        "Editor",
-			Description: "Editor for opening new posts after creation.",
+			Name:        "New Post",
+			Description: "Settings for the osg new command: editor and destination folder.",
 			Fields: []ConfigField{
 				{Key: "default_editor", Label: "Default Editor", Description: "Editor command to open new posts (falls back to $EDITOR env var).", Type: FieldString},
+				{Key: "new_notes_dir", Label: "New Notes Directory", Description: "Subdirectory within the vault where osg new creates notes. Empty = vault root.", Type: FieldString},
 			},
 		},
 		{

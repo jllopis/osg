@@ -131,8 +131,11 @@
 - [done] auto-apertura de editor: `default_editor` config > `$EDITOR` env > skip silencioso
 - [done] `--editor`/`--no-editor` flag (negatable) con auto-detect por defecto
 - [done] `resolveEditor()` y `openEditor()` en new.go; errores no-fatales (archivo siempre creado)
-- [done] `DefaultEditor` field en Config + seccion "Editor" en ConfigSchema()
-- [done] 22 tests unitarios (9 originales + 13 nuevos: frontmatter comments, buildFrontmatter, yamlScalar, resolveEditor, editor auto-skip, config)
+- [done] `DefaultEditor` field en Config + seccion "New Post" en ConfigSchema()
+- [done] `new_notes_dir` config: carpeta destino dentro del vault para notas nuevas
+- [done] `--notes-dir` CLI override (prioridad: CLI > config > vault root)
+- [done] auto-creacion de directorio destino via MkdirAll
+- [done] 30 tests unitarios (9 originales + 21 nuevos)
 
 ## i18n en templates (done)
 - [done] `internal/i18n/` package: Bundle struct, New(), LoadDir(), Trans(), DateFormat()

@@ -36,7 +36,7 @@ content_layout: "{date}/{slug}"
 include_drafts: false
 
 # -----------------------------------------------------------------------------
-# Editor
+# New Post (osg new)
 # -----------------------------------------------------------------------------
 # default_editor: Editor command to open new posts after creation with "osg new".
 #                 Supports commands with arguments (e.g. "code --wait").
@@ -44,6 +44,12 @@ include_drafts: false
 #                 If neither is set, editor auto-open is silently skipped.
 #                 Use --no-editor to skip opening regardless.
 # default_editor: "code --wait"
+#
+# new_notes_dir: Subdirectory within the vault where "osg new" creates notes.
+#                Relative to vault_path. If empty, notes are created at the
+#                vault root (Obsidian default). The directory is auto-created
+#                if it does not exist. Override per-call with --notes-dir.
+# new_notes_dir: "02_Notes"
 
 # -----------------------------------------------------------------------------
 # Theme & appearance
