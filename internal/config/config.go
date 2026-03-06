@@ -706,12 +706,38 @@ logging:
 # OAuth2-authenticated comment system with threaded replies.
 # Uses a separate SQLite database for future portability.
 #
+# Visitors log in with their own GitHub/Google account to comment.
+# The client_id and client_secret below identify YOUR SITE (not the
+# commenter) to the OAuth provider. You obtain them by registering an
+# OAuth application:
+#
+#   GitHub:
+#     1. Go to https://github.com/settings/developers -> "OAuth Apps" -> "New OAuth App"
+#     2. Set "Authorization callback URL" to:
+#        https://yoursite.com/api/v1/auth/github/callback
+#     3. Copy the Client ID and Client Secret into the config below.
+#
+#   Google:
+#     1. Go to https://console.cloud.google.com/apis/credentials
+#     2. Create an "OAuth 2.0 Client ID" (Web application).
+#     3. Add to "Authorized redirect URIs":
+#        https://yoursite.com/api/v1/auth/google/callback
+#     4. Copy the Client ID and Client Secret into the config below.
+#
+# When a visitor clicks "Login with GitHub", they are redirected to
+# GitHub where they authorize your app. GitHub sends back a temporary
+# code that the server exchanges (using the client_secret) for the
+# visitor's public profile. The visitor's password never touches your
+# site.
+#
 #   comments:
 #     enabled: true
 #     db_path: ".osg/comments.db"     # Separate DB for comments.
 #     auth_session_days: 30            # Login session lifetime in days.
 #     auth_callback_url: ""            # Base URL for OAuth callbacks.
-#                                      # Empty = derived from request Host.
+#                                      # Must match the callback URL registered
+#                                      # with the provider (without the path).
+#                                      # E.g. "https://yoursite.com"
 #     providers:                       # OAuth2 providers for login.
 #       - provider: github
 #         client_id: "your_github_client_id"
