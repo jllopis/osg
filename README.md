@@ -64,10 +64,16 @@ osg build                    # Build static site to public/
 osg serve                    # Serve with live reload
 osg serve --watch --live-reload
 osg new "My Post Title"      # Create a new post in the vault
+osg new "Post" --no-editor   # Create without opening editor
 osg doctor                   # Validate configuration
 osg deploy                   # Deploy to Cloudflare/rsync/S3
 osg version                  # Show version info
 ```
+
+`osg new` creates a Markdown file in the vault with pre-configured frontmatter
+including all `osg:` fields as commented-out placeholders. After creating the
+file, it automatically opens your editor (`default_editor` config or `$EDITOR`
+env var). Pass `--no-editor` to skip, or `--editor` to force it.
 
 ### Plugin management
 
@@ -101,6 +107,7 @@ theme: default
 color_scheme: auto          # auto | light | dark
 default_language: es        # BCP-47 language code
 vault_path: "../my-vault/"
+default_editor: ""          # editor for osg new (falls back to $EDITOR)
 ```
 
 ### Obsidian frontmatter
@@ -116,8 +123,12 @@ osg:
   publish: true          # true | "draft" | false
   featured: true         # highlight on homepage
   image: "header.jpg"    # hero image (vault name or relative path)
+  title: "Custom Title"  # override page title (highest precedence)
   path: "/about/"        # custom URL (standalone page)
+  permalink: "blog/{year}/{slug}"  # URL pattern with placeholders
   menu: true             # add to site navigation
+  abstract: "Custom summary for listings and meta tags."
+  author: "Joan Llopis"  # author shown alongside the date
 ---
 ```
 

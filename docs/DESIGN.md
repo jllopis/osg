@@ -544,6 +544,7 @@ Flags (core):
 Flags (osg new):
 - --tags (comma-separated list)
 - --publish (default: false -> draft)
+- --editor / --no-editor (negatable; auto-detect por defecto)
 
 Flags (osg build):
 - --force-ai-summaries (regenera summaries AI ignorando cache, requiere confirmacion)
@@ -556,11 +557,12 @@ Crea una nueva nota Markdown en el vault de Obsidian con frontmatter pre-configu
 ### Uso
 
 ```bash
-osg new "Mi Nuevo Post"                           # crea draft
+osg new "Mi Nuevo Post"                           # crea draft, abre editor
 osg new "Mi Nuevo Post" --publish                 # crea publicado
 osg new "Mi Nuevo Post" --tags filosofia,logica   # con tags
 osg new "Mi Nuevo Post" --dry-run                 # solo muestra que haria
 osg new "Mi Nuevo Post" --vault-path /otro/vault  # override de vault
+osg new "Mi Nuevo Post" --no-editor               # no abrir editor
 ```
 
 ### TUI
@@ -573,22 +575,55 @@ En TUI, el titulo se pasa como argumentos del slash command (todos los args se u
 
 ### Frontmatter generado
 
+El frontmatter incluye todos los campos reconocidos del bloque `osg`. Los campos activos se establecen con valores; el resto aparecen como comentarios YAML para que el usuario los descomente cuando los necesite.
+
 ```yaml
 ---
 title: Mi Nuevo Post
-created: "2025-02-15 10:30"
+created: 2025-02-15 10:30
 tags:
   - filosofia
   - logica
 osg:
-  publish: "draft"
+  publish: draft
+  # title: ""          # Override page title (highest precedence)
+  # image: ""          # Featured/hero image path
+  # featured: false    # Mark as featured post
+  # path: ""           # Custom output path override
+  # permalink: ""      # URL pattern ({date}, {year}, {month}, {day}, {slug}, {title})
+  # menu: false        # Add to navigation menu
+  # abstract: ""       # Summary/excerpt override
+  # author: ""         # Author override
 ---
 ```
 
 - `title`: titulo original del post
 - `created`: fecha y hora de creacion en formato Obsidian (`YYYY-MM-DD HH:MM`)
 - `tags`: opcional, lista de tags pasados con --tags
-- `osg.publish`: `"draft"` por defecto, `true` si --publish
+- `osg.publish`: `draft` por defecto, `true` si --publish
+- `osg.title` a `osg.author`: comentados como placeholders, descomentables por el usuario
+
+El frontmatter se genera manualmente (no via `yaml.Marshal`) para poder incluir comentarios YAML. `yamlScalar()` se encarga de entrecomillar valores que contengan caracteres especiales.
+
+### Apertura de editor
+
+Tras crear el fichero, `osg new` intenta abrir un editor automaticamente:
+
+1. **Resolucion**: `resolveEditor()` devuelve `config.DefaultEditor` si esta configurado, o `$EDITOR` del entorno.
+2. **Comportamiento por defecto (auto-detect)**: Sin flag explicito, `Editor=true` + `EditorAuto=true`. Si no hay editor resolvible, se omite silenciosamente (sin error).
+3. **Flag explicito `--editor`**: Fuerza apertura; si no hay editor configurado, muestra warning (no-fatal).
+4. **Flag `--no-editor`**: Omite la apertura siempre.
+5. **Ejecucion**: `openEditor()` divide el comando en partes (soporta args como `"code --wait"`) y conecta stdin/stdout/stderr para uso interactivo.
+
+Configuracion del editor:
+
+```yaml
+# En config.yaml:
+default_editor: "code --wait"    # o "vim", "nvim", "nano", "subl"
+
+# O via variable de entorno:
+export EDITOR=vim
+```
 
 ### Ruta del fichero
 
@@ -596,8 +631,12 @@ El fichero se crea en `{vault_path}/{Title}.md` (convencion Obsidian: ficheros p
 
 ### Implementacion
 
-- `internal/app/new.go`: `RunNew()` con `NewPostOptions` (Title, Tags, Publish, Editor)
-- `cmd/osg/main.go`: `NewCmd` struct con Kong, dispatch en switch
+- `internal/app/new.go`: `RunNew()` con `NewPostOptions` (Title, Tags, Publish, Editor, EditorAuto)
+- `internal/app/new.go`: `buildFrontmatter()` genera YAML manual con comentarios
+- `internal/app/new.go`: `yamlScalar()` entrecomilla valores YAML con caracteres especiales
+- `internal/app/new.go`: `resolveEditor()` resuelve editor (config > $EDITOR)
+- `internal/app/new.go`: `openEditor()` ejecuta editor interactivo
+- `cmd/osg/main.go`: `NewCmd` struct con Kong, `Editor *bool` negatable, dispatch en switch
 - TUI: `/new` registrado en `commands.go`, handler en `update.go`, closure en `app/tui.go`
 
 ## Decisions (trade-offs)

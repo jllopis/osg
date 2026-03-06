@@ -248,10 +248,11 @@ El comando `osg new` permite crear una nueva nota Markdown directamente en el va
 **Uso basico:**
 
 ```bash
-osg new "Mi Nuevo Post"                           # crea como draft
+osg new "Mi Nuevo Post"                           # crea como draft, abre editor
 osg new "Mi Nuevo Post" --publish                 # crea como publicado
 osg new "Mi Nuevo Post" --tags filosofia,logica   # con tags
 osg new "Mi Nuevo Post" --dry-run                 # muestra que haria sin escribir
+osg new "Mi Nuevo Post" --no-editor               # no abrir editor
 ```
 
 **Desde el TUI:**
@@ -260,23 +261,42 @@ osg new "Mi Nuevo Post" --dry-run                 # muestra que haria sin escrib
 /new Mi Nuevo Post
 ```
 
-El comando genera un fichero `{Title}.md` en la raiz del vault (convencion Obsidian: ficheros planos con nombres legibles). El frontmatter generado sigue el formato nativo de Obsidian:
+El comando genera un fichero `{Title}.md` en la raiz del vault (convencion Obsidian: ficheros planos con nombres legibles). El frontmatter generado incluye todos los campos reconocidos del bloque `osg`, con los campos inactivos como comentarios YAML:
 
 ```yaml
 ---
 title: Mi Nuevo Post
-created: "2025-02-15 10:30"
+created: 2025-02-15 10:30
 tags:
   - filosofia
   - logica
 osg:
-  publish: "draft"
+  publish: draft
+  # title: ""          # Override page title (highest precedence)
+  # image: ""          # Featured/hero image path
+  # featured: false    # Mark as featured post
+  # path: ""           # Custom output path override
+  # permalink: ""      # URL pattern ({date}, {year}, {month}, {day}, {slug}, {title})
+  # menu: false        # Add to navigation menu
+  # abstract: ""       # Summary/excerpt override
+  # author: ""         # Author override
 ---
 ```
 
 - `created` usa el formato de Obsidian (`YYYY-MM-DD HH:MM`), no `date`
-- `osg.publish` es `"draft"` por defecto; con `--publish` se establece a `true`
+- `osg.publish` es `draft` por defecto; con `--publish` se establece a `true`
+- Los campos `osg.title` a `osg.author` estan comentados como placeholders
 - Si el fichero ya existe, el comando retorna error (no sobreescribe)
+
+**Apertura automatica de editor:**
+
+Tras crear el fichero, `osg new` intenta abrir un editor:
+
+- **Prioridad**: `default_editor` (config.yaml) > `$EDITOR` (variable de entorno)
+- **Comportamiento por defecto**: si hay editor configurado, se abre automaticamente. Si no hay ninguno, se omite silenciosamente.
+- **`--no-editor`**: omite la apertura del editor siempre
+- **`--editor`**: fuerza la apertura; si no hay editor configurado, muestra warning (no-fatal)
+- Soporta comandos con argumentos (ej. `"code --wait"`, `"vim -u NONE"`)
 
 ### Internacionalizacion (i18n) de plantillas
 

@@ -36,6 +36,16 @@ content_layout: "{date}/{slug}"
 include_drafts: false
 
 # -----------------------------------------------------------------------------
+# Editor
+# -----------------------------------------------------------------------------
+# default_editor: Editor command to open new posts after creation with "osg new".
+#                 Supports commands with arguments (e.g. "code --wait").
+#                 If empty, falls back to the $EDITOR environment variable.
+#                 If neither is set, editor auto-open is silently skipped.
+#                 Use --no-editor to skip opening regardless.
+# default_editor: "code --wait"
+
+# -----------------------------------------------------------------------------
 # Theme & appearance
 # -----------------------------------------------------------------------------
 # theme: Active theme name (must match a subdirectory of themes_dir).
