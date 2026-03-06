@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -404,4 +405,81 @@ func UpdatePlugin(ctx context.Context, name string, pluginsDir string, lock *Loc
 	// Re-read the lock entry to get the new version.
 	newEntry, _ := lock.Get(installedName)
 	return newEntry.Version, nil
+}
+
+// ---- Auto-install Official Plugins ----
+
+// EnsureOfficialPlugins checks each name in enabledPlugins. If a plugin
+// is not present in pluginsDir and is listed in the curated plugin index,
+// it is downloaded from the corresponding GitHub release.
+// Bundled plugins (embedded in the binary) are skipped since
+// EnsureBundledPlugins handles those.
+func EnsureOfficialPlugins(ctx context.Context, pluginsDir string, enabledPlugins []string, logger *slog.Logger) error {
+	if pluginsDir == "" || len(enabledPlugins) == 0 {
+		return nil
+	}
+
+	// Build set of bundled plugin names to skip.
+	bundled := make(map[string]bool, len(BundledPlugins))
+	for _, name := range BundledPlugins {
+		bundled[name] = true
+	}
+
+	// Determine which enabled plugins are missing from disk.
+	var missing []string
+	for _, name := range enabledPlugins {
+		if bundled[name] {
+			continue
+		}
+		wasmPath := filepath.Join(pluginsDir, name+".wasm")
+		if _, err := os.Stat(wasmPath); err == nil {
+			continue // already installed
+		}
+		missing = append(missing, name)
+	}
+
+	if len(missing) == 0 {
+		return nil
+	}
+
+	// Fetch the curated index to resolve plugin repos.
+	index, err := FetchIndex(ctx)
+	if err != nil {
+		logger.Warn("could not fetch plugin index, skipping auto-install", "error", err)
+		return nil // non-fatal: network may be unavailable
+	}
+
+	// Build a name -> IndexEntry lookup.
+	byName := make(map[string]IndexEntry, len(index.Plugins))
+	for _, e := range index.Plugins {
+		byName[e.Name] = e
+	}
+
+	for _, name := range missing {
+		entry, ok := byName[name]
+		if !ok {
+			logger.Warn("plugin not found in official index, skipping", "name", name)
+			continue
+		}
+		if entry.Repo == "" {
+			logger.Warn("plugin has no repo in index, skipping", "name", name)
+			continue
+		}
+
+		owner, repo, tag := ParseGitHubRef(entry.Repo)
+		if owner == "" {
+			logger.Warn("invalid repo reference in index", "name", name, "repo", entry.Repo)
+			continue
+		}
+
+		logger.Info("installing plugin", "name", name, "source", entry.Repo)
+		_, err := InstallFromGitHub(ctx, owner, repo, tag, pluginsDir)
+		if err != nil {
+			logger.Warn("failed to install plugin", "name", name, "error", err)
+			continue // non-fatal: keep going with remaining plugins
+		}
+		logger.Info("installed plugin", "name", name)
+	}
+
+	return nil
 }

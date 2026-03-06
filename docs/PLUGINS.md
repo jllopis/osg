@@ -21,6 +21,55 @@ OSG incluye plugins embebidos en el binario (`internal/plugin/bundled/`). Se ext
 Plugins bundled actuales:
 - **search**: indice de busqueda full-text (ver seccion dedicada)
 
+### Official plugins (release assets)
+Ademas de los plugins bundled, OSG mantiene plugins oficiales en `plugins-src/`
+que se compilan y publican como release assets de GitHub en cada release. Estos
+plugins **no** se embeben en el binario; se descargan automaticamente cuando se
+necesitan.
+
+**Plugins oficiales actuales:**
+- **search**: (bundled + release asset) full-text search
+
+**Instalacion manual:**
+```bash
+# Descargar el .wasm de la ultima release
+osg plugin install github.com/jllopis/osg-search
+
+# Descargar una version especifica
+osg plugin install github.com/jllopis/osg-search@v1.0.0
+```
+
+Los `.wasm` tambien estan disponibles para descarga directa en la pagina de
+releases: `https://github.com/jllopis/osg/releases`
+
+### Auto-install en osg init
+Al ejecutar `osg init`, OSG realiza automaticamente:
+
+1. **Extrae plugins bundled** (embebidos en el binario, como `search`) a `plugins/`.
+2. **Descarga plugins oficiales** que estan en `plugins_enabled` del config pero
+   no existen en `plugins_dir`. Consulta el indice curado (`plugins-index.json`)
+   y descarga el `.wasm` desde la release de GitHub correspondiente.
+
+Este comportamiento permite que un proyecto nuevo funcione inmediatamente con
+todos los plugins configurados, sin intervencion manual.
+
+Si la red no esta disponible, la descarga automatica se omite con un warning
+(no es un error fatal). Los plugins bundled siempre se extraen sin red.
+
+### CI pipeline
+Los plugins en `plugins-src/` se compilan automaticamente por GitHub Actions:
+
+1. El job `build-plugins` instala Rust con target `wasm32-wasip1`
+2. Compila cada plugin en `plugins-src/*/` con `cargo build --release`
+3. Los `.wasm` resultantes se publican como release assets junto con los binarios
+
+Para compilar localmente:
+```bash
+make plugins          # compila todos los plugins en plugins-src/
+make plugins-search   # compila solo search
+make install-plugins  # compila y copia a plugins/
+```
+
 ### CLI
 ```bash
 # Instalar desde archivo local

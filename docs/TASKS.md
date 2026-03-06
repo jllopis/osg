@@ -373,9 +373,9 @@ Formato: [todo|doing|done] Tarea
 
 [done] (TUI-F) Status bar contextual, config reload tras guardar, docs
 
-[todo] (Official plugins) CI pipeline: compilar plugins-src/ y publicar .wasm como release assets
-[todo] (Official plugins) Documentar instalacion via osg plugin install <nombre>
-[todo] (Official plugins) osg init auto-instala plugins oficiales activos en plugins_enabled que falten en plugins_dir
+[done] (Official plugins) CI pipeline: compilar plugins-src/ y publicar .wasm como release assets
+[done] (Official plugins) Documentar instalacion via osg plugin install <nombre>
+[done] (Official plugins) osg init auto-instala plugins oficiales activos en plugins_enabled que falten en plugins_dir
 
 [todo] (Archives) Genera /archive/ cronologico por ano/mes, paginacion configurable
 [todo] (LLMS.txt) Genera /llms.txt con contenido del sitio para LLMs, configurable

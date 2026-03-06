@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 
 	"osg/internal/config"
+	"osg/internal/logging"
+	"osg/internal/plugin"
 	"osg/internal/theme"
 )
 
-func RunInit(_ context.Context, opts CLIOptions) error {
+func RunInit(ctx context.Context, opts CLIOptions) error {
 	configPath := opts.ConfigPath
 	if configPath == "" {
 		configPath = "config.yaml"
@@ -57,6 +59,17 @@ func RunInit(_ context.Context, opts CLIOptions) error {
 
 	if err := theme.EnsureDefaultTheme(cfg.ThemesDir); err != nil {
 		return fmt.Errorf("init theme: %w", err)
+	}
+
+	// Extract bundled plugins (e.g. search) into plugins dir.
+	if err := plugin.EnsureBundledPlugins(cfg.PluginsDir); err != nil {
+		return fmt.Errorf("init bundled plugins: %w", err)
+	}
+
+	// Auto-install official plugins that are enabled but not yet present.
+	logger := logging.New(cfg.Logging, opts.Verbose)
+	if err := plugin.EnsureOfficialPlugins(ctx, cfg.PluginsDir, cfg.PluginsEnabled, logger); err != nil {
+		return fmt.Errorf("init official plugins: %w", err)
 	}
 
 	if _, err := os.Stat(configPath); err == nil {

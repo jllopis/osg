@@ -80,6 +80,55 @@ jobs:
           name: osg-${{ matrix.goos }}-${{ matrix.goarch }}
           path: build/*.tar.gz
 
+  build-plugins:
+    name: Build Plugins
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('plugins-src/**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build WASM plugins
+        run: |
+          mkdir -p build/plugins
+          for dir in plugins-src/*/; do
+            name=$(basename "$dir")
+            echo "=== Building plugin: ${name} ==="
+            cd "$dir"
+            TARGET="wasm32-wasip1"
+            cargo build --target "$TARGET" --release
+            # Find the .wasm output (crate name may use underscores)
+            wasm=$(find "target/$TARGET/release" -maxdepth 1 -name '*.wasm' -type f | head -1)
+            if [ -z "$wasm" ]; then
+              echo "ERROR: no .wasm found for plugin ${name}"
+              exit 1
+            fi
+            cp "$wasm" "../../build/plugins/${name}.wasm"
+            echo "Built: ${name}.wasm ($(stat --printf='%s' "../../build/plugins/${name}.wasm") bytes)"
+            cd ../..
+          done
+          echo "=== All plugins ==="
+          ls -la build/plugins/
+
+      - name: Upload plugin artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: osg-plugins
+          path: build/plugins/*.wasm
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -116,7 +165,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [build, lint, vet]
+    needs: [build, build-plugins, lint, vet]
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: write
@@ -137,8 +186,9 @@ jobs:
           find artifacts -type f -ls
           mkdir -p release
           find artifacts -name '*.tar.gz' -exec cp {} release/ \;
+          find artifacts -name '*.wasm' -exec cp {} release/ \;
           cd release
-          sha256sum *.tar.gz > checksums.txt
+          sha256sum *.tar.gz *.wasm > checksums.txt
           echo "=== Release assets ==="
           ls -la
 
@@ -166,6 +216,11 @@ jobs:
             echo "| macOS | amd64 | osg-darwin-amd64.tar.gz |"
             echo "| macOS | arm64 | osg-darwin-arm64.tar.gz |"
             echo "| Windows | amd64 | osg-windows-amd64.exe.tar.gz |"
+            echo ""
+            echo "## Plugins"
+            echo ""
+            echo "WASM plugins are included as release assets (\`.wasm\` files)."
+            echo "Install with: \`osg plugin install <name>\` or download manually to \`plugins/\`."
             echo ""
             echo "Verify checksums with: \`sha256sum -c checksums.txt\`"
             echo "NOTES_EOF"

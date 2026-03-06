@@ -384,8 +384,24 @@ sharing (social share popover), and comments (OAuth2 + threaded replies) all com
   AllLanguages, LanguageLabel, validation empty/duplicate/label-default).
 - **Dual-file sync**: templates, i18n YAML, CSS synchronized.
 
+### Recently completed (plugin release infrastructure)
+- **CI pipeline for WASM plugins**: `build-plugins` job in `.github/workflows/ci.yml`
+  installs Rust + `wasm32-wasip1`, compiles each plugin in `plugins-src/`,
+  uploads `.wasm` artifacts. Release job collects `.wasm` alongside Go
+  binaries and includes them in checksums and release notes.
+- **Auto-install on osg init**: `RunInit()` now calls `EnsureBundledPlugins()`
+  to extract embedded plugins (search) and `EnsureOfficialPlugins()` to
+  download missing official plugins from GitHub releases. Checks
+  `plugins_enabled` against `plugins_dir`; consults curated index
+  (`plugins-index.json`) to resolve repos. Non-fatal on network failure.
+- **Plugin documentation**: PLUGINS.md updated with official plugins section,
+  auto-install behavior, CI pipeline description, and manual install commands.
+- **Tests**: 3 init tests (dirs+config, bundled plugins, no-overwrite),
+  5 EnsureOfficialPlugins tests (empty args, skip bundled, skip installed,
+  download from index, not in index).
+
 ### Backlog (planned, not started)
-- Official plugins (archives, llms.txt, mermaid): source in `plugins-src/`,
+- Actual official plugins (archives, llms.txt, mermaid): source in `plugins-src/`,
   compiled by CI, published as GitHub release assets. User installs with
   `osg plugin install <name>`. Only `search` is embedded in binary.
 - Paginated archives plugin

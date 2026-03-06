@@ -509,17 +509,23 @@ Spec: `docs/TUI-ENHANCEMENTS.md`
 - [done] Config reload tras guardar (actualizar sidebar)
 - [done] Docs: DESIGN.md seccion TUI, AGENTS.md modulos nuevos
 
-### Official plugins — release assets (todo)
+### Official plugins — release assets (done)
 
 Plugins mantenidos en el mismo repo (`plugins-src/`), compilados por CI,
 publicados como release assets en GitHub. El usuario instala con
 `osg plugin install <nombre>`. No se embeben en el binario (solo `search`
 esta embebido).
 
+#### CI pipeline
+- [done] Job `build-plugins` en CI: Rust + wasm32-wasip1, compila plugins-src/
+- [done] Release assets incluyen .wasm junto con binarios y checksums
+- [done] Documentar pipeline en PLUGINS.md
+
 #### Auto-install en osg init
-- [todo] `osg init` detecta plugins en `plugins_enabled` que no estan en `plugins_dir`
-- [todo] Si el plugin es oficial (esta en el indice curado), lo descarga automaticamente del release
-- [todo] Logging claro: "Installing plugin mermaid... done"
+- [done] `osg init` detecta plugins en `plugins_enabled` que no estan en `plugins_dir`
+- [done] Si el plugin es oficial (esta en el indice curado), lo descarga automaticamente del release
+- [done] Logging claro: "installing plugin <name>... installed plugin <name>"
+- [done] `osg init` extrae plugins bundled (search) via EnsureBundledPlugins
 
 #### Paginated archives
 - [todo] Genera `/archive/` con listado cronologico por ano/mes

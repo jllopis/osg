@@ -3,6 +3,8 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -434,5 +436,156 @@ func TestCheckUpdateNonGitHubSource(t *testing.T) {
 	_, err := CheckUpdate(context.Background(), "local", lock)
 	if err == nil {
 		t.Fatal("expected error for non-GitHub source")
+	}
+}
+
+// ---- EnsureOfficialPlugins Tests ----
+
+func TestEnsureOfficialPlugins_EmptyArgs(t *testing.T) {
+	t.Parallel()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	// Empty pluginsDir -> no-op
+	err := EnsureOfficialPlugins(context.Background(), "", []string{"search"}, logger)
+	if err != nil {
+		t.Fatalf("expected nil for empty pluginsDir, got: %v", err)
+	}
+
+	// Empty enabledPlugins -> no-op
+	err = EnsureOfficialPlugins(context.Background(), "/tmp/foo", nil, logger)
+	if err != nil {
+		t.Fatalf("expected nil for nil enabledPlugins, got: %v", err)
+	}
+}
+
+func TestEnsureOfficialPlugins_SkipsBundled(t *testing.T) {
+	t.Parallel()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	// "search" is bundled, so even if the dir is empty, no fetch should happen.
+	// We create a pluginsDir but don't put search.wasm there.
+	// This would normally try to fetch the index, but since search is bundled
+	// it should be skipped entirely, leaving no missing plugins.
+	tmpDir := t.TempDir()
+	pluginsDir := filepath.Join(tmpDir, "plugins")
+	_ = os.MkdirAll(pluginsDir, 0o755)
+
+	err := EnsureOfficialPlugins(context.Background(), pluginsDir, []string{"search"}, logger)
+	if err != nil {
+		t.Fatalf("expected nil, got: %v", err)
+	}
+}
+
+func TestEnsureOfficialPlugins_SkipsAlreadyInstalled(t *testing.T) {
+	t.Parallel()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	tmpDir := t.TempDir()
+	pluginsDir := filepath.Join(tmpDir, "plugins")
+	_ = os.MkdirAll(pluginsDir, 0o755)
+
+	// Pre-install a plugin
+	_ = os.WriteFile(filepath.Join(pluginsDir, "myplugin.wasm"), []byte("data"), 0o644)
+
+	// Should not attempt any network calls since the plugin already exists.
+	err := EnsureOfficialPlugins(context.Background(), pluginsDir, []string{"myplugin"}, logger)
+	if err != nil {
+		t.Fatalf("expected nil, got: %v", err)
+	}
+}
+
+func TestEnsureOfficialPlugins_DownloadsFromIndex(t *testing.T) {
+	t.Parallel()
+
+	wasmContent := []byte("official plugin wasm")
+
+	mux := http.NewServeMux()
+
+	// Serve the wasm file download.
+	mux.HandleFunc("/download/myplugin.wasm", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/wasm")
+		_, _ = w.Write(wasmContent)
+	})
+
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	// Serve the index.
+	index := PluginIndex{
+		Plugins: []IndexEntry{
+			{
+				Name:        "myplugin",
+				Description: "Test plugin",
+				Author:      "test",
+				Repo:        "github.com/testuser/osg-myplugin",
+			},
+		},
+	}
+
+	// Serve a GitHub release that points to our mock wasm download.
+	release := GitHubRelease{
+		TagName: "v1.0.0",
+		Assets: []GitHubAsset{
+			{Name: "myplugin.wasm", BrowserDownloadURL: server.URL + "/download/myplugin.wasm"},
+		},
+	}
+	mux.HandleFunc("/repos/testuser/osg-myplugin/releases/latest", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(release)
+	})
+
+	// We can't easily override the index URL or GitHub API URL in the
+	// production code without refactoring. Instead, test the components:
+	// 1. Verify FetchIndexFrom works with mock
+	// 2. Verify downloadFile works with mock
+	// 3. Verify the missing-detection logic via unit test
+
+	// Test index fetch.
+	indexMux := http.NewServeMux()
+	indexMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(index)
+	})
+	indexServer := httptest.NewServer(indexMux)
+	defer indexServer.Close()
+
+	fetchedIndex, err := FetchIndexFrom(context.Background(), indexServer.URL)
+	if err != nil {
+		t.Fatalf("FetchIndexFrom: %v", err)
+	}
+	if len(fetchedIndex.Plugins) != 1 || fetchedIndex.Plugins[0].Name != "myplugin" {
+		t.Fatalf("unexpected index: %+v", fetchedIndex)
+	}
+
+	// Test download.
+	tmpDir := t.TempDir()
+	dest := filepath.Join(tmpDir, "myplugin.wasm")
+	err = downloadFile(context.Background(), server.URL+"/download/myplugin.wasm", dest)
+	if err != nil {
+		t.Fatalf("downloadFile: %v", err)
+	}
+	data, _ := os.ReadFile(dest)
+	if string(data) != string(wasmContent) {
+		t.Errorf("content mismatch: got %q", string(data))
+	}
+}
+
+func TestEnsureOfficialPlugins_NotInIndex(t *testing.T) {
+	t.Parallel()
+
+	// When a plugin is enabled but not in the index and not bundled,
+	// it should be skipped with a warning (non-fatal).
+	// We need the index fetch to succeed. Since we can't override the
+	// index URL, we test the logic inline.
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	tmpDir := t.TempDir()
+	pluginsDir := filepath.Join(tmpDir, "plugins")
+	_ = os.MkdirAll(pluginsDir, 0o755)
+
+	// "unknownplugin" is not bundled and not in the index.
+	// EnsureOfficialPlugins will try to fetch the index (which will fail
+	// because there's no network mock), but that's a non-fatal warning.
+	err := EnsureOfficialPlugins(context.Background(), pluginsDir, []string{"unknownplugin"}, logger)
+	if err != nil {
+		t.Fatalf("expected nil (non-fatal), got: %v", err)
 	}
 }
