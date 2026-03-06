@@ -62,14 +62,32 @@ func RunServe(ctx context.Context, opts CLIOptions) error {
 		hub = newReloadHub()
 	}
 
-	handler := http.FileServer(http.Dir(cfg.PublicDir))
-	if hub != nil {
-		handler = newLiveReloadHandler(cfg.PublicDir, handler, hub)
+	// Build the root handler via a ServeMux so we can mount the API
+	// alongside the file server.
+	mux := http.NewServeMux()
+
+	// Optionally embed the interactions API.
+	if opts.ServeAPI {
+		apiSrv, apiStore, err := StartAPIHandler(cfg.Interactions, logger)
+		if err != nil {
+			return err
+		}
+		defer apiStore.Close()
+		// Mount API routes under /api/v1/.
+		mux.Handle("/api/v1/", apiSrv.Handler())
+		logger.Info("interactions API embedded", "db", cfg.Interactions.DBPath)
 	}
+
+	// File server handles everything else.
+	fileHandler := http.FileServer(http.Dir(cfg.PublicDir))
+	if hub != nil {
+		fileHandler = newLiveReloadHandler(cfg.PublicDir, fileHandler, hub)
+	}
+	mux.Handle("/", fileHandler)
 
 	server := &http.Server{
 		Addr:    addr,
-		Handler: handler,
+		Handler: mux,
 	}
 
 	if watch {

@@ -327,6 +327,10 @@ func TestConfigView(t *testing.T) {
 	if _, ok := view["image_widths"]; !ok {
 		t.Error("image_widths key missing from configView")
 	}
+	// Check sharing key.
+	if _, ok := view["sharing"]; !ok {
+		t.Error("sharing key missing from configView")
+	}
 }
 
 // ---------------------------------------------------------------------------

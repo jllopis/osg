@@ -178,6 +178,14 @@ build_incremental: true
 build_cache_dir: .osg/cache
 
 # -----------------------------------------------------------------------------
+# Sharing
+# -----------------------------------------------------------------------------
+# sharing: Enable social sharing buttons (X, LinkedIn, Bluesky, Email, Copy link)
+#          and a copy-link icon next to the article title. Appears on article
+#          pages only. The share section resolves absolute URLs from base_url.
+sharing: true
+
+# -----------------------------------------------------------------------------
 # Image lightbox
 # -----------------------------------------------------------------------------
 # lightbox: Enable click-to-zoom lightbox for content images. Standalone images
@@ -219,6 +227,24 @@ image_widths: [640, 1200]
 serve_watch: true
 serve_live_reload: true
 serve_debounce_ms: 300
+
+# -----------------------------------------------------------------------------
+# Interactions (views, likes/dislikes)
+# -----------------------------------------------------------------------------
+# Enable page view counting and like/dislike buttons at the bottom of posts.
+# Requires running the interactions API (standalone via "osg api" or embedded
+# in the dev server via "osg serve --api").
+#
+# interactions:
+#   enabled: true
+#   api_url: ""              # Browser-visible API URL. Empty = same origin.
+#                            # For production set full URL (e.g. "https://api.mysite.com").
+#   listen: ":8090"          # Address for standalone "osg api" server.
+#   db_path: ".osg/interactions.db"  # SQLite database file path.
+#   cors_origins:            # Allowed CORS origins (only needed for cross-origin API).
+#     - "https://mysite.com"
+#   view_dedup_hours: 24     # Dedup window: same fingerprint counts as one
+#                            # unique view per page within this period.
 
 # -----------------------------------------------------------------------------
 # Deployment (osg deploy)

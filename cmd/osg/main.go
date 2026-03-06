@@ -27,6 +27,7 @@ type CLI struct {
 	Build         BuildCmd      `cmd:"" help:"Build static site (HTML)"`
 	Deploy        DeployCmd     `cmd:"" help:"Deploy site to remote destination"`
 	Serve         ServeCmd      `cmd:"" help:"Serve public directory"`
+	API           APICmd        `cmd:"" help:"Run standalone interactions API server" name:"api"`
 	New           NewCmd        `cmd:"" help:"Create a new post in the vault"`
 	TUI           struct{}      `cmd:"" help:"Launch TUI"`
 	Theme         ThemeCmd      `cmd:"" help:"Theme tools"`
@@ -58,6 +59,11 @@ type ServeCmd struct {
 	LiveReload *bool  `help:"Enable live reload (requires watch)"`
 	DebounceMs *int   `help:"Debounce watch events in ms"`
 	Drafts     bool   `help:"Include draft posts in preview"`
+	API        bool   `help:"Embed interactions API on same server" name:"api"`
+}
+
+type APICmd struct {
+	Listen string `help:"Address to listen on (host:port)" default:""`
 }
 
 type NewCmd struct {
@@ -197,7 +203,13 @@ func main() {
 			t := true
 			opts.IncludeDrafts = &t
 		}
+		opts.ServeAPI = cli.Serve.API
 		runErr = app.RunServe(context.Background(), opts)
+	case command == "api":
+		apiOpts := app.APIOptions{
+			Listen: cli.API.Listen,
+		}
+		runErr = app.RunAPI(context.Background(), opts, apiOpts)
 	case command == "tui":
 		runErr = app.RunTUI(context.Background(), opts)
 	case command == "doctor":
@@ -262,7 +274,7 @@ func hasHelpFlag(args []string) bool {
 }
 
 func printCompletion(shell string) {
-	commands := "init update-content build deploy serve new tui theme plugin doctor version completion"
+	commands := "init update-content build deploy serve api new tui theme plugin doctor version completion"
 
 	switch shell {
 	case "bash":

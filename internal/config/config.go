@@ -51,52 +51,54 @@ type LanguageConfig struct {
 }
 
 type Config struct {
-	BaseURL           string            `koanf:"base_url" yaml:"base_url"`
-	SiteTitle         string            `koanf:"site_title" yaml:"site_title"`
-	SiteDescription   string            `koanf:"site_description" yaml:"site_description"`
-	Theme             string            `koanf:"theme" yaml:"theme"`
-	Logo              string            `koanf:"logo" yaml:"logo"`
-	Favicon           string            `koanf:"favicon" yaml:"favicon"`
-	ColorScheme       string            `koanf:"color_scheme" yaml:"color_scheme"`
-	VaultPath         string            `koanf:"vault_path" yaml:"vault_path"`
-	ContentDir        string            `koanf:"content_dir" yaml:"content_dir"`
-	PublicDir         string            `koanf:"public_dir" yaml:"public_dir"`
-	TemplatesDir      string            `koanf:"templates_dir" yaml:"templates_dir"`
-	StaticDir         string            `koanf:"static_dir" yaml:"static_dir"`
-	ThemesDir         string            `koanf:"themes_dir" yaml:"themes_dir"`
-	PluginsDir        string            `koanf:"plugins_dir" yaml:"plugins_dir"`
-	PluginsEnabled    []string          `koanf:"plugins_enabled" yaml:"plugins_enabled"`
-	PluginTimeout     int               `koanf:"plugin_timeout" yaml:"plugin_timeout"`
-	SassDir           string            `koanf:"sass_dir" yaml:"sass_dir"`
-	ContentLayout     string            `koanf:"content_layout" yaml:"content_layout"`
-	IncludeDrafts     bool              `koanf:"include_drafts" yaml:"include_drafts"`
-	CompileSass       bool              `koanf:"compile_sass" yaml:"compile_sass"`
-	TUIPrefix         string            `koanf:"tui_prefix" yaml:"tui_prefix"`
-	TUIPrefixMs       int               `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
-	ServeWatch        bool              `koanf:"serve_watch" yaml:"serve_watch"`
-	ServeReload       bool              `koanf:"serve_live_reload" yaml:"serve_live_reload"`
-	ServeDebounce     int               `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
-	BuildIncremental  bool              `koanf:"build_incremental" yaml:"build_incremental"`
-	BuildCacheDir     string            `koanf:"build_cache_dir" yaml:"build_cache_dir"`
-	CleanPublic       bool              `koanf:"clean_public" yaml:"clean_public"`
-	SummaryStrategy   string            `koanf:"summary_strategy" yaml:"summary_strategy"`
-	SiteFeed          bool              `koanf:"site_feed" yaml:"site_feed"`
-	SiteFeedLimit     int               `koanf:"site_feed_limit" yaml:"site_feed_limit"`
-	ImageOptimization bool              `koanf:"image_optimization" yaml:"image_optimization"`
-	ImageQuality      int               `koanf:"image_quality" yaml:"image_quality"`
-	ImageWidths       []int             `koanf:"image_widths" yaml:"image_widths"`
-	Lightbox          bool              `koanf:"lightbox" yaml:"lightbox"`
-	Minify            bool              `koanf:"minify" yaml:"minify"`
-	NavTaxonomy       string            `koanf:"nav_taxonomy" yaml:"nav_taxonomy"`
-	DefaultLanguage   string            `koanf:"default_language" yaml:"default_language"`
-	Languages         []LanguageConfig  `koanf:"languages" yaml:"languages"`
-	DoctorProfile     string            `koanf:"doctor_profile" yaml:"doctor_profile"`
-	Social            map[string]string `koanf:"social" yaml:"social"`
-	Copyright         string            `koanf:"copyright" yaml:"copyright"`
-	AI                AIConfig          `koanf:"ai" yaml:"ai"`
-	Logging           LoggingConfig     `koanf:"logging" yaml:"logging"`
-	Taxonomies        []TaxonomyConfig  `koanf:"taxonomies" yaml:"taxonomies"`
-	Deploy            DeployConfig      `koanf:"deploy" yaml:"deploy"`
+	BaseURL           string             `koanf:"base_url" yaml:"base_url"`
+	SiteTitle         string             `koanf:"site_title" yaml:"site_title"`
+	SiteDescription   string             `koanf:"site_description" yaml:"site_description"`
+	Theme             string             `koanf:"theme" yaml:"theme"`
+	Logo              string             `koanf:"logo" yaml:"logo"`
+	Favicon           string             `koanf:"favicon" yaml:"favicon"`
+	ColorScheme       string             `koanf:"color_scheme" yaml:"color_scheme"`
+	VaultPath         string             `koanf:"vault_path" yaml:"vault_path"`
+	ContentDir        string             `koanf:"content_dir" yaml:"content_dir"`
+	PublicDir         string             `koanf:"public_dir" yaml:"public_dir"`
+	TemplatesDir      string             `koanf:"templates_dir" yaml:"templates_dir"`
+	StaticDir         string             `koanf:"static_dir" yaml:"static_dir"`
+	ThemesDir         string             `koanf:"themes_dir" yaml:"themes_dir"`
+	PluginsDir        string             `koanf:"plugins_dir" yaml:"plugins_dir"`
+	PluginsEnabled    []string           `koanf:"plugins_enabled" yaml:"plugins_enabled"`
+	PluginTimeout     int                `koanf:"plugin_timeout" yaml:"plugin_timeout"`
+	SassDir           string             `koanf:"sass_dir" yaml:"sass_dir"`
+	ContentLayout     string             `koanf:"content_layout" yaml:"content_layout"`
+	IncludeDrafts     bool               `koanf:"include_drafts" yaml:"include_drafts"`
+	CompileSass       bool               `koanf:"compile_sass" yaml:"compile_sass"`
+	TUIPrefix         string             `koanf:"tui_prefix" yaml:"tui_prefix"`
+	TUIPrefixMs       int                `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
+	ServeWatch        bool               `koanf:"serve_watch" yaml:"serve_watch"`
+	ServeReload       bool               `koanf:"serve_live_reload" yaml:"serve_live_reload"`
+	ServeDebounce     int                `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
+	BuildIncremental  bool               `koanf:"build_incremental" yaml:"build_incremental"`
+	BuildCacheDir     string             `koanf:"build_cache_dir" yaml:"build_cache_dir"`
+	CleanPublic       bool               `koanf:"clean_public" yaml:"clean_public"`
+	SummaryStrategy   string             `koanf:"summary_strategy" yaml:"summary_strategy"`
+	SiteFeed          bool               `koanf:"site_feed" yaml:"site_feed"`
+	SiteFeedLimit     int                `koanf:"site_feed_limit" yaml:"site_feed_limit"`
+	ImageOptimization bool               `koanf:"image_optimization" yaml:"image_optimization"`
+	ImageQuality      int                `koanf:"image_quality" yaml:"image_quality"`
+	ImageWidths       []int              `koanf:"image_widths" yaml:"image_widths"`
+	Lightbox          bool               `koanf:"lightbox" yaml:"lightbox"`
+	Sharing           bool               `koanf:"sharing" yaml:"sharing"`
+	Minify            bool               `koanf:"minify" yaml:"minify"`
+	NavTaxonomy       string             `koanf:"nav_taxonomy" yaml:"nav_taxonomy"`
+	DefaultLanguage   string             `koanf:"default_language" yaml:"default_language"`
+	Languages         []LanguageConfig   `koanf:"languages" yaml:"languages"`
+	DoctorProfile     string             `koanf:"doctor_profile" yaml:"doctor_profile"`
+	Social            map[string]string  `koanf:"social" yaml:"social"`
+	Copyright         string             `koanf:"copyright" yaml:"copyright"`
+	AI                AIConfig           `koanf:"ai" yaml:"ai"`
+	Logging           LoggingConfig      `koanf:"logging" yaml:"logging"`
+	Taxonomies        []TaxonomyConfig   `koanf:"taxonomies" yaml:"taxonomies"`
+	Deploy            DeployConfig       `koanf:"deploy" yaml:"deploy"`
+	Interactions      InteractionsConfig `koanf:"interactions" yaml:"interactions"`
 }
 
 type TaxonomyConfig struct {
@@ -118,6 +120,26 @@ type DeployConfig struct {
 	Rsync map[string]any `koanf:"rsync" yaml:"rsync"`
 	// S3 configures S3-compatible storage deployment.
 	S3 map[string]any `koanf:"s3" yaml:"s3"`
+}
+
+// InteractionsConfig holds settings for the page interactions API (views, likes).
+type InteractionsConfig struct {
+	// Enabled activates the interactions feature (view counts, likes/dislikes).
+	Enabled bool `koanf:"enabled" yaml:"enabled"`
+	// APIURL is the URL of the interactions API as seen by the browser.
+	// For development with `osg serve --api` this is typically "" (same origin).
+	// For production set the full URL (e.g. "https://api.mysite.com").
+	APIURL string `koanf:"api_url" yaml:"api_url"`
+	// Listen is the address for the standalone `osg api` server (default ":8090").
+	Listen string `koanf:"listen" yaml:"listen"`
+	// DBPath is the path to the SQLite database file.
+	DBPath string `koanf:"db_path" yaml:"db_path"`
+	// CORSOrigins is a list of allowed CORS origins for the API.
+	CORSOrigins []string `koanf:"cors_origins" yaml:"cors_origins"`
+	// ViewDedupHours is the dedup window for unique views per fingerprint
+	// per page. Within this window the same fingerprint only counts once
+	// as a unique view, though total views are always incremented.
+	ViewDedupHours int `koanf:"view_dedup_hours" yaml:"view_dedup_hours"`
 }
 
 func Default() Config {
@@ -154,6 +176,7 @@ func Default() Config {
 		ImageQuality:      80,
 		ImageWidths:       []int{640, 1200},
 		Lightbox:          true,
+		Sharing:           true,
 		Minify:            true,
 		DefaultLanguage:   "es",
 		DoctorProfile:     "dev",
@@ -166,6 +189,12 @@ func Default() Config {
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
+		},
+		Interactions: InteractionsConfig{
+			Enabled:        false,
+			Listen:         ":8090",
+			DBPath:         ".osg/interactions.db",
+			ViewDedupHours: 24,
 		},
 	}
 }
@@ -259,6 +288,20 @@ func Load(path string) (Config, error) {
 	if cfg.AI.Concurrency <= 0 {
 		cfg.AI.Concurrency = 3
 	}
+
+	// Normalise interactions config.
+	cfg.Interactions.Listen = strings.TrimSpace(cfg.Interactions.Listen)
+	if cfg.Interactions.Listen == "" {
+		cfg.Interactions.Listen = ":8090"
+	}
+	cfg.Interactions.DBPath = strings.TrimSpace(cfg.Interactions.DBPath)
+	if cfg.Interactions.DBPath == "" {
+		cfg.Interactions.DBPath = ".osg/interactions.db"
+	}
+	if cfg.Interactions.ViewDedupHours <= 0 {
+		cfg.Interactions.ViewDedupHours = 24
+	}
+	cfg.Interactions.APIURL = strings.TrimSpace(cfg.Interactions.APIURL)
 
 	return cfg, nil
 }
@@ -493,6 +536,15 @@ image_widths: [640, 1200]
 lightbox: true
 
 # -----------------------------------------------------------------------------
+# Sharing
+# -----------------------------------------------------------------------------
+# sharing: Show share buttons and copy-permalink icon on article pages.
+#   When enabled, the article title gets a copy-link icon (hover on desktop,
+#   always visible on mobile) and a share section appears at the bottom of each
+#   article with buttons for X, LinkedIn, Bluesky, email, and copy permalink.
+sharing: true
+
+# -----------------------------------------------------------------------------
 # Minification
 # -----------------------------------------------------------------------------
 # minify: Minify HTML, CSS, JS, JSON, SVG, and XML files in public/ after
@@ -572,6 +624,23 @@ logging:
 #     exclude_terms:         # terms to exclude from this taxonomy
 #       - fuente
 #       - template
+# -----------------------------------------------------------------------------
+# Interactions (views, likes/dislikes)
+# -----------------------------------------------------------------------------
+# Enable page view counting and like/dislike buttons at the bottom of posts.
+# Requires running the interactions API (standalone via "osg api" or embedded
+# in the dev server via "osg serve --api").
+#
+# interactions:
+#   enabled: true
+#   api_url: ""              # Browser-visible API URL. Empty = same origin.
+#                            # For production set full URL (e.g. "https://api.mysite.com").
+#   listen: ":8090"          # Address for standalone "osg api" server.
+#   db_path: ".osg/interactions.db"  # SQLite database file path.
+#   cors_origins:            # Allowed CORS origins (only needed for cross-origin API).
+#     - "https://mysite.com"
+#   view_dedup_hours: 24     # Dedup window: same fingerprint counts as one
+#                            # unique view per page within this period.
 `) + "\n"
 }
 

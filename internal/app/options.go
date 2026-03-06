@@ -18,6 +18,7 @@ type CLIOptions struct {
 	ServeWatch       *bool
 	ServeReload      *bool
 	ServeDebounce    *int
+	ServeAPI         bool
 	TUI              bool
 	LogWriter        io.Writer
 	ForceAISummaries bool

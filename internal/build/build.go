@@ -780,6 +780,7 @@ func configView(cfg config.Config) map[string]any {
 		"image_quality":      cfg.ImageQuality,
 		"image_widths":       cfg.ImageWidths,
 		"lightbox":           cfg.Lightbox,
+		"sharing":            cfg.Sharing,
 		"minify":             cfg.Minify,
 		"nav_taxonomy":       cfg.NavTaxonomy,
 		"multilingual":       cfg.IsMultilingual(),
@@ -790,7 +791,9 @@ func configView(cfg config.Config) map[string]any {
 			"level":  cfg.Logging.Level,
 			"format": cfg.Logging.Format,
 		},
-		"taxonomies": taxonomies,
+		"taxonomies":           taxonomies,
+		"interactions_enabled": cfg.Interactions.Enabled,
+		"interactions_api_url": cfg.Interactions.APIURL,
 	}
 }
 

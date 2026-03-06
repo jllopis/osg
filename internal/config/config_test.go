@@ -553,3 +553,111 @@ func writeYAML(t *testing.T, dir, name, content string) {
 		t.Fatalf("write yaml: %v", err)
 	}
 }
+
+// --- Interactions config tests ---
+
+func TestDefault_InteractionsDefaults(t *testing.T) {
+	t.Parallel()
+	cfg := Default()
+	if cfg.Interactions.Enabled {
+		t.Error("Interactions.Enabled should default to false")
+	}
+	if cfg.Interactions.Listen != ":8090" {
+		t.Errorf("Interactions.Listen = %q, want ':8090'", cfg.Interactions.Listen)
+	}
+	if cfg.Interactions.DBPath != ".osg/interactions.db" {
+		t.Errorf("Interactions.DBPath = %q, want '.osg/interactions.db'", cfg.Interactions.DBPath)
+	}
+	if cfg.Interactions.ViewDedupHours != 24 {
+		t.Errorf("Interactions.ViewDedupHours = %d, want 24", cfg.Interactions.ViewDedupHours)
+	}
+}
+
+func TestLoad_InteractionsFromYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `
+interactions:
+  enabled: true
+  api_url: "https://api.example.com"
+  listen: ":9090"
+  db_path: "/tmp/test.db"
+  cors_origins:
+    - "https://example.com"
+    - "https://other.com"
+  view_dedup_hours: 48
+`)
+	cfg, err := Load(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.Interactions.Enabled {
+		t.Error("expected Interactions.Enabled = true")
+	}
+	if cfg.Interactions.APIURL != "https://api.example.com" {
+		t.Errorf("APIURL = %q", cfg.Interactions.APIURL)
+	}
+	if cfg.Interactions.Listen != ":9090" {
+		t.Errorf("Listen = %q", cfg.Interactions.Listen)
+	}
+	if cfg.Interactions.DBPath != "/tmp/test.db" {
+		t.Errorf("DBPath = %q", cfg.Interactions.DBPath)
+	}
+	if len(cfg.Interactions.CORSOrigins) != 2 {
+		t.Errorf("CORSOrigins len = %d, want 2", len(cfg.Interactions.CORSOrigins))
+	}
+	if cfg.Interactions.ViewDedupHours != 48 {
+		t.Errorf("ViewDedupHours = %d, want 48", cfg.Interactions.ViewDedupHours)
+	}
+}
+
+func TestLoad_InteractionsNormalization(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `
+interactions:
+  enabled: true
+  listen: ""
+  db_path: ""
+  view_dedup_hours: -5
+`)
+	cfg, err := Load(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// Empty listen should default to :8090.
+	if cfg.Interactions.Listen != ":8090" {
+		t.Errorf("Listen = %q, want ':8090'", cfg.Interactions.Listen)
+	}
+	// Empty db_path should default.
+	if cfg.Interactions.DBPath != ".osg/interactions.db" {
+		t.Errorf("DBPath = %q, want '.osg/interactions.db'", cfg.Interactions.DBPath)
+	}
+	// Negative dedup hours should default to 24.
+	if cfg.Interactions.ViewDedupHours != 24 {
+		t.Errorf("ViewDedupHours = %d, want 24", cfg.Interactions.ViewDedupHours)
+	}
+}
+
+// --- Sharing config tests ---
+
+func TestDefault_SharingEnabled(t *testing.T) {
+	t.Parallel()
+	cfg := Default()
+	if !cfg.Sharing {
+		t.Error("Sharing should default to true")
+	}
+}
+
+func TestLoad_SharingDisabled(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	writeYAML(t, dir, "config.yaml", `sharing: false`)
+	cfg, err := Load(filepath.Join(dir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.Sharing {
+		t.Error("expected Sharing = false after explicit disable")
+	}
+}
