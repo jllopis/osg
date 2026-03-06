@@ -70,6 +70,7 @@ type NewCmd struct {
 	Title   string   `arg:"" help:"Post title"`
 	Tags    []string `help:"Comma-separated tags" short:"t" sep:","`
 	Publish bool     `help:"Mark as published (default: draft)"`
+	Editor  *bool    `help:"Open in editor after creation (auto-detected from default_editor config or $EDITOR)" negatable:""`
 }
 
 type ThemeCmd struct {
@@ -196,6 +197,15 @@ func main() {
 			Title:   cli.New.Title,
 			Tags:    cli.New.Tags,
 			Publish: cli.New.Publish,
+		}
+		// Editor flag: explicit --editor/--no-editor wins.
+		// When not set (nil), auto-detect: open editor if default_editor
+		// config or $EDITOR is available.
+		if cli.New.Editor != nil {
+			postOpts.Editor = *cli.New.Editor
+		} else {
+			postOpts.Editor = true // auto-detect deferred to RunNew
+			postOpts.EditorAuto = true
 		}
 		runErr = app.RunNew(context.Background(), opts, postOpts)
 	case command == "serve":

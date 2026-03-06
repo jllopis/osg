@@ -80,6 +80,14 @@ Formato: [todo|doing|done] Tarea
 [done] (osg new) TUI: `/new <title>` slash command (commands.go, model.go, update.go, app/tui.go)
 [done] (osg new) 9 tests unitarios (new_test.go) + 2 tests TUI command parsing (commands_test.go)
 [done] (osg new) Documentacion: ROADMAP, TASKS, DESIGN, Funcional, AGENTS.md
+[done] (osg new) Bloque osg expandido: publish activo + placeholders comentados (title, image, featured, path, permalink, menu, abstract, author)
+[done] (osg new) Frontmatter manual (sin yaml.Marshal) para soportar comentarios YAML en placeholders
+[done] (osg new) yamlScalar() helper para quoting seguro de valores YAML
+[done] (osg new) Auto-apertura de editor: default_editor config > $EDITOR env > skip silencioso
+[done] (osg new) --editor/--no-editor flag (negatable) con auto-detect por defecto
+[done] (osg new) resolveEditor() y openEditor() en new.go; errores no-fatales
+[done] (osg new) DefaultEditor field en Config + seccion "Editor" en ConfigSchema()
+[done] (osg new) 22 tests unitarios (9 originales + 13 nuevos)
 
 [done] (i18n) Package internal/i18n/: Bundle struct, New(), LoadDir(), Trans(), DateFormat()
 [done] (i18n) Ficheros de traduccion en.yaml y es.yaml (~31 claves cada uno)

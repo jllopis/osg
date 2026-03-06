@@ -320,8 +320,8 @@ func TestAddAndDeleteListItem(t *testing.T) {
 	path := writeTestConfig(t)
 	cs, _ := NewConfigScreen(path)
 
-	// Navigate to Plugins section (idx 9), plugins_enabled (idx 1).
-	cs.MoveSection(9)
+	// Navigate to Plugins section (idx 10), plugins_enabled (idx 1).
+	cs.MoveSection(10)
 	cs.SwitchPanel()
 	cs.MoveField(1) // plugins_enabled
 

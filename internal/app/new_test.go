@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"osg/internal/config"
 )
 
 func TestRunNew_CreatesFile(t *testing.T) {
@@ -211,6 +214,246 @@ func TestRunNew_UnicodeTitle(t *testing.T) {
 	content := string(data)
 	if !strings.Contains(content, "title: Inferencia Bayesiana") {
 		t.Error("title not preserved in frontmatter")
+	}
+}
+
+// --- New tests for expanded osg block ---
+
+func TestRunNew_OsgBlockComments(t *testing.T) {
+	t.Parallel()
+
+	cfgPath, vaultPath := writeNewConfig(t)
+	opts := CLIOptions{ConfigPath: cfgPath}
+	postOpts := NewPostOptions{Title: "Full Osg Block"}
+
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
+		t.Fatalf("RunNew failed: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(vaultPath, "Full Osg Block.md"))
+	if err != nil {
+		t.Fatalf("failed to read output: %v", err)
+	}
+
+	content := string(data)
+
+	// Check that all osg placeholder comments are present.
+	expectedComments := []string{
+		"# title:",
+		"# image:",
+		"# featured:",
+		"# path:",
+		"# permalink:",
+		"# menu:",
+		"# abstract:",
+		"# author:",
+	}
+	for _, comment := range expectedComments {
+		if !strings.Contains(content, comment) {
+			t.Errorf("missing osg comment placeholder: %q", comment)
+		}
+	}
+
+	// The active publish field should be uncommented.
+	if !strings.Contains(content, "  publish: draft") {
+		t.Error("publish field should be active (not commented)")
+	}
+}
+
+func TestBuildFrontmatter_Draft(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 3, 6, 10, 30, 0, 0, time.UTC)
+	opts := NewPostOptions{Title: "Test Draft", Publish: false}
+
+	fm := buildFrontmatter("Test Draft", now, opts)
+
+	if !strings.Contains(fm, "title: Test Draft") {
+		t.Error("missing title")
+	}
+	if !strings.Contains(fm, "created: 2026-03-06 10:30") {
+		t.Error("missing or wrong created date")
+	}
+	if !strings.Contains(fm, "publish: draft") {
+		t.Error("expected publish: draft")
+	}
+	if !strings.HasPrefix(fm, "---\n") {
+		t.Error("should start with ---")
+	}
+	if !strings.Contains(fm, "---\n\n") {
+		t.Error("should end with --- followed by blank line")
+	}
+}
+
+func TestBuildFrontmatter_Published(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 1, 15, 14, 0, 0, 0, time.UTC)
+	opts := NewPostOptions{Title: "Published", Publish: true}
+
+	fm := buildFrontmatter("Published", now, opts)
+
+	if !strings.Contains(fm, "publish: true") {
+		t.Error("expected publish: true")
+	}
+}
+
+func TestBuildFrontmatter_WithTags(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	opts := NewPostOptions{Title: "Tagged", Tags: []string{"go", "rust"}}
+
+	fm := buildFrontmatter("Tagged", now, opts)
+
+	if !strings.Contains(fm, "tags:\n  - go\n  - rust\n") {
+		t.Error("tags not formatted correctly")
+	}
+}
+
+func TestBuildFrontmatter_NoTags(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	opts := NewPostOptions{Title: "No Tags"}
+
+	fm := buildFrontmatter("No Tags", now, opts)
+
+	if strings.Contains(fm, "tags:") {
+		t.Error("tags section should not appear when no tags given")
+	}
+}
+
+func TestBuildFrontmatter_TitleWithSpecialChars(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	opts := NewPostOptions{Title: `Why "Rust" is: great`}
+
+	fm := buildFrontmatter(`Why "Rust" is: great`, now, opts)
+
+	if !strings.Contains(fm, `title: "Why \"Rust\" is: great"`) {
+		t.Errorf("title with special chars not quoted properly, got:\n%s", fm)
+	}
+}
+
+func TestYamlScalar(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"simple", "simple"},
+		{"hello world", "hello world"},
+		{"has: colon", `"has: colon"`},
+		{`has "quotes"`, `"has \"quotes\""`},
+		{"true", `"true"`},
+		{"false", `"false"`},
+		{"null", `"null"`},
+		{"", `""`},
+		{"- starts with dash", `"- starts with dash"`},
+		{"normal title", "normal title"},
+	}
+
+	for _, tt := range tests {
+		got := yamlScalar(tt.input)
+		if got != tt.want {
+			t.Errorf("yamlScalar(%q) = %q; want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+func TestResolveEditor(t *testing.T) {
+	t.Run("config takes precedence", func(t *testing.T) {
+		cfg := config.Config{DefaultEditor: "nvim"}
+		t.Setenv("EDITOR", "vim")
+		got := resolveEditor(cfg)
+		if got != "nvim" {
+			t.Errorf("resolveEditor = %q; want \"nvim\"", got)
+		}
+	})
+
+	t.Run("falls back to EDITOR", func(t *testing.T) {
+		cfg := config.Config{}
+		t.Setenv("EDITOR", "vim")
+		got := resolveEditor(cfg)
+		if got != "vim" {
+			t.Errorf("resolveEditor = %q; want \"vim\"", got)
+		}
+	})
+
+	t.Run("empty when nothing set", func(t *testing.T) {
+		cfg := config.Config{}
+		t.Setenv("EDITOR", "")
+		got := resolveEditor(cfg)
+		if got != "" {
+			t.Errorf("resolveEditor = %q; want empty", got)
+		}
+	})
+}
+
+func TestRunNew_EditorAutoSkipsWhenNoEditor(t *testing.T) {
+	// When EditorAuto=true and no editor is configured, should not error.
+	cfgPath, vaultPath := writeNewConfig(t)
+	t.Setenv("EDITOR", "")
+
+	opts := CLIOptions{ConfigPath: cfgPath}
+	postOpts := NewPostOptions{
+		Title:      "Auto Editor Skip",
+		Editor:     true,
+		EditorAuto: true,
+	}
+
+	if err := RunNew(context.TODO(), opts, postOpts); err != nil {
+		t.Fatalf("RunNew failed: %v", err)
+	}
+
+	// File should still be created.
+	outputPath := filepath.Join(vaultPath, "Auto Editor Skip.md")
+	if _, err := os.Stat(outputPath); err != nil {
+		t.Errorf("file should exist: %v", err)
+	}
+}
+
+func TestConfigDefaultEditor(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	cfgPath := filepath.Join(root, "config.yaml")
+	cfgContent := `vault_path: "/tmp"
+default_editor: "code --wait"
+`
+	if err := os.WriteFile(cfgPath, []byte(cfgContent), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		t.Fatalf("Load config: %v", err)
+	}
+
+	if cfg.DefaultEditor != "code --wait" {
+		t.Errorf("DefaultEditor = %q; want \"code --wait\"", cfg.DefaultEditor)
+	}
+}
+
+func TestConfigDefaultEditorDefault(t *testing.T) {
+	t.Parallel()
+
+	// Default config should have empty DefaultEditor.
+	cfg := config.Default()
+	if cfg.DefaultEditor != "" {
+		t.Errorf("Default().DefaultEditor = %q; want empty", cfg.DefaultEditor)
+	}
+}
+
+func TestConfigSchemaHasDefaultEditor(t *testing.T) {
+	t.Parallel()
+
+	_, ok := config.FindField("default_editor")
+	if !ok {
+		t.Error("default_editor not found in ConfigSchema")
 	}
 }
 

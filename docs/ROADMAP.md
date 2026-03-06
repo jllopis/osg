@@ -125,6 +125,14 @@
 - [done] CLI: `osg new <title>` via Kong (cmd/osg/main.go)
 - [done] TUI: `/new <title>` slash command con autocompletado
 - [done] 9 tests unitarios + 2 tests TUI command parsing
+- [done] bloque osg expandido: publish activo + placeholders comentados (title, image, featured, path, permalink, menu, abstract, author)
+- [done] frontmatter manual (sin yaml.Marshal) para soportar comentarios YAML
+- [done] `yamlScalar()` helper para quoting seguro de valores YAML (colons, quotes, booleans, null)
+- [done] auto-apertura de editor: `default_editor` config > `$EDITOR` env > skip silencioso
+- [done] `--editor`/`--no-editor` flag (negatable) con auto-detect por defecto
+- [done] `resolveEditor()` y `openEditor()` en new.go; errores no-fatales (archivo siempre creado)
+- [done] `DefaultEditor` field en Config + seccion "Editor" en ConfigSchema()
+- [done] 22 tests unitarios (9 originales + 13 nuevos: frontmatter comments, buildFrontmatter, yamlScalar, resolveEditor, editor auto-skip, config)
 
 ## i18n en templates (done)
 - [done] `internal/i18n/` package: Bundle struct, New(), LoadDir(), Trans(), DateFormat()

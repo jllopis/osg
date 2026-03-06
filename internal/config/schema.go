@@ -80,6 +80,13 @@ func ConfigSchema() []ConfigSection {
 			},
 		},
 		{
+			Name:        "Editor",
+			Description: "Editor for opening new posts after creation.",
+			Fields: []ConfigField{
+				{Key: "default_editor", Label: "Default Editor", Description: "Editor command to open new posts (falls back to $EDITOR env var).", Type: FieldString},
+			},
+		},
+		{
 			Name:        "Output",
 			Description: "Public directory and build cleaning.",
 			Fields: []ConfigField{

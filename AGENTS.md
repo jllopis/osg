@@ -112,7 +112,7 @@ Examples: "Add menu pages to header template", "Fix Phase 10 roadmap markers".
 ## Architecture Highlights
 
 - **osg frontmatter block**: Notes can have an `osg:` block in YAML frontmatter
-  with fields: `publish`, `featured`, `image`, `path`, `permalink`, `menu`, `abstract`, `author`
+  with fields: `publish`, `featured`, `image`, `path`, `permalink`, `menu`, `abstract`, `author`, `title`
 - **Standalone pages**: `osg.path` overrides the date-based content layout;
   `osg.menu: true` adds the page to nav and excludes it from post listings
 - **Summary strategies**: `summary_strategy` in config (auto/manual/ai);
@@ -232,6 +232,16 @@ favicon support, configurable permalinks, interactions (views + likes),
 sharing (social share popover), and comments (OAuth2 + threaded replies) all complete.
 
 ### Recently completed (post v0.99)
+- **Enhanced `osg new` command**: Expanded osg frontmatter block with all
+  recognized fields as commented-out YAML placeholders (title, image, featured,
+  path, permalink, menu, abstract, author) plus active `publish` field.
+  Manual frontmatter building (no yaml.Marshal) to support YAML comments.
+  `yamlScalar()` helper for safe YAML value quoting. Auto-opens editor after
+  file creation: `default_editor` config > `$EDITOR` env > silent skip.
+  `--editor`/`--no-editor` negatable CLI flag with auto-detect default.
+  `resolveEditor()` and `openEditor()` with non-fatal errors (file always created).
+  `DefaultEditor` field in Config struct, "Editor" section in `ConfigSchema()`.
+  22 tests (9 original + 13 new).
 - **TUI enhancements (Phase 17)**: Full TUI overhaul with service management,
   log panel, and config editor. 6 phases (A-F) documented in `docs/TUI-ENHANCEMENTS.md`.
   Phase A: Multi-channel `LogSink` with source tags (general/serve/api),

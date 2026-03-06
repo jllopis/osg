@@ -92,6 +92,7 @@ type Config struct {
 	NavTaxonomy       string             `koanf:"nav_taxonomy" yaml:"nav_taxonomy"`
 	DefaultLanguage   string             `koanf:"default_language" yaml:"default_language"`
 	Languages         []LanguageConfig   `koanf:"languages" yaml:"languages"`
+	DefaultEditor     string             `koanf:"default_editor" yaml:"default_editor"`
 	DoctorProfile     string             `koanf:"doctor_profile" yaml:"doctor_profile"`
 	Social            map[string]string  `koanf:"social" yaml:"social"`
 	Copyright         string             `koanf:"copyright" yaml:"copyright"`
@@ -462,6 +463,14 @@ vault_path: ""
 content_dir: content
 content_layout: "{date}/{slug}"
 include_drafts: false
+
+# -----------------------------------------------------------------------------
+# Editor
+# -----------------------------------------------------------------------------
+# default_editor: Editor command to open new posts after creation with "osg new".
+#                 If empty, falls back to the $EDITOR environment variable.
+#                 Examples: "code", "vim", "nvim", "nano", "subl"
+# default_editor: ""
 
 # -----------------------------------------------------------------------------
 # Theme & appearance
