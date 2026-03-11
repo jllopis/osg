@@ -764,7 +764,7 @@ Optimizaciones para sitios grandes (100+ posts, muchas imagenes).
 - [done] Historial de builds: `.osg/build-history.json` (max 100 entradas, auto-trim)
 - [done] Cada entrada: timestamp, total_ms, rendered, cached, errors, stages
 
-## Phase 24 — Plugins y ecosistema avanzado (partial)
+## Phase 24 — Plugins y ecosistema avanzado (done)
 
 Expandir las capacidades del sistema de plugins.
 
@@ -782,11 +782,12 @@ Expandir las capacidades del sistema de plugins.
 - [done] Documentar nuevos hooks en PLUGINS.md
 
 ### 24C — Plugin marketplace web
-- [todo] Pagina estatica auto-generada desde `plugins-index.json`
-- [todo] Listado con nombre, descripcion, autor, version, hooks soportados
-- [todo] Filtrado por hook type (content.transform, build.finished, etc.)
-- [todo] Instrucciones de instalacion inline (`osg plugin install ...`)
-- [todo] Generada como parte del sitio de documentacion del proyecto
+- [done] Pagina estatica auto-generada desde `plugins-index.json`
+- [done] Listado con nombre, descripcion, autor, version, hooks soportados
+- [done] Filtrado por hook type (content.transform, build.finished, etc.)
+- [done] Instrucciones de instalacion inline (`osg plugin install ...`) con click-to-copy
+- [done] GenerateMarketplace() en internal/build/marketplace.go
+- [done] Hooks metadata agregada a plugins-index.json
 
 ## Phase 25 — Integraciones y automatizacion (todo)
 

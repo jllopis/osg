@@ -5,28 +5,32 @@
       "description": "Full-text search with header bar, standalone page, and keyboard navigation",
       "author": "jllopis",
       "repo": "github.com/jllopis/osg-search",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "hooks": ["build.finished"]
     },
     {
       "name": "llmstxt",
       "description": "Generate llms.txt and llms-full.txt for LLM consumption",
       "author": "jllopis",
       "repo": "github.com/jllopis/osg-llmstxt",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "hooks": ["build.finished"]
     },
     {
       "name": "mermaid",
       "description": "Client-side Mermaid diagram rendering via CDN",
       "author": "jllopis",
       "repo": "github.com/jllopis/osg-mermaid",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "hooks": ["content.transform", "build.finished"]
     },
     {
       "name": "archives",
       "description": "Chronological archive pages grouped by year and month",
       "author": "jllopis",
       "repo": "github.com/jllopis/osg-archives",
-      "version": "0.1.0"
+      "version": "0.1.0",
+      "hooks": ["build.finished"]
     }
   ]
 }

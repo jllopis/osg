@@ -525,8 +525,8 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 24B) Hook sitemap.transform (excluir paginas, cambiar priorities)
 [done] (Phase 24B) Documentar nuevos hooks en PLUGINS.md
 
-[todo] (Phase 24C) Plugin marketplace: pagina estatica desde plugins-index.json
-[todo] (Phase 24C) Filtrado por hook type, instrucciones de instalacion inline
+[done] (Phase 24C) Plugin marketplace: pagina estatica desde plugins-index.json
+[done] (Phase 24C) Filtrado por hook type, instrucciones de instalacion inline con click-to-copy
 
 [todo] (Phase 25A) Webhooks: POST a URL configurable tras build/deploy
 [todo] (Phase 25A) Config webhooks: [{url, events, secret}], HMAC signature
