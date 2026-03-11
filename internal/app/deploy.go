@@ -3,9 +3,11 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"osg/internal/config"
 	"osg/internal/deploy"
+	"osg/internal/webhook"
 )
 
 // DeployOptions holds CLI flags for the deploy command.
@@ -73,6 +75,10 @@ func RunDeploy(ctx context.Context, opts CLIOptions, deployOpts DeployOptions) e
 	if err := deploy.Run(ctx, provider, providerCfg, cfg.PublicDir); err != nil {
 		return err
 	}
+
+	webhook.Dispatch(ctx, cfg, "deploy.success", map[string]any{
+		"provider": provider,
+	}, slog.Default())
 
 	return nil
 }

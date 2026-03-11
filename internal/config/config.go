@@ -104,6 +104,14 @@ type Config struct {
 	Taxonomies        []TaxonomyConfig   `koanf:"taxonomies" yaml:"taxonomies"`
 	Deploy            DeployConfig       `koanf:"deploy" yaml:"deploy"`
 	Interactions      InteractionsConfig `koanf:"interactions" yaml:"interactions"`
+	Webhooks          []WebhookConfig    `koanf:"webhooks" yaml:"webhooks"`
+}
+
+// WebhookConfig defines a single webhook endpoint.
+type WebhookConfig struct {
+	URL    string   `koanf:"url" yaml:"url"`
+	Events []string `koanf:"events" yaml:"events"`
+	Secret string   `koanf:"secret" yaml:"secret"`
 }
 
 type TaxonomyConfig struct {

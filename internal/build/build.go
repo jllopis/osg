@@ -33,6 +33,7 @@ import (
 	"osg/internal/taxonomy"
 	"osg/internal/theme"
 	"osg/internal/vault"
+	"osg/internal/webhook"
 )
 
 type Stats struct {
@@ -481,10 +482,13 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	)
 
 	if stats.Errors > 0 {
+		webhook.Dispatch(ctx, cfg, "build.failure", map[string]any{
+			"stats": buildStatsView(stats, siteIndex),
+		}, logger)
 		return fmt.Errorf("completed with %d errors", stats.Errors)
 	}
 
-	if cacheToSave != nil && stats.Errors == 0 {
+	if cacheToSave != nil {
 		cacheToSave.Outputs = buildOutputsIndex(siteIndex, cfg.PublicDir)
 		if err := saveBuildCache(buildCachePath(cfg), cacheToSave); err != nil {
 			logger.Warn("cache write failed", "error", err)
@@ -499,6 +503,10 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		afterPayload["public_dir"] = cfg.PublicDir
 		_ = plugins.Emit(ctx, "after.build", afterPayload)
 	}
+
+	webhook.Dispatch(ctx, cfg, "build.success", map[string]any{
+		"stats": buildStatsView(stats, siteIndex),
+	}, logger)
 
 	return nil
 }

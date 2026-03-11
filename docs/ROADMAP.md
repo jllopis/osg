@@ -789,13 +789,13 @@ Expandir las capacidades del sistema de plugins.
 - [done] GenerateMarketplace() en internal/build/marketplace.go
 - [done] Hooks metadata agregada a plugins-index.json
 
-## Phase 25 — Integraciones y automatizacion (todo)
+## Phase 25 — Integraciones y automatizacion (partial)
 
 ### 25A — Webhooks y notificaciones
-- [todo] Hook `after.build` con soporte de webhooks: POST a URL configurable con payload JSON (stats del build)
-- [todo] Config `webhooks: [{url, events, secret}]`
-- [todo] Eventos: build.success, build.failure, deploy.success
-- [todo] HMAC signature en header para verificacion
+- [done] Hook `after.build` con soporte de webhooks: POST a URL configurable con payload JSON (stats del build)
+- [done] Config `webhooks: [{url, events, secret}]` en WebhookConfig
+- [done] Eventos: build.success, build.failure, deploy.success
+- [done] HMAC signature en header X-OSG-Signature para verificacion
 
 ### 25B — Import desde otras plataformas
 - [todo] `osg import wordpress <export.xml>`: importar posts desde WordPress WXR export

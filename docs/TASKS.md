@@ -528,8 +528,8 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 24C) Plugin marketplace: pagina estatica desde plugins-index.json
 [done] (Phase 24C) Filtrado por hook type, instrucciones de instalacion inline con click-to-copy
 
-[todo] (Phase 25A) Webhooks: POST a URL configurable tras build/deploy
-[todo] (Phase 25A) Config webhooks: [{url, events, secret}], HMAC signature
+[done] (Phase 25A) Webhooks: POST a URL configurable tras build/deploy
+[done] (Phase 25A) Config webhooks: [{url, events, secret}], HMAC signature X-OSG-Signature
 
 [todo] (Phase 25B) `osg import wordpress <export.xml>`: importar posts desde WordPress WXR
 [todo] (Phase 25B) `osg import hugo <content-dir>`: importar posts desde Hugo
