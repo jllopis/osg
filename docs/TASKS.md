@@ -391,3 +391,145 @@ Formato: [todo|doing|done] Tarea
 [done] (Archives) Genera /archive/ cronologico por ano/mes con paginas por ano
 [done] (LLMS.txt) Genera /llms.txt y /llms-full.txt con contenido del sitio para LLMs
 [done] (Mermaid) Client-side: content.transform reescribe bloques mermaid, build.finished genera mermaid-init.js CDN loader
+
+# ──────────────────────────────────────────────────────
+# NUEVAS FASES (Phase 18+)
+# ──────────────────────────────────────────────────────
+
+[done] (Phase 18A) Fix 5 errores errcheck en internal/app/api.go y internal/app/serve.go (Close() sin comprobar error)
+[done] (Phase 18A) Verificar CI pipeline verde tras fix
+[done] (Phase 18A) Documentar politica de linting: zero tolerance en CI (docs/RELEASE.md)
+
+[done] (Phase 18B) Tests para cleanupRemovedOutputs, removeEmptyParents, generatePlaceholders
+[done] (Phase 18B) Tests para baseContext, configView, commentsProvidersView, languagesView
+[done] (Phase 18B) Tests para fillSummaries, feedPages, siteFeedContext, collectSitemapEntries
+[done] (Phase 18B) Tests para hashConfig, hashContent, hashDir, hashPlugins, hashAssets, hashTemplates
+[done] (Phase 18B) Tests para buildCacheFrom, loadBuildCache, saveBuildCache, buildPlan
+[done] (Phase 18B) Tests para renderPages, renderSections, renderTaxonomies, renderSiteFeed, renderSitemap, renderRobots, renderNotFound
+[done] (Phase 18B) 3,838 lineas en build_coverage_test.go, cobertura 37.2% -> 67.4%
+
+[done] (Phase 18C) Tests deploy: Cloudflare (error paths, wrangler toml), rsync (arg construction), S3 (URL, options)
+[done] (Phase 18C) Tests runCommand, Register custom, S3 Validate profile. Cobertura 39% -> 88.7%
+
+[done] (Phase 18D) Tests assets: PrepareWithChain, copyStaticChain, compileSassChain, compileSass, Prepare
+[done] (Phase 18D) Cobertura 51.6% -> 85.1%
+
+[done] (Phase 18E) Tests plugin: Emit, Call, readPluginInfo, CheckUpdate, UpdatePlugin, LoadLockFile, FetchIndexFrom
+[done] (Phase 18E) Tests InstallFromGitHub, fetchGitHubRelease, downloadFile, parseGitHubRef, EnsureBundledPlugins
+[done] (Phase 18E) Cobertura 61.7% -> 82.1%
+
+[done] (Phase 18F) ADR-001: unsafe.Pointer en plugin SDK WASM (docs/adr/001-unsafe-pointer-wasm-sdk.md)
+[done] (Phase 18F) ADR-002: dual-file sync strategy (docs/adr/002-dual-file-sync-theme.md)
+[done] (Phase 18F) Politica de versionado semantico, proceso de release y linting (docs/RELEASE.md)
+
+[todo] (Phase 19A) Escanear links internos rotos en contenido renderizado
+[todo] (Phase 19A) Detectar wikilinks que no resuelven a fichero del vault
+[todo] (Phase 19A) Reporte con fichero fuente, linea y link roto
+[todo] (Phase 19A) Exit code != 0 si hay errores (integrable en CI)
+
+[todo] (Phase 19B) Detectar imagenes referenciadas que no existen
+[todo] (Phase 19B) Detectar imagenes huerfanas (copiadas pero no referenciadas)
+[todo] (Phase 19B) Reporte con tamano de imagenes huerfanas
+
+[todo] (Phase 19C) Detectar posts sin fecha, sin tags, slugs duplicados
+[todo] (Phase 19C) Detectar colisiones de osg.permalink
+[todo] (Phase 19C) Nivel de severidad configurable (error vs warning)
+
+[todo] (Phase 19D) CLI: `osg check` con flags --links, --images, --frontmatter, --all
+[todo] (Phase 19D) TUI: /check slash command
+[todo] (Phase 19D) Formato de salida: texto (default), JSON (--json)
+
+[todo] (Phase 20A) JSON-LD Article schema para paginas de post
+[todo] (Phase 20A) JSON-LD BlogPosting subtipo
+[todo] (Phase 20A) JSON-LD WebSite schema en index con SearchAction
+[todo] (Phase 20A) JSON-LD BreadcrumbList schema
+[todo] (Phase 20A) <script type="application/ld+json"> en head.html condicional
+[todo] (Phase 20A) Tests: validar JSON-LD output por tipo de pagina
+
+[todo] (Phase 20B) Preconnect hints para CDN externos
+[todo] (Phase 20B) Critical CSS inline (above-the-fold)
+[todo] (Phase 20B) defer para JS no critico
+[todo] (Phase 20B) fetchpriority="high" para hero image / LCP
+[todo] (Phase 20B) Config optimize_vitals: true
+
+[todo] (Phase 20C) Feeds RSS/Atom individuales por seccion
+[todo] (Phase 20C) <link rel="alternate"> en <head> de cada seccion
+[todo] (Phase 20C) Config section_feeds: true
+
+[todo] (Phase 21A) Paginacion configurable en homepage (posts_per_page, default 10)
+[todo] (Phase 21A) Paginas generadas: /, /page/2/, /page/3/...
+[todo] (Phase 21A) Template index.html con nav prev/next y numeros de pagina
+[todo] (Phase 21A) Compatible con featured posts
+[todo] (Phase 21A) i18n y CSS para paginacion
+
+[todo] (Phase 21B) Sidebar TOC sticky para articulos largos
+[todo] (Phase 21B) Scroll-spy: resaltar heading actual con IntersectionObserver
+[todo] (Phase 21B) Colapsar en mobile (toggle expandible)
+[todo] (Phase 21B) Config toc_sticky: true
+
+[todo] (Phase 21C) Filtros por fecha, tags y seccion en plugin de search
+[todo] (Phase 21C) Highlight snippets en resultados
+[todo] (Phase 21C) Ordenar por relevancia vs fecha (toggle)
+[todo] (Phase 21C) Navegacion con teclado en resultados
+
+[todo] (Phase 21D) Boton "guardar para despues" (localStorage)
+[todo] (Phase 21D) Pagina /bookmarks/ client-side rendered
+[todo] (Phase 21D) Badge de conteo en header, import/export JSON
+[todo] (Phase 21D) i18n claves bookmarks
+
+[todo] (Phase 22A) Hot reload parcial: detectar fichero cambiado, solo re-renderizar afectados
+[todo] (Phase 22A) Template change -> solo paginas que usan ese template
+[todo] (Phase 22A) Content change -> solo esa pagina + index/section
+[todo] (Phase 22A) Sass/CSS change -> solo recompilar assets
+[todo] (Phase 22A) Log motivo de rebuild
+
+[todo] (Phase 22B) `osg build --dry-run`: mostrar ficheros que se generarian sin escribir
+[todo] (Phase 22B) Formato tabla con ruta y tamano estimado
+
+[todo] (Phase 22C) `osg preview <file.md>`: renderizar una nota y abrir en browser
+[todo] (Phase 22C) Template minimal, servidor temporal, auto-cierre
+
+[todo] (Phase 22D) Health dashboard TUI: stats del sitio (posts, drafts, imagenes, tamano output)
+[todo] (Phase 22D) Desglose por seccion, histograma publicaciones
+[todo] (Phase 22D) /stats slash command
+
+[todo] (Phase 23A) Dependency tracking template->pagina para incremental builds inteligentes
+[todo] (Phase 23A) Cache de dependencias persistente entre builds
+[todo] (Phase 23A) Log de decisiones de cache
+
+[todo] (Phase 23B) Lazy image optimization: comparar mtime/hash vs cache
+[todo] (Phase 23B) Solo generar variantes WebP/srcset de imagenes nuevas/modificadas
+[todo] (Phase 23B) Cache de imagenes optimizadas en .osg/cache/images/
+[todo] (Phase 23B) Metrica: "optimized 3/50 images (47 cached)"
+
+[todo] (Phase 23C) Worker pool acotado para template rendering (NumCPU limit)
+[todo] (Phase 23C) Cola con canal buffer para backpressure
+
+[todo] (Phase 23D) `osg build --timing=json` para exportar timing a JSON
+[todo] (Phase 23D) Historial de builds en .osg/build-history.json
+
+[todo] (Phase 24A) Plugin hot-reload en osg serve (detectar cambios .wasm, Close + Load)
+[todo] (Phase 24A) Emitir config.validate tras reload
+[todo] (Phase 24A) Log: "reloaded plugin <name>"
+
+[todo] (Phase 24B) Hook page.before_render (modificar contexto pre-template)
+[todo] (Phase 24B) Hook feed.transform (personalizar feeds)
+[todo] (Phase 24B) Hook sitemap.transform (excluir paginas, cambiar priorities)
+[todo] (Phase 24B) Documentar nuevos hooks en PLUGINS.md
+
+[todo] (Phase 24C) Plugin marketplace: pagina estatica desde plugins-index.json
+[todo] (Phase 24C) Filtrado por hook type, instrucciones de instalacion inline
+
+[todo] (Phase 25A) Webhooks: POST a URL configurable tras build/deploy
+[todo] (Phase 25A) Config webhooks: [{url, events, secret}], HMAC signature
+
+[todo] (Phase 25B) `osg import wordpress <export.xml>`: importar posts desde WordPress WXR
+[todo] (Phase 25B) `osg import hugo <content-dir>`: importar posts desde Hugo
+[todo] (Phase 25B) Mapping de frontmatter, preservar fechas/tags/imagenes, --dry-run
+
+[todo] (Phase 26A) Analytics lightweight propio (pageviews, referrers, browser/OS)
+[todo] (Phase 26A) SQLite storage reutilizando API server, respetar DNT
+[todo] (Phase 26A) Config analytics: true
+
+[todo] (Phase 26B) `osg audit`: analizar public/ para problemas (HTML, a11y, performance)
+[todo] (Phase 26B) Reporte con severidad y sugerencias, integrable en CI

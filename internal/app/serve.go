@@ -72,9 +72,17 @@ func RunServe(ctx context.Context, opts CLIOptions) error {
 		if err != nil {
 			return err
 		}
-		defer apiStore.Close()
+		defer func() {
+			if err := apiStore.Close(); err != nil {
+				logger.Warn("closing interactions store", "error", err)
+			}
+		}()
 		if commentStore != nil {
-			defer commentStore.Close()
+			defer func() {
+				if err := commentStore.Close(); err != nil {
+					logger.Warn("closing comment store", "error", err)
+				}
+			}()
 		}
 		// Mount API routes under /api/v1/.
 		mux.Handle("/api/v1/", apiSrv.Handler())

@@ -35,7 +35,11 @@ func RunAPI(ctx context.Context, opts CLIOptions, apiOpts APIOptions) error {
 	if err != nil {
 		return err
 	}
-	defer store.Close()
+	defer func() {
+		if err := store.Close(); err != nil {
+			logger.Warn("closing interactions store", "error", err)
+		}
+	}()
 
 	// Optionally create comment store and auth providers.
 	var commentStore *api.CommentStore
@@ -45,7 +49,11 @@ func RunAPI(ctx context.Context, opts CLIOptions, apiOpts APIOptions) error {
 		if err != nil {
 			return err
 		}
-		defer cs.Close()
+		defer func() {
+			if err := cs.Close(); err != nil {
+				logger.Warn("closing comment store", "error", err)
+			}
+		}()
 		commentStore = cs
 
 		baseCallback := cfg.Interactions.Comments.AuthCallbackURL
@@ -99,7 +107,7 @@ func StartAPIHandler(cfg config.InteractionsConfig, logger *slog.Logger) (*api.S
 	if cfg.Comments.Enabled && len(cfg.Comments.Providers) > 0 {
 		cs, err := api.NewCommentStore(cfg.Comments.DBPath, cfg.Comments.AuthSessionDays)
 		if err != nil {
-			store.Close()
+			_ = store.Close()
 			return nil, nil, nil, err
 		}
 		commentStore = cs

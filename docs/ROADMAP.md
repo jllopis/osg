@@ -555,3 +555,256 @@ esta embebido).
 - [done] Hook `content.transform`: reescribe bloques de codigo mermaid a `<pre class="mermaid">`
 - [done] Hook `build.finished`: genera `mermaid-init.js` que carga mermaid CDN solo si hay diagramas
 - [done] Auto-deteccion de tema (dark/light) via prefers-color-scheme
+
+---
+
+## Phase 18 — Estabilidad, CI y deuda tecnica (done)
+
+Prioridad maxima: corregir errores de CI, eliminar warnings del linter y aumentar cobertura
+en los paquetes criticos que sostienen el pipeline de build y deploy.
+
+### 18A — Fix CI lint errors (done)
+- [done] Corregir 5 errores `errcheck` en `internal/app/api.go` y `internal/app/serve.go` (Close() sin comprobar error)
+- [done] Verificar CI pipeline verde tras fix (GitHub Actions lint job)
+- [done] Documentar politica de linting: zero tolerance en CI, `nolint` solo con justificacion (`docs/RELEASE.md`)
+
+### 18B — Test coverage: build package (37% -> 67.4%) (done)
+- [done] Tests para cleanupRemovedOutputs, removeEmptyParents, generatePlaceholders
+- [done] Tests para baseContext, configView, commentsProvidersView, languagesView
+- [done] Tests para fillSummaries (auto, manual strategies), fillWithProvider
+- [done] Tests para feedPages (drafts filtering), siteFeedContext, collectSitemapEntries (hreflang)
+- [done] Tests para hashConfig, hashContent, hashDir, hashPlugins, hashAssets, hashTemplates
+- [done] Tests para buildCacheFrom, loadBuildCache, saveBuildCache round-trip
+- [done] Tests para buildPlan.shouldRenderPage, buildOutputsIndex, buildStatsView
+- [done] Tests para renderPages, renderSections, renderTaxonomies, renderSiteFeed, renderSitemap, renderRobots, renderNotFound
+- [done] Tests para taxonomyPagePath, latestUpdated, sectionUpdated, taxonomyIndexUpdated
+- [done] Tests para isNilInterface, pageContext, sectionContext, applyPluginOverrides
+- [done] 3,838 lineas en build_coverage_test.go, cobertura 37.2% -> 67.4%
+
+### 18C — Test coverage: deploy package (39% -> 88.7%) (done)
+- [done] Tests para CloudflareProvider.Deploy error paths (nonexistent dir, empty dir, wrangler toml generation)
+- [done] Tests para RsyncProvider.Deploy argument construction (port, keyfile, exclude, extra flags)
+- [done] Tests para S3Provider.Deploy URL construction (bucket, path, endpoint, region, ACL)
+- [done] Tests para runCommand (success, failure, not found, cancelled context)
+- [done] Tests para Register custom provider, S3 Validate con profile en config
+- [done] Cobertura 39% -> 88.7%
+
+### 18D — Test coverage: assets package (52% -> 85.1%) (done)
+- [done] Tests para PrepareWithChain (multiple theme dirs, static copy, sass disabled)
+- [done] Tests para copyStaticChain (file override por child theme, merge de dirs)
+- [done] Tests para compileSassChain (conflict detection, compile_sass=false)
+- [done] Tests para compileSass/compileSassDir (dir inexistente, sass_dir vacio)
+- [done] Tests para copyStatic (dir inexistente), Prepare (flujo basico)
+- [done] Cobertura 51.6% -> 85.1%
+
+### 18E — Test coverage: plugin package (62% -> 82.1%) (done)
+- [done] Tests para Emit (nil plugins, multiple plugins, timeout, nil logger)
+- [done] Tests para readPluginInfo (no plugin_info export)
+- [done] Tests para Call (search plugin con mock)
+- [done] Tests para CheckUpdate/UpdatePlugin (mock HTTP server, already up-to-date, fetch fails)
+- [done] Tests para InstallFromGitHub, fetchGitHubRelease con GITHUB_TOKEN
+- [done] Tests para LoadLockFile (corrupt JSON, null plugins, round-trip), SaveCreatesNestedDirs
+- [done] Tests para FetchIndexFrom (invalid JSON, connection error, multiple plugins)
+- [done] Tests para EnsureBundledPlugins, downloadFile, parseGitHubRef
+- [done] Cobertura 61.7% -> 82.1%
+
+### 18F — Documentacion tecnica (done)
+- [done] ADR-001: unsafe.Pointer en plugin SDK WASM (`docs/adr/001-unsafe-pointer-wasm-sdk.md`)
+- [done] ADR-002: dual-file sync strategy (`docs/adr/002-dual-file-sync-theme.md`)
+- [done] Politica de versionado semantico, proceso de release y politica de linting (`docs/RELEASE.md`)
+
+## Phase 19 — Validacion de contenido: `osg check` (todo)
+
+Nuevo comando para detectar problemas en el contenido antes de publicar.
+Complementa `osg doctor` (que valida config/entorno) con validacion del contenido real.
+
+### 19A — Links internos rotos
+- [todo] Escanear contenido renderizado para detectar links internos (`href="/..."`) que no corresponden a ninguna pagina generada
+- [todo] Detectar wikilinks que no resuelven a ningun fichero del vault (`[[nota inexistente]]`)
+- [todo] Reporte con fichero fuente, linea y link roto
+- [todo] Exit code != 0 si hay errores (integrable en CI)
+
+### 19B — Imagenes huerfanas y referencias rotas
+- [todo] Detectar imagenes referenciadas en contenido que no existen en el vault ni en static/
+- [todo] Detectar imagenes copiadas al directorio de contenido que no estan referenciadas por ninguna pagina (huerfanas)
+- [todo] Reporte con tamano de imagenes huerfanas (para limpieza)
+
+### 19C — Frontmatter incompleto o inconsistente
+- [todo] Detectar posts sin fecha (no se puede ordenar cronologicamente)
+- [todo] Detectar posts sin tags (posible contenido sin categorizar)
+- [todo] Detectar duplicados de slug (URLs colisionantes)
+- [todo] Detectar valores de `osg.permalink` que colisionan entre si
+- [todo] Nivel de severidad configurable (error vs warning)
+
+### 19D — Integracion
+- [todo] CLI: `osg check` con flags `--links`, `--images`, `--frontmatter`, `--all` (default)
+- [todo] TUI: `/check` slash command
+- [todo] Formato de salida: texto (default), JSON (`--json`)
+- [todo] Hook en CI: fail build si `osg check` reporta errores
+
+## Phase 20 — SEO avanzado (todo)
+
+Quick wins de alto impacto para mejorar indexacion y visibilidad en buscadores.
+
+### 20A — JSON-LD structured data (schema.org)
+- [todo] `Article` schema para paginas de post (headline, author, datePublished, dateModified, image, description)
+- [todo] `BlogPosting` schema como subtipo mas especifico cuando aplique
+- [todo] `WebSite` schema en index con SearchAction (sitelinks search box)
+- [todo] `BreadcrumbList` schema en paginas con breadcrumbs
+- [todo] `<script type="application/ld+json">` en head.html, condicional por tipo de pagina
+- [todo] Tests: validar JSON-LD output para cada tipo de pagina
+
+### 20B — Web Vitals optimization
+- [todo] `<link rel="preconnect">` hints para CDN externos (mermaid, etc.)
+- [todo] Critical CSS inline: extraer CSS above-the-fold e inyectar en `<style>` del `<head>`
+- [todo] `defer` para JS no critico (interactions, comments, share, lightbox)
+- [todo] `fetchpriority="high"` para hero image / LCP element
+- [todo] Config `optimize_vitals: true` (default habilitado)
+
+### 20C — RSS por seccion
+- [todo] Feeds RSS/Atom individuales por seccion (ademas de global y por taxonomia)
+- [todo] `<link rel="alternate" type="application/atom+xml">` en `<head>` de cada seccion
+- [todo] Config `section_feeds: true` (default deshabilitado)
+
+## Phase 21 — Mejoras de contenido y tema (todo)
+
+Funcionalidades orientadas al lector y a sitios con mucho contenido.
+
+### 21A — Paginacion en index
+- [todo] Paginacion configurable en homepage (`posts_per_page`, default 10)
+- [todo] Paginas generadas: `/`, `/page/2/`, `/page/3/`, etc.
+- [todo] Template `index.html` con navegacion prev/next y numeros de pagina
+- [todo] Funciona con featured posts (featured en primera pagina, paginados el resto)
+- [todo] i18n: claves `page_of`, `newer_posts`, `older_posts`
+- [todo] CSS: `.pagination` component Nord-styled
+
+### 21B — Table of Contents flotante (sticky TOC)
+- [todo] Sidebar TOC fijo para articulos largos (position: sticky)
+- [todo] Scroll-spy: resaltar heading actual en el TOC al hacer scroll
+- [todo] Colapsar en mobile (debajo del titulo, toggle expandible como ahora)
+- [todo] Config `toc_sticky: true` (default habilitado en desktop, colapsado en mobile)
+- [todo] CSS: `.toc-sidebar` con breakpoints responsive
+- [todo] JS: IntersectionObserver para scroll-spy (zero-dependency)
+
+### 21C — Busqueda mejorada
+- [todo] Filtros por fecha (rango), tags y seccion en el plugin de search
+- [todo] Destacar fragmentos coincidentes (highlight snippets) en resultados
+- [todo] Ordenar resultados por relevancia vs por fecha (toggle)
+- [todo] Navegacion con teclado en resultados (arrow keys, Enter)
+
+### 21D — Reading list / Bookmarks
+- [todo] Boton "guardar para despues" en cada post (localStorage client-side)
+- [todo] Pagina `/bookmarks/` que lista posts guardados (client-side rendered)
+- [todo] Badge de conteo en el link de bookmarks del header
+- [todo] Import/export de bookmarks (JSON)
+- [todo] i18n: claves `bookmark_save`, `bookmark_remove`, `bookmarks`, `no_bookmarks`
+
+## Phase 22 — DX y experiencia de desarrollo (todo)
+
+Mejoras al flujo de trabajo del autor de contenido y del desarrollador de temas/plugins.
+
+### 22A — Hot reload parcial (incremental serve)
+- [todo] En `osg serve --watch`, detectar que fichero cambio y solo re-renderizar las paginas afectadas
+- [todo] Si cambia un template, re-renderizar solo las paginas que usan ese template
+- [todo] Si cambia un fichero Markdown, solo re-renderizar esa pagina + index/section que la listan
+- [todo] Si cambia un fichero Sass/CSS, solo recompilar assets (no re-renderizar HTML)
+- [todo] Log del motivo de rebuild: "rebuilding page X (content changed)" vs "full rebuild (template changed)"
+
+### 22B — Dry-run para build
+- [todo] `osg build --dry-run`: mostrar que ficheros se generarian sin escribir a disco
+- [todo] Incluir: paginas, feeds, sitemap, assets copiados, imagenes optimizadas
+- [todo] Formato tabla con ruta de salida y tamano estimado
+- [todo] Util para verificar permalinks y estructura antes de publicar
+
+### 22C — Preview de fichero unico
+- [todo] `osg preview <file.md>`: renderizar una sola nota y abrir en browser
+- [todo] Template minimal (sin sidebar, sin navigation) enfocado en el contenido
+- [todo] Servidor temporal en puerto aleatorio, auto-cierre tras N minutos de inactividad
+- [todo] Util para revisar formato, shortcodes y imagenes de un post antes de publicar
+
+### 22D — Health dashboard en TUI
+- [todo] Panel con estadisticas del sitio: total posts, drafts, secciones, imagenes, tamano de output
+- [todo] Desglose por seccion: posts por seccion, posts sin tags, posts sin imagen
+- [todo] Histograma de publicaciones por mes (sparkline ASCII)
+- [todo] Accesible via `/stats` slash command o tecla dedicada
+
+## Phase 23 — Rendimiento avanzado (todo)
+
+Optimizaciones para sitios grandes (100+ posts, muchas imagenes).
+
+### 23A — Incremental builds inteligentes
+- [todo] Dependency tracking: si un template cambia, solo re-renderizar las paginas que lo usan
+- [todo] Si solo cambia contenido de una pagina, no re-renderizar secciones/taxonomias no afectadas
+- [todo] Cache de dependencias template->pagina persistente entre builds
+- [todo] Log de decisiones de cache: "skipping page X (no changes)" vs "rebuilding page X (template changed)"
+
+### 23B — Lazy image optimization
+- [todo] Comparar mtime/hash de imagen fuente vs cache antes de re-procesar
+- [todo] Solo generar variantes WebP/srcset de imagenes nuevas o modificadas
+- [todo] Cache de imagenes optimizadas persistente entre builds (`.osg/cache/images/`)
+- [todo] Metrica: "optimized 3/50 images (47 cached)"
+
+### 23C — Worker pool acotado para template rendering
+- [todo] Limitar goroutines de rendering a `runtime.NumCPU()` (evitar exceso en sitios con 500+ paginas)
+- [todo] Cola de trabajo con canal buffer para backpressure
+- [todo] Metrica de concurrencia en build timing
+
+### 23D — Metricas de build exportables
+- [todo] `osg build --timing=json`: exportar timing por stage a JSON (parseable por scripts)
+- [todo] `osg build --timing=opentelemetry`: exportar spans OTLP (compatible con Jaeger/Grafana)
+- [todo] Historial de builds: `.osg/build-history.json` con timestamp + duracion + stats por stage
+
+## Phase 24 — Plugins y ecosistema avanzado (todo)
+
+Expandir las capacidades del sistema de plugins.
+
+### 24A — Plugin hot-reload
+- [todo] En `osg serve`, detectar cambios en ficheros `.wasm` del directorio de plugins
+- [todo] Recargar plugin sin restart del servidor (Close + Load WASM)
+- [todo] Emitir `config.validate` tras reload para verificar que el plugin sigue siendo valido
+- [todo] Log: "reloaded plugin <name> (v1.2 -> v1.3)"
+
+### 24B — Nuevos hooks
+- [todo] `page.before_render`: modificar contexto del template antes de renderizar (inyectar datos custom)
+- [todo] `feed.transform`: modificar entries del feed antes de serializar (personalizar feeds)
+- [todo] `sitemap.transform`: modificar entries del sitemap (excluir paginas, cambiar priorities)
+- [todo] Documentar nuevos hooks en PLUGINS.md
+
+### 24C — Plugin marketplace web
+- [todo] Pagina estatica auto-generada desde `plugins-index.json`
+- [todo] Listado con nombre, descripcion, autor, version, hooks soportados
+- [todo] Filtrado por hook type (content.transform, build.finished, etc.)
+- [todo] Instrucciones de instalacion inline (`osg plugin install ...`)
+- [todo] Generada como parte del sitio de documentacion del proyecto
+
+## Phase 25 — Integraciones y automatizacion (todo)
+
+### 25A — Webhooks y notificaciones
+- [todo] Hook `after.build` con soporte de webhooks: POST a URL configurable con payload JSON (stats del build)
+- [todo] Config `webhooks: [{url, events, secret}]`
+- [todo] Eventos: build.success, build.failure, deploy.success
+- [todo] HMAC signature en header para verificacion
+
+### 25B — Import desde otras plataformas
+- [todo] `osg import wordpress <export.xml>`: importar posts desde WordPress WXR export
+- [todo] `osg import hugo <content-dir>`: importar posts desde Hugo (frontmatter TOML/YAML + contenido)
+- [todo] Mapping de frontmatter: convertir campos especificos de cada plataforma a formato osg
+- [todo] Preservar fechas, tags, categorias, imagenes referenciadas
+- [todo] Modo `--dry-run` para previsualizar sin escribir
+
+## Phase 26 — Observabilidad y operaciones (todo)
+
+Herramientas para monitorizar el sitio generado y el proceso de build.
+
+### 26A — Analytics lightweight
+- [todo] Script de analytics propio (sin third-party): pageviews, referrers, browser/OS
+- [todo] Datos almacenados en SQLite junto con interactions (reutilizar API server)
+- [todo] Dashboard client-side minimal (o exportar a JSON para herramientas externas)
+- [todo] Respetar DNT (Do Not Track)
+- [todo] Config `analytics: true` (default deshabilitado)
+
+### 26B — Site audit automatico
+- [todo] `osg audit`: analizar el sitio generado en public/ para problemas comunes
+- [todo] Checks: HTML validation (tags abiertos), accesibilidad basica (alt en imagenes, headings order), performance (tamano de paginas > 500KB)
+- [todo] Reporte con severidad (error/warning/info) y sugerencias de fix
+- [todo] Integrable en CI como quality gate

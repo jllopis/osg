@@ -97,12 +97,16 @@ func InstallFromGitHub(ctx context.Context, owner, repo, tag, pluginsDir string)
 	return name, nil
 }
 
+// githubAPIBase is the base URL for the GitHub API.
+// Tests can override this to point at a mock server.
+var githubAPIBase = "https://api.github.com"
+
 func fetchGitHubRelease(ctx context.Context, owner, repo, tag string) (*GitHubRelease, error) {
 	var url string
 	if tag == "" || tag == "latest" {
-		url = fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", owner, repo)
+		url = fmt.Sprintf("%s/repos/%s/%s/releases/latest", githubAPIBase, owner, repo)
 	} else {
-		url = fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/%s", owner, repo, tag)
+		url = fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s", githubAPIBase, owner, repo, tag)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
