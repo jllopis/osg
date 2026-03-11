@@ -517,6 +517,7 @@ func (s *Section) View() map[string]any {
 		"extra":         s.Extra,
 		"featured_page": featured,
 		"has_source":    s.SourcePath != "",
+		"is_root":       s.IsRoot,
 	}
 }
 

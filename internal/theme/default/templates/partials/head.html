@@ -72,6 +72,10 @@
 {{- /* --- Feeds --- */ -}}
 {{ if .config.site_feed }}<link rel="alternate" type="application/atom+xml" title="{{ .config.site_title }} — {{ trans "atom_feed" .lang }}" href="{{ get_url "/atom.xml" false false }}" />
 <link rel="alternate" type="application/rss+xml" title="{{ .config.site_title }} — {{ trans "rss_feed" .lang }}" href="{{ get_url "/rss.xml" false false }}" />{{ end }}
+{{- if and .config.section_feeds .section (not .section.is_root) }}<link rel="alternate" type="application/atom+xml" title="{{ .section.title }} — {{ trans "atom_feed" .lang }}" href="{{ get_url (printf "%satom.xml" .section.path) false false }}" />
+<link rel="alternate" type="application/rss+xml" title="{{ .section.title }} — {{ trans "rss_feed" .lang }}" href="{{ get_url (printf "%srss.xml" .section.path) false false }}" />{{ end }}
+{{- /* --- JSON-LD structured data (schema.org) --- */ -}}
+{{ jsonld . -}}
 {{- /* --- Stylesheets --- */ -}}
 <link rel="stylesheet" href="{{ get_url "/style.css" false true }}" />
 <link rel="stylesheet" href="{{ get_url "/css/syntax.css" false true }}" />

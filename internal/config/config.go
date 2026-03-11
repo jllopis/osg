@@ -83,6 +83,7 @@ type Config struct {
 	SummaryStrategy   string             `koanf:"summary_strategy" yaml:"summary_strategy"`
 	SiteFeed          bool               `koanf:"site_feed" yaml:"site_feed"`
 	SiteFeedLimit     int                `koanf:"site_feed_limit" yaml:"site_feed_limit"`
+	SectionFeeds      bool               `koanf:"section_feeds" yaml:"section_feeds"`
 	ImageOptimization bool               `koanf:"image_optimization" yaml:"image_optimization"`
 	ImageQuality      int                `koanf:"image_quality" yaml:"image_quality"`
 	ImageWidths       []int              `koanf:"image_widths" yaml:"image_widths"`
@@ -204,6 +205,7 @@ func Default() Config {
 		SummaryStrategy:   "auto",
 		SiteFeed:          true,
 		SiteFeedLimit:     20,
+		SectionFeeds:      true,
 		ImageOptimization: true,
 		ImageQuality:      80,
 		ImageWidths:       []int{640, 1200},
@@ -564,8 +566,10 @@ ai:
 # site_feed: Generate a site-wide RSS and Atom feed at the root (/atom.xml,
 #            /rss.xml) containing the most recent pages across all sections.
 # site_feed_limit: Maximum number of entries in the site feed (0 = all pages).
+# section_feeds: Generate per-section RSS and Atom feeds (e.g. /blog/atom.xml).
 site_feed: true
 site_feed_limit: 20
+section_feeds: true
 
 # -----------------------------------------------------------------------------
 # Templates & static assets

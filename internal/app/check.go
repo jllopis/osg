@@ -146,6 +146,9 @@ func checkBrokenInternalLinks(cfg config.Config, s *site.Site, result *CheckResu
 	}
 	for sp := range s.Sections {
 		known[normalizeLinkPath(sp)] = true
+		// Per-section feeds.
+		known[normalizeLinkPath(sp+"atom.xml")] = true
+		known[normalizeLinkPath(sp+"rss.xml")] = true
 	}
 	// Add well-known generated paths.
 	for _, p := range []string{"/", "/sitemap.xml", "/robots.txt", "/atom.xml", "/rss.xml", "/404.html",

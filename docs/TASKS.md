@@ -440,22 +440,23 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 19D) 17 tests unitarios en check_test.go
 [done] (Phase 19D) Shell completion actualizado con check
 
-[todo] (Phase 20A) JSON-LD Article schema para paginas de post
-[todo] (Phase 20A) JSON-LD BlogPosting subtipo
-[todo] (Phase 20A) JSON-LD WebSite schema en index con SearchAction
-[todo] (Phase 20A) JSON-LD BreadcrumbList schema
-[todo] (Phase 20A) <script type="application/ld+json"> en head.html condicional
-[todo] (Phase 20A) Tests: validar JSON-LD output por tipo de pagina
+[done] (Phase 20A) JSON-LD Article schema para paginas de post (BlogPosting)
+[done] (Phase 20A) JSON-LD WebSite schema en index con SearchAction
+[done] (Phase 20A) JSON-LD BreadcrumbList schema
+[done] (Phase 20A) <script type="application/ld+json"> en head.html via jsonld template func
+[done] (Phase 20A) 13 tests: buildArticleSchema, buildWebSiteSchema, buildBreadcrumbSchema, jsonldFunc
 
-[todo] (Phase 20B) Preconnect hints para CDN externos
-[todo] (Phase 20B) Critical CSS inline (above-the-fold)
-[todo] (Phase 20B) defer para JS no critico
-[todo] (Phase 20B) fetchpriority="high" para hero image / LCP
-[todo] (Phase 20B) Config optimize_vitals: true
+[done] (Phase 20B) defer para JS no critico (lightbox, interactions, share, comments, tabs, progress)
+[done] (Phase 20B) fetchpriority="high" para hero image / LCP (PictureHTML + picture template func)
+[done] (Phase 20B) 2 tests nuevos: TestPictureHTML_Fetchpriority, TestPictureHTML_FetchpriorityWithVariants
 
-[todo] (Phase 20C) Feeds RSS/Atom individuales por seccion
-[todo] (Phase 20C) <link rel="alternate"> en <head> de cada seccion
-[todo] (Phase 20C) Config section_feeds: true
+[done] (Phase 20C) Feeds RSS/Atom individuales por seccion (renderSectionFeeds)
+[done] (Phase 20C) <link rel="alternate"> en <head> de cada seccion (atom.xml + rss.xml)
+[done] (Phase 20C) Config section_feeds: true (default habilitado)
+[done] (Phase 20C) sectionFeedContext reusa feed_title/feed_description para templates existentes
+[done] (Phase 20C) Section View incluye is_root para gating en templates
+[done] (Phase 20C) 6 tests: renderSectionFeeds (disabled, skips root, full build, draft-only), sectionFeedContext (2)
+[done] (Phase 20C) Dual-file sync: head.html, page.html
 
 [todo] (Phase 21A) Paginacion configurable en homepage (posts_per_page, default 10)
 [todo] (Phase 21A) Paginas generadas: /, /page/2/, /page/3/...

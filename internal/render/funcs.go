@@ -81,6 +81,7 @@ func FuncMap(ctx Context) template.FuncMap {
 		"trans":              transFunc(ctx),
 		"date_format":        dateFormatFunc(ctx),
 		"picture":            pictureFunc(ctx),
+		"jsonld":             jsonldFunc(ctx),
 	}
 }
 
@@ -403,18 +404,23 @@ func dateFormatFunc(ctx Context) func(time.Time, string, ...string) string {
 //
 //	{{ picture .image .title "eager" }}
 //	{{ picture .image .title "lazy" }}
-//	{{ picture .image .title }}          {{/* defaults to lazy */}}
+//	{{ picture .image .title }}              {{/* defaults to lazy */}}
+//	{{ picture .image .title "eager" "high" }} {{/* fetchpriority for LCP */}}
 func pictureFunc(ctx Context) func(string, ...string) template.HTML {
 	return func(src string, args ...string) template.HTML {
 		alt := ""
 		loading := "lazy"
+		fetchpriority := ""
 		if len(args) > 0 {
 			alt = args[0]
 		}
 		if len(args) > 1 && args[1] != "" {
 			loading = args[1]
 		}
-		return template.HTML(imgopt.PictureHTML(src, alt, loading, ctx.ImageResults))
+		if len(args) > 2 && args[2] != "" {
+			fetchpriority = args[2]
+		}
+		return template.HTML(imgopt.PictureHTML(src, alt, loading, fetchpriority, ctx.ImageResults))
 	}
 }
 
@@ -625,5 +631,208 @@ func stringArg(args []any, index int, fallback string) string {
 		return strings.TrimSpace(v)
 	default:
 		return fallback
+	}
+}
+
+// ── JSON-LD structured data ────────────────────────────────────────────
+
+// jsonldFunc returns a template function that generates JSON-LD structured data
+// based on the template context. It inspects the context map for .page,
+// .section, and .config to decide which schema to emit.
+func jsonldFunc(ctx Context) func(map[string]any) template.HTML {
+	return func(data map[string]any) template.HTML {
+		cfg, _ := data["config"].(map[string]any)
+		if cfg == nil {
+			return ""
+		}
+		baseURL, _ := cfg["base_url"].(string)
+		siteTitle, _ := cfg["site_title"].(string)
+		siteDesc, _ := cfg["site_description"].(string)
+
+		var schemas []map[string]any
+
+		// Page → Article/BlogPosting schema.
+		if pageData, ok := data["page"].(map[string]any); ok {
+			article := buildArticleSchema(pageData, baseURL, siteTitle)
+			if article != nil {
+				schemas = append(schemas, article)
+			}
+			// BreadcrumbList for pages.
+			if bc := buildBreadcrumbSchema(pageData, baseURL, siteTitle); bc != nil {
+				schemas = append(schemas, bc)
+			}
+		} else {
+			// Index / section → WebSite schema.
+			currentPath, _ := data["current_path"].(string)
+			if currentPath == "/" || currentPath == "" {
+				ws := buildWebSiteSchema(baseURL, siteTitle, siteDesc)
+				if ws != nil {
+					schemas = append(schemas, ws)
+				}
+			}
+		}
+
+		if len(schemas) == 0 {
+			return ""
+		}
+
+		var buf bytes.Buffer
+		for _, schema := range schemas {
+			b, err := json.Marshal(schema)
+			if err != nil {
+				continue
+			}
+			buf.WriteString(`<script type="application/ld+json">`)
+			buf.Write(b)
+			buf.WriteString("</script>\n")
+		}
+		return template.HTML(buf.String())
+	}
+}
+
+// buildArticleSchema creates a schema.org Article (BlogPosting) JSON-LD object.
+func buildArticleSchema(page map[string]any, baseURL, siteTitle string) map[string]any {
+	title, _ := page["title"].(string)
+	if title == "" {
+		return nil
+	}
+
+	article := map[string]any{
+		"@context": "https://schema.org",
+		"@type":    "BlogPosting",
+		"headline": title,
+	}
+
+	if permalink, ok := page["permalink"].(string); ok && permalink != "" {
+		article["url"] = permalink
+		article["mainEntityOfPage"] = map[string]any{
+			"@type": "WebPage",
+			"@id":   permalink,
+		}
+	}
+
+	if summary, ok := page["summary"].(string); ok && summary != "" {
+		article["description"] = summary
+	}
+
+	if img, ok := page["image"].(string); ok && img != "" {
+		// Make image URL absolute.
+		if !strings.HasPrefix(img, "http") && baseURL != "" {
+			img = strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(img, "/")
+		}
+		article["image"] = img
+	}
+
+	if date, ok := page["date"].(time.Time); ok && !date.IsZero() {
+		article["datePublished"] = date.Format(time.RFC3339)
+	}
+
+	if updated, ok := page["updated"].(time.Time); ok && !updated.IsZero() {
+		article["dateModified"] = updated.Format(time.RFC3339)
+	}
+
+	if author, ok := page["author"].(string); ok && author != "" {
+		article["author"] = map[string]any{
+			"@type": "Person",
+			"name":  author,
+		}
+	}
+
+	if wordCount, ok := page["word_count"].(int); ok && wordCount > 0 {
+		article["wordCount"] = wordCount
+	}
+
+	if siteTitle != "" {
+		article["publisher"] = map[string]any{
+			"@type": "Organization",
+			"name":  siteTitle,
+		}
+	}
+
+	return article
+}
+
+// buildWebSiteSchema creates a schema.org WebSite JSON-LD object for the homepage.
+func buildWebSiteSchema(baseURL, siteTitle, siteDesc string) map[string]any {
+	if baseURL == "" {
+		return nil
+	}
+
+	ws := map[string]any{
+		"@context": "https://schema.org",
+		"@type":    "WebSite",
+		"url":      baseURL,
+	}
+
+	if siteTitle != "" {
+		ws["name"] = siteTitle
+	}
+	if siteDesc != "" {
+		ws["description"] = siteDesc
+	}
+
+	// SearchAction for sitelinks search box.
+	ws["potentialAction"] = map[string]any{
+		"@type":       "SearchAction",
+		"target":      strings.TrimRight(baseURL, "/") + "/search/?q={search_term_string}",
+		"query-input": "required name=search_term_string",
+	}
+
+	return ws
+}
+
+// buildBreadcrumbSchema creates a BreadcrumbList for a page based on its path.
+func buildBreadcrumbSchema(page map[string]any, baseURL, siteTitle string) map[string]any {
+	if baseURL == "" {
+		return nil
+	}
+
+	pagePath, _ := page["path"].(string)
+	if pagePath == "" || pagePath == "/" {
+		return nil
+	}
+
+	// Build breadcrumb items: Home > [section] > page title.
+	items := []map[string]any{
+		{
+			"@type":    "ListItem",
+			"position": 1,
+			"name":     siteTitle,
+			"item":     baseURL,
+		},
+	}
+
+	// Split path into segments.
+	segments := strings.Split(strings.Trim(pagePath, "/"), "/")
+	if len(segments) > 1 {
+		// Add intermediate sections.
+		for i := 0; i < len(segments)-1; i++ {
+			sectionPath := "/" + strings.Join(segments[:i+1], "/") + "/"
+			items = append(items, map[string]any{
+				"@type":    "ListItem",
+				"position": i + 2,
+				"name":     segments[i],
+				"item":     strings.TrimRight(baseURL, "/") + sectionPath,
+			})
+		}
+	}
+
+	// Add current page.
+	title, _ := page["title"].(string)
+	permalink, _ := page["permalink"].(string)
+	if title == "" {
+		title = segments[len(segments)-1]
+	}
+	items = append(items, map[string]any{
+		"@type":    "ListItem",
+		"position": len(items) + 1,
+		"name":     title,
+		"item":     permalink,
+	})
+
+	return map[string]any{
+		"@context":        "https://schema.org",
+		"@type":           "BreadcrumbList",
+		"itemListElement": items,
 	}
 }

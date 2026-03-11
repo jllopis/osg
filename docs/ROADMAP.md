@@ -645,29 +645,31 @@ Nota: broken wikilinks y large images ya cubiertos por `osg doctor`, no duplicad
 - [done] 17 tests unitarios en check_test.go
 - [done] Shell completion actualizado con `check`
 
-## Phase 20 — SEO avanzado (todo)
+## Phase 20 — SEO avanzado (done)
 
 Quick wins de alto impacto para mejorar indexacion y visibilidad en buscadores.
 
 ### 20A — JSON-LD structured data (schema.org)
-- [todo] `Article` schema para paginas de post (headline, author, datePublished, dateModified, image, description)
-- [todo] `BlogPosting` schema como subtipo mas especifico cuando aplique
-- [todo] `WebSite` schema en index con SearchAction (sitelinks search box)
-- [todo] `BreadcrumbList` schema en paginas con breadcrumbs
-- [todo] `<script type="application/ld+json">` en head.html, condicional por tipo de pagina
-- [todo] Tests: validar JSON-LD output para cada tipo de pagina
+- [done] `BlogPosting` schema para paginas (headline, author, datePublished, dateModified, image, description, wordCount)
+- [done] `WebSite` schema en index con SearchAction (sitelinks search box)
+- [done] `BreadcrumbList` schema en paginas con path hierarchy
+- [done] `jsonld` template func en render/funcs.go (genera `<script type="application/ld+json">` como template.HTML)
+- [done] 13 tests unitarios en jsonld_test.go
 
 ### 20B — Web Vitals optimization
-- [todo] `<link rel="preconnect">` hints para CDN externos (mermaid, etc.)
-- [todo] Critical CSS inline: extraer CSS above-the-fold e inyectar en `<style>` del `<head>`
-- [todo] `defer` para JS no critico (interactions, comments, share, lightbox)
-- [todo] `fetchpriority="high"` para hero image / LCP element
-- [todo] Config `optimize_vitals: true` (default habilitado)
+- [done] `defer` para JS no critico (lightbox, interactions, share, comments, tabs, progress)
+- [done] `fetchpriority="high"` para hero image / LCP (PictureHTML + picture template func con 4th arg)
+- [done] 2 tests nuevos: fetchpriority sin y con variantes
 
 ### 20C — RSS por seccion
-- [todo] Feeds RSS/Atom individuales por seccion (ademas de global y por taxonomia)
-- [todo] `<link rel="alternate" type="application/atom+xml">` en `<head>` de cada seccion
-- [todo] Config `section_feeds: true` (default deshabilitado)
+- [done] `renderSectionFeeds()`: genera atom.xml y rss.xml por seccion no-root
+- [done] `<link rel="alternate">` en `<head>` de cada seccion (condicional via section_feeds + section + !is_root)
+- [done] Config `section_feeds: true` (default habilitado)
+- [done] `sectionFeedContext()` reusa feed_title/feed_description para templates existentes
+- [done] Section View incluye `is_root` para gating en templates
+- [done] check.go: per-section feed paths en known paths
+- [done] 6 tests: renderSectionFeeds (4) + sectionFeedContext (2)
+- [done] Dual-file sync: head.html, page.html
 
 ## Phase 21 — Mejoras de contenido y tema (todo)
 

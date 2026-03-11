@@ -32,7 +32,7 @@
           {{ block "page-hero" . }}
           {{ if .page.image }}
           <div class="article-hero container-narrow">
-            {{ picture .page.image .page.title "eager" }}
+            {{ picture .page.image .page.title "eager" "high" }}
           </div>
           {{ end }}
           {{ end }}
@@ -217,12 +217,12 @@
       {{ template "partials/footer.html" . }}
     </div>
     {{ block "page-scripts" . }}
-    {{ if .config.lightbox }}<script src="{{ get_url "/js/lightbox.js" false true }}"></script>{{ end }}
-    {{ if .config.interactions_enabled }}<script src="{{ get_url "/js/interactions.js" false true }}"></script>{{ end }}
-    {{ if .config.sharing }}<script src="{{ get_url "/js/share.js" false true }}"></script>{{ end }}
-    {{ if .config.comments_enabled }}<script src="{{ get_url "/js/comments.js" false true }}"></script>{{ end }}
-    <script src="{{ get_url "/js/tabs.js" false true }}"></script>
-    <script src="{{ get_url "/js/progress.js" false true }}"></script>
+    {{ if .config.lightbox }}<script defer src="{{ get_url "/js/lightbox.js" false true }}"></script>{{ end }}
+    {{ if .config.interactions_enabled }}<script defer src="{{ get_url "/js/interactions.js" false true }}"></script>{{ end }}
+    {{ if .config.sharing }}<script defer src="{{ get_url "/js/share.js" false true }}"></script>{{ end }}
+    {{ if .config.comments_enabled }}<script defer src="{{ get_url "/js/comments.js" false true }}"></script>{{ end }}
+    <script defer src="{{ get_url "/js/tabs.js" false true }}"></script>
+    <script defer src="{{ get_url "/js/progress.js" false true }}"></script>
     {{ end }}
   </body>
 </html>

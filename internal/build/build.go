@@ -388,6 +388,14 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	stats.Rendered += siteFeedRendered
 	stats.Cached += siteFeedCached
 
+	sectionFeedRendered, sectionFeedCached, err := renderSectionFeeds(renderer, cfg, baseCtx, siteIndex, plan)
+	if err != nil {
+		stats.Errors++
+		return err
+	}
+	stats.Rendered += sectionFeedRendered
+	stats.Cached += sectionFeedCached
+
 	sitemapEntries := collectSitemapEntries(cfg, siteIndex, indices)
 	sitemapRendered, sitemapCached, err := renderSitemap(renderer, cfg, baseCtx, sitemapEntries, plan)
 	if err != nil {
@@ -776,6 +784,7 @@ func configView(cfg config.Config) map[string]any {
 		"summary_strategy":   cfg.SummaryStrategy,
 		"site_feed":          cfg.SiteFeed,
 		"site_feed_limit":    cfg.SiteFeedLimit,
+		"section_feeds":      cfg.SectionFeeds,
 		"image_optimization": cfg.ImageOptimization,
 		"image_quality":      cfg.ImageQuality,
 		"image_widths":       cfg.ImageWidths,
@@ -1187,6 +1196,74 @@ func siteFeedContext(baseCtx map[string]any, cfg config.Config, pages []*site.Pa
 	ctx["feed_title"] = cfg.SiteTitle
 	ctx["feed_description"] = cfg.SiteDescription
 	ctx["pages"] = feedPages(pages)
+	ctx["feed_url"] = feedURL
+	ctx["last_updated"] = lastUpdated.Format(time.RFC3339)
+	ctx["lang"] = defaultLangFromCtx(baseCtx)
+	return ctx
+}
+
+// renderSectionFeeds generates atom.xml and rss.xml inside each non-root
+// section directory (e.g. /blog/atom.xml). Sections with zero non-draft
+// pages are skipped.
+func renderSectionFeeds(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plan buildPlan) (int, int, error) {
+	if !cfg.SectionFeeds {
+		return 0, 0, nil
+	}
+
+	feedTemplates := []string{}
+	if renderer.HasTemplate("atom.xml") {
+		feedTemplates = append(feedTemplates, "atom.xml")
+	}
+	if renderer.HasTemplate("rss.xml") {
+		feedTemplates = append(feedTemplates, "rss.xml")
+	}
+	if len(feedTemplates) == 0 {
+		return 0, 0, nil
+	}
+
+	rendered := 0
+	cached := 0
+
+	for _, section := range siteIndex.Sections {
+		if section.IsRoot {
+			continue // site feed already handles the root
+		}
+		pages := feedPages(section.Pages)
+		if len(pages) == 0 {
+			continue
+		}
+
+		lastUpdated := latestUpdated(section.Pages)
+
+		for _, tmpl := range feedTemplates {
+			feedURL := buildURL(cfg.BaseURL, section.Path+tmpl)
+			outputPath := outputFilePath(cfg.PublicDir, section.Path, tmpl)
+			if !plan.shouldRenderCollection(outputPath) {
+				cached++
+				continue
+			}
+			ctx := sectionFeedContext(baseCtx, cfg, section, pages, feedURL, lastUpdated)
+			if err := renderer.RenderToFile(tmpl, ctx, outputPath); err != nil {
+				return rendered, cached, err
+			}
+			rendered++
+		}
+	}
+
+	return rendered, cached, nil
+}
+
+// sectionFeedContext builds the template context for a per-section feed.
+// Uses feed_title/feed_description like the site feed so the same
+// atom.xml/rss.xml templates work unchanged.
+func sectionFeedContext(baseCtx map[string]any, cfg config.Config, section *site.Section, pages []map[string]any, feedURL string, lastUpdated time.Time) map[string]any {
+	ctx := cloneMap(baseCtx)
+	ctx["feed_title"] = section.Title
+	if section.Title == "" {
+		ctx["feed_title"] = section.Slug
+	}
+	ctx["feed_description"] = cfg.SiteDescription
+	ctx["pages"] = pages
 	ctx["feed_url"] = feedURL
 	ctx["last_updated"] = lastUpdated.Format(time.RFC3339)
 	ctx["lang"] = defaultLangFromCtx(baseCtx)

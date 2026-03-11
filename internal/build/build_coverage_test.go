@@ -3833,3 +3833,185 @@ func TestBuildCacheFrom_WithRealDirs(t *testing.T) {
 		t.Errorf("content entries = %d, want 1", len(cache.Content))
 	}
 }
+
+// --- renderSectionFeeds tests ---
+
+func TestRenderSectionFeeds_Disabled(t *testing.T) {
+	renderer := testRenderer(t)
+	dir := t.TempDir()
+	cfg := config.Config{
+		BaseURL:      "http://example.com",
+		PublicDir:    dir,
+		SectionFeeds: false,
+	}
+	baseCtx := baseContext(cfg, site.New().View(), map[string]*taxonomy.Index{}, nil)
+	plan := buildPlan{full: true}
+
+	rendered, cached, err := renderSectionFeeds(renderer, cfg, baseCtx, site.New(), plan)
+	if err != nil {
+		t.Fatalf("renderSectionFeeds: %v", err)
+	}
+	if rendered != 0 || cached != 0 {
+		t.Errorf("expected 0/0 when SectionFeeds is false, got %d/%d", rendered, cached)
+	}
+}
+
+func TestRenderSectionFeeds_SkipsRoot(t *testing.T) {
+	renderer := testRenderer(t)
+	dir := t.TempDir()
+	now := time.Now()
+	s := site.New()
+	// Add a page to the root section only.
+	s.AddPage(&site.Page{
+		Title:     "Root Post",
+		Path:      "/root-post/",
+		Permalink: "http://example.com/root-post/",
+		Date:      now,
+		Content:   "<p>Root</p>",
+	})
+	cfg := config.Config{
+		BaseURL:         "http://example.com",
+		PublicDir:       dir,
+		SectionFeeds:    true,
+		DefaultLanguage: "es",
+	}
+	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
+	plan := buildPlan{full: true}
+
+	rendered, cached, err := renderSectionFeeds(renderer, cfg, baseCtx, s, plan)
+	if err != nil {
+		t.Fatalf("renderSectionFeeds: %v", err)
+	}
+	// Root section is skipped, so nothing should be rendered.
+	if rendered != 0 {
+		t.Errorf("rendered = %d, want 0 (root should be skipped)", rendered)
+	}
+	if cached != 0 {
+		t.Errorf("cached = %d, want 0", cached)
+	}
+}
+
+func TestRenderSectionFeeds_FullBuild(t *testing.T) {
+	renderer := testRenderer(t)
+	dir := t.TempDir()
+	now := time.Now()
+	s := site.New()
+	s.AddPage(&site.Page{
+		Title:     "Blog Post",
+		Slug:      "blog-post",
+		Path:      "/blog/blog-post/",
+		Permalink: "http://example.com/blog/blog-post/",
+		Date:      now,
+		Content:   "<p>Blog content</p>",
+	})
+	s.BuildHierarchy()
+	cfg := config.Config{
+		BaseURL:         "http://example.com",
+		SiteTitle:       "Test Site",
+		SiteDescription: "A test",
+		PublicDir:       dir,
+		SectionFeeds:    true,
+		DefaultLanguage: "es",
+	}
+	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
+	plan := buildPlan{full: true}
+
+	rendered, cached, err := renderSectionFeeds(renderer, cfg, baseCtx, s, plan)
+	if err != nil {
+		t.Fatalf("renderSectionFeeds: %v", err)
+	}
+	// Should render at least atom.xml for the blog section.
+	if rendered < 1 {
+		t.Errorf("rendered = %d, want >= 1", rendered)
+	}
+	if cached != 0 {
+		t.Errorf("cached = %d, want 0", cached)
+	}
+
+	// Verify files exist.
+	atomPath := filepath.Join(dir, "blog", "atom.xml")
+	if _, err := os.Stat(atomPath); os.IsNotExist(err) {
+		t.Errorf("expected %s to exist", atomPath)
+	}
+}
+
+func TestRenderSectionFeeds_SkipsDraftOnlySection(t *testing.T) {
+	renderer := testRenderer(t)
+	dir := t.TempDir()
+	now := time.Now()
+	s := site.New()
+	s.AddPage(&site.Page{
+		Title:     "Draft Post",
+		Slug:      "draft-post",
+		Path:      "/blog/draft-post/",
+		Permalink: "http://example.com/blog/draft-post/",
+		Date:      now,
+		Content:   "<p>Draft</p>",
+		Draft:     true,
+	})
+	s.BuildHierarchy()
+	cfg := config.Config{
+		BaseURL:         "http://example.com",
+		PublicDir:       dir,
+		SectionFeeds:    true,
+		DefaultLanguage: "es",
+	}
+	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
+	plan := buildPlan{full: true}
+
+	rendered, _, err := renderSectionFeeds(renderer, cfg, baseCtx, s, plan)
+	if err != nil {
+		t.Fatalf("renderSectionFeeds: %v", err)
+	}
+	// All pages are drafts, so feedPages filters them all -> no output.
+	if rendered != 0 {
+		t.Errorf("rendered = %d, want 0 (all drafts)", rendered)
+	}
+}
+
+func TestSectionFeedContext(t *testing.T) {
+	cfg := config.Config{
+		BaseURL:         "http://example.com",
+		SiteTitle:       "Test",
+		SiteDescription: "A test site",
+		DefaultLanguage: "es",
+	}
+	base := baseContext(cfg, site.New().View(), map[string]*taxonomy.Index{}, nil)
+	section := &site.Section{
+		Title: "Blog",
+		Slug:  "blog",
+		Path:  "/blog/",
+	}
+	now := time.Now()
+	pages := []map[string]any{
+		{"title": "Post 1", "permalink": "http://example.com/blog/p1/"},
+	}
+
+	ctx := sectionFeedContext(base, cfg, section, pages, "http://example.com/blog/atom.xml", now)
+
+	if ctx["feed_title"] != "Blog" {
+		t.Errorf("feed_title = %v, want Blog", ctx["feed_title"])
+	}
+	if ctx["feed_description"] != "A test site" {
+		t.Errorf("feed_description = %v, want A test site", ctx["feed_description"])
+	}
+	if ctx["feed_url"] != "http://example.com/blog/atom.xml" {
+		t.Errorf("feed_url = %v, want http://example.com/blog/atom.xml", ctx["feed_url"])
+	}
+	if ctx["lang"] != "es" {
+		t.Errorf("lang = %v, want es", ctx["lang"])
+	}
+	if pp, ok := ctx["pages"].([]map[string]any); !ok || len(pp) != 1 {
+		t.Errorf("pages = %v, want 1 page", ctx["pages"])
+	}
+}
+
+func TestSectionFeedContext_EmptyTitle(t *testing.T) {
+	cfg := config.Config{DefaultLanguage: "en"}
+	base := baseContext(cfg, site.New().View(), map[string]*taxonomy.Index{}, nil)
+	section := &site.Section{Slug: "notes", Path: "/notes/"}
+	ctx := sectionFeedContext(base, cfg, section, nil, "http://example.com/notes/atom.xml", time.Now())
+	if ctx["feed_title"] != "notes" {
+		t.Errorf("feed_title = %v, want notes (fallback to slug)", ctx["feed_title"])
+	}
+}

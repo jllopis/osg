@@ -307,7 +307,7 @@ func TestOptimize_FullWalk(t *testing.T) {
 }
 
 func TestPictureHTML_NoVariants(t *testing.T) {
-	html := PictureHTML("/img/hero.jpg", "Hero image", "eager", nil)
+	html := PictureHTML("/img/hero.jpg", "Hero image", "eager", "", nil)
 	want := `<img src="/img/hero.jpg" alt="Hero image" loading="eager" />`
 	if html != want {
 		t.Errorf("PictureHTML no variants =\n%s\nwant:\n%s", html, want)
@@ -316,7 +316,7 @@ func TestPictureHTML_NoVariants(t *testing.T) {
 
 func TestPictureHTML_NotInResults(t *testing.T) {
 	results := map[string]*Result{}
-	html := PictureHTML("/img/hero.jpg", "Hero", "lazy", results)
+	html := PictureHTML("/img/hero.jpg", "Hero", "lazy", "", results)
 	if !strings.HasPrefix(html, "<img") {
 		t.Errorf("expected plain <img>, got: %s", html)
 	}
@@ -340,7 +340,7 @@ func TestPictureHTML_WithVariants(t *testing.T) {
 		},
 	}
 
-	html := PictureHTML("/img/hero.jpg", "Hero", "eager", results)
+	html := PictureHTML("/img/hero.jpg", "Hero", "eager", "", results)
 
 	if !strings.Contains(html, "<picture>") {
 		t.Error("expected <picture> element")
@@ -365,15 +365,44 @@ func TestPictureHTML_WithVariants(t *testing.T) {
 	}
 }
 
+func TestPictureHTML_Fetchpriority(t *testing.T) {
+	html := PictureHTML("/img/hero.jpg", "Hero", "eager", "high", nil)
+	want := `<img src="/img/hero.jpg" alt="Hero" loading="eager" fetchpriority="high" />`
+	if html != want {
+		t.Errorf("PictureHTML fetchpriority =\n%s\nwant:\n%s", html, want)
+	}
+}
+
+func TestPictureHTML_FetchpriorityWithVariants(t *testing.T) {
+	results := map[string]*Result{
+		"/img/hero.jpg": {
+			Original:      "/img/hero.jpg",
+			OriginalWidth: 1600,
+			Variants: map[int][]Variant{
+				640: {
+					{URLPath: "/img/hero-640w.webp", Width: 640, Format: "webp"},
+				},
+			},
+		},
+	}
+	html := PictureHTML("/img/hero.jpg", "Hero", "eager", "high", results)
+	if !strings.Contains(html, `fetchpriority="high"`) {
+		t.Error("expected fetchpriority=high on img inside <picture>")
+	}
+	if !strings.Contains(html, "<picture>") {
+		t.Error("expected <picture> wrapper")
+	}
+}
+
 func TestPictureHTML_QuotesInAlt(t *testing.T) {
-	html := PictureHTML("/x.jpg", `He said "hello"`, "lazy", nil)
+	html := PictureHTML("/x.jpg", `He said "hello"`, "lazy", "", nil)
 	if !strings.Contains(html, "&quot;") {
 		t.Errorf("expected escaped quotes in alt, got: %s", html)
 	}
 }
 
 func TestPictureHTML_DefaultLoading(t *testing.T) {
-	html := PictureHTML("/x.jpg", "alt", "", nil)
+	html := PictureHTML("/x.jpg", "alt", "", "", nil)
 	if !strings.Contains(html, `loading="lazy"`) {
 		t.Errorf("expected default loading=lazy, got: %s", html)
 	}
@@ -504,7 +533,7 @@ func TestPictureHTML_WebPOnly(t *testing.T) {
 		},
 	}
 
-	html := PictureHTML("/img/hero.jpg", "Hero", "lazy", results)
+	html := PictureHTML("/img/hero.jpg", "Hero", "lazy", "", results)
 	if !strings.Contains(html, "<picture>") {
 		t.Error("expected <picture> element")
 	}

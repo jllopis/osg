@@ -352,15 +352,21 @@ func urlDir(urlPath string) string {
 
 // PictureHTML generates a <picture> element with <source> for WebP and JPEG
 // srcset, falling back to the original <img>. If no variants exist, returns
-// a plain <img> tag.
-func PictureHTML(src string, alt string, loading string, results map[string]*Result) string {
+// a plain <img> tag. When fetchpriority is non-empty (e.g. "high"), the
+// attribute is added to the <img> element for LCP optimisation.
+func PictureHTML(src string, alt string, loading string, fetchpriority string, results map[string]*Result) string {
 	if loading == "" {
 		loading = "lazy"
 	}
 
+	fpAttr := ""
+	if fetchpriority != "" {
+		fpAttr = fmt.Sprintf(` fetchpriority="%s"`, fetchpriority)
+	}
+
 	res, ok := results[src]
 	if !ok || len(res.Variants) == 0 {
-		return fmt.Sprintf(`<img src="%s" alt="%s" loading="%s" />`, src, escAttr(alt), loading)
+		return fmt.Sprintf(`<img src="%s" alt="%s" loading="%s"%s />`, src, escAttr(alt), loading, fpAttr)
 	}
 
 	// Collect srcset entries grouped by format.
@@ -385,7 +391,7 @@ func PictureHTML(src string, alt string, loading string, results map[string]*Res
 	// If we only have WebP of the original (no smaller variants), still
 	// include the original in the JPEG srcset for the fallback.
 	if len(jpgSrcset) == 0 && len(webpSrcset) == 0 {
-		return fmt.Sprintf(`<img src="%s" alt="%s" loading="%s" />`, src, escAttr(alt), loading)
+		return fmt.Sprintf(`<img src="%s" alt="%s" loading="%s"%s />`, src, escAttr(alt), loading, fpAttr)
 	}
 
 	var b strings.Builder
@@ -401,7 +407,7 @@ func PictureHTML(src string, alt string, loading string, results map[string]*Res
 		b.WriteString("\n")
 	}
 
-	fmt.Fprintf(&b, `  <img src="%s" alt="%s" loading="%s" />`, src, escAttr(alt), loading)
+	fmt.Fprintf(&b, `  <img src="%s" alt="%s" loading="%s"%s />`, src, escAttr(alt), loading, fpAttr)
 	b.WriteString("\n</picture>")
 
 	return b.String()
