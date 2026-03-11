@@ -389,7 +389,7 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	stats.Rendered += taxonomyRendered
 	stats.Cached += taxonomyCached
 
-	siteFeedRendered, siteFeedCached, err := renderSiteFeed(renderer, cfg, baseCtx, siteIndex, plan)
+	siteFeedRendered, siteFeedCached, err := renderSiteFeed(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
 	if err != nil {
 		stats.Errors++
 		return err
@@ -397,7 +397,7 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	stats.Rendered += siteFeedRendered
 	stats.Cached += siteFeedCached
 
-	sectionFeedRendered, sectionFeedCached, err := renderSectionFeeds(renderer, cfg, baseCtx, siteIndex, plan)
+	sectionFeedRendered, sectionFeedCached, err := renderSectionFeeds(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
 	if err != nil {
 		stats.Errors++
 		return err
@@ -406,7 +406,7 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	stats.Cached += sectionFeedCached
 
 	sitemapEntries := collectSitemapEntries(cfg, siteIndex, indices)
-	sitemapRendered, sitemapCached, err := renderSitemap(renderer, cfg, baseCtx, sitemapEntries, plan)
+	sitemapRendered, sitemapCached, err := renderSitemap(ctx, renderer, cfg, baseCtx, sitemapEntries, plugins, plan)
 	if err != nil {
 		stats.Errors++
 		return err
@@ -625,6 +625,7 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 			renderCtx["related_posts"] = views
 		}
 
+		renderCtx = applyPluginOverrides(ctx, plugins, "page.before_render", renderCtx)
 		renderCtx = applyPluginOverrides(ctx, plugins, "page.render", renderCtx)
 		jobs = append(jobs, renderJob{page: page, template: templateName, outputPath: outputPath, renderCtx: renderCtx})
 	}
@@ -1295,7 +1296,7 @@ func feedPages(pages []*site.Page) []map[string]any {
 }
 
 // renderSiteFeed generates site-wide atom.xml and rss.xml at the root of public/.
-func renderSiteFeed(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plan buildPlan) (int, int, error) {
+func renderSiteFeed(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
 	if !cfg.SiteFeed {
 		return 0, 0, nil
 	}
@@ -1329,8 +1330,9 @@ func renderSiteFeed(renderer *render.Renderer, cfg config.Config, baseCtx map[st
 			cached++
 			continue
 		}
-		ctx := siteFeedContext(baseCtx, cfg, pages, feedURL, lastUpdated)
-		if err := renderer.RenderToFile(tmpl, ctx, outputPath); err != nil {
+		feedCtx := siteFeedContext(baseCtx, cfg, pages, feedURL, lastUpdated)
+		feedCtx = applyPluginOverrides(ctx, plugins, "feed.transform", feedCtx)
+		if err := renderer.RenderToFile(tmpl, feedCtx, outputPath); err != nil {
 			return rendered, cached, err
 		}
 		rendered++
@@ -1356,7 +1358,7 @@ func siteFeedContext(baseCtx map[string]any, cfg config.Config, pages []*site.Pa
 // renderSectionFeeds generates atom.xml and rss.xml inside each non-root
 // section directory (e.g. /blog/atom.xml). Sections with zero non-draft
 // pages are skipped.
-func renderSectionFeeds(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plan buildPlan) (int, int, error) {
+func renderSectionFeeds(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
 	if !cfg.SectionFeeds {
 		return 0, 0, nil
 	}
@@ -1393,8 +1395,9 @@ func renderSectionFeeds(renderer *render.Renderer, cfg config.Config, baseCtx ma
 				cached++
 				continue
 			}
-			ctx := sectionFeedContext(baseCtx, cfg, section, pages, feedURL, lastUpdated)
-			if err := renderer.RenderToFile(tmpl, ctx, outputPath); err != nil {
+			feedCtx := sectionFeedContext(baseCtx, cfg, section, pages, feedURL, lastUpdated)
+			feedCtx = applyPluginOverrides(ctx, plugins, "feed.transform", feedCtx)
+			if err := renderer.RenderToFile(tmpl, feedCtx, outputPath); err != nil {
 				return rendered, cached, err
 			}
 			rendered++
@@ -1437,7 +1440,7 @@ type SitemapEntry struct {
 
 const maxSitemapEntries = 50000
 
-func renderSitemap(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, entries []SitemapEntry, plan buildPlan) (int, int, error) {
+func renderSitemap(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, entries []SitemapEntry, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
 	if len(entries) == 0 {
 		return 0, 0, nil
 	}
@@ -1450,13 +1453,14 @@ func renderSitemap(renderer *render.Renderer, cfg config.Config, baseCtx map[str
 	})
 
 	if len(entries) <= maxSitemapEntries {
-		ctx := cloneMap(baseCtx)
-		ctx["entries"] = sitemapEntryViews(entries)
+		smCtx := cloneMap(baseCtx)
+		smCtx["entries"] = sitemapEntryViews(entries)
+		smCtx = applyPluginOverrides(ctx, plugins, "sitemap.transform", smCtx)
 		outputPath := filepath.Join(cfg.PublicDir, "sitemap.xml")
 		if !plan.shouldRenderCollection(outputPath) {
 			return 0, 1, nil
 		}
-		if err := renderer.RenderToFile("sitemap.xml", ctx, outputPath); err != nil {
+		if err := renderer.RenderToFile("sitemap.xml", smCtx, outputPath); err != nil {
 			return 0, 0, err
 		}
 		return 1, 0, nil

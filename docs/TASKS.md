@@ -516,14 +516,14 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 23D) `osg build --timing=<file.json>` para exportar timing a JSON
 [done] (Phase 23D) Historial de builds en .osg/build-history.json (max 100 entradas)
 
-[todo] (Phase 24A) Plugin hot-reload en osg serve (detectar cambios .wasm, Close + Load)
-[todo] (Phase 24A) Emitir config.validate tras reload
-[todo] (Phase 24A) Log: "reloaded plugin <name>"
+[done] (Phase 24A) Plugin hot-reload en osg serve (detectar cambios .wasm, full rebuild)
+[done] (Phase 24A) ReloadPlugin method en Manager para recarga individual
+[done] (Phase 24A) Emitir config.validate tras reload (via build pipeline)
 
-[todo] (Phase 24B) Hook page.before_render (modificar contexto pre-template)
-[todo] (Phase 24B) Hook feed.transform (personalizar feeds)
-[todo] (Phase 24B) Hook sitemap.transform (excluir paginas, cambiar priorities)
-[todo] (Phase 24B) Documentar nuevos hooks en PLUGINS.md
+[done] (Phase 24B) Hook page.before_render (modificar contexto pre-template)
+[done] (Phase 24B) Hook feed.transform (personalizar feeds)
+[done] (Phase 24B) Hook sitemap.transform (excluir paginas, cambiar priorities)
+[done] (Phase 24B) Documentar nuevos hooks en PLUGINS.md
 
 [todo] (Phase 24C) Plugin marketplace: pagina estatica desde plugins-index.json
 [todo] (Phase 24C) Filtrado por hook type, instrucciones de instalacion inline

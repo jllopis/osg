@@ -193,10 +193,13 @@ La salida es JSON.
 | Evento | Cuando | Descripcion |
 |--------|--------|-------------|
 | `content.transform` | Antes de renderizar cada pagina | Modificar Markdown |
+| `page.before_render` | Antes de renderizar pagina | Modificar contexto pre-template (inyectar datos custom) |
 | `page.render` | Al renderizar pagina | Modificar contexto |
 | `section.render` | Al renderizar seccion | Modificar contexto |
 | `taxonomy.list.render` | Al renderizar lista de taxonomia | Modificar contexto |
 | `taxonomy.term.render` | Al renderizar termino | Modificar contexto |
+| `feed.transform` | Al generar feeds (site/section) | Modificar contexto del feed antes de serializar |
+| `sitemap.transform` | Al generar sitemap | Modificar entries del sitemap (excluir paginas, cambiar priorities) |
 | `image.process` | Tras optimizar imagen | Procesar imagenes via WASI |
 
 ## Ciclo de vida
@@ -204,16 +207,27 @@ La salida es JSON.
 2. OSG carga todos los `.wasm` activados (orden alfabetico)
 3. Se emite `config.validate` — si hay errores, el build se detiene
 4. Se emite `build.started` antes de renderizar
-5. Por cada pagina: `content.transform` (pre-render) → `page.render`
+5. Por cada pagina: `content.transform` (pre-render) → `page.before_render` → `page.render`
 6. Por cada seccion: `section.render`
 7. Por cada taxonomia: `taxonomy.list.render`, `taxonomy.term.render`
-8. Por cada imagen optimizada: `image.process`
-9. Se emite `build.finished` al final
-10. Se guarda el cache de build
-11. Se emite `after.build`
-12. OSG cierra los plugins
+8. Por cada feed: `feed.transform` (site feed y section feeds)
+9. Por cada sitemap: `sitemap.transform`
+10. Por cada imagen optimizada: `image.process`
+11. Se emite `build.finished` al final
+12. Se guarda el cache de build
+13. Se emite `after.build`
+14. OSG cierra los plugins
 
 Errores en plugins (excepto `config.validate`) no detienen el build; se registran como warning.
+
+### Hot-reload en `osg serve`
+
+Cuando se ejecuta `osg serve`, el directorio de plugins (`plugins/`) se monitoriza
+automaticamente. Si un fichero `.wasm` cambia, se dispara un rebuild completo que
+recarga todos los plugins con la nueva version. No es necesario reiniciar el servidor.
+
+El Manager dispone de `ReloadPlugin(ctx, wasmPath)` para recargar un unico plugin
+sin reiniciar el runtime completo (uso interno/futuro).
 
 ## Payloads (resumen)
 

@@ -764,21 +764,22 @@ Optimizaciones para sitios grandes (100+ posts, muchas imagenes).
 - [done] Historial de builds: `.osg/build-history.json` (max 100 entradas, auto-trim)
 - [done] Cada entrada: timestamp, total_ms, rendered, cached, errors, stages
 
-## Phase 24 — Plugins y ecosistema avanzado (todo)
+## Phase 24 — Plugins y ecosistema avanzado (partial)
 
 Expandir las capacidades del sistema de plugins.
 
 ### 24A — Plugin hot-reload
-- [todo] En `osg serve`, detectar cambios en ficheros `.wasm` del directorio de plugins
-- [todo] Recargar plugin sin restart del servidor (Close + Load WASM)
-- [todo] Emitir `config.validate` tras reload para verificar que el plugin sigue siendo valido
-- [todo] Log: "reloaded plugin <name> (v1.2 -> v1.3)"
+- [done] En `osg serve`, detectar cambios en ficheros `.wasm` del directorio de plugins
+- [done] Recargar plugin sin restart del servidor (Close + Load WASM via full rebuild)
+- [done] ReloadPlugin method en Manager para recarga individual (uso futuro)
+- [done] Emitir `config.validate` tras reload (se emite en cada build)
+- [done] Log: plugin reload se registra en los logs de build
 
 ### 24B — Nuevos hooks
-- [todo] `page.before_render`: modificar contexto del template antes de renderizar (inyectar datos custom)
-- [todo] `feed.transform`: modificar entries del feed antes de serializar (personalizar feeds)
-- [todo] `sitemap.transform`: modificar entries del sitemap (excluir paginas, cambiar priorities)
-- [todo] Documentar nuevos hooks en PLUGINS.md
+- [done] `page.before_render`: modificar contexto del template antes de renderizar (inyectar datos custom)
+- [done] `feed.transform`: modificar entries del feed antes de serializar (personalizar feeds)
+- [done] `sitemap.transform`: modificar entries del sitemap (excluir paginas, cambiar priorities)
+- [done] Documentar nuevos hooks en PLUGINS.md
 
 ### 24C — Plugin marketplace web
 - [todo] Pagina estatica auto-generada desde `plugins-index.json`

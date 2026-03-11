@@ -161,6 +161,43 @@ func (m *Manager) Close(ctx context.Context) error {
 	return m.runtime.Close(ctx)
 }
 
+// ReloadPlugin reloads a single plugin by name from the given .wasm file path.
+// The old module is closed and a new one is instantiated.  Returns the old and
+// new version strings for logging.
+func (m *Manager) ReloadPlugin(ctx context.Context, wasmPath string) (oldVer, newVer string, err error) {
+	if m.runtime == nil {
+		return "", "", fmt.Errorf("no runtime (plugins not loaded)")
+	}
+
+	name := strings.TrimSuffix(filepath.Base(wasmPath), filepath.Ext(wasmPath))
+
+	// Find existing plugin.
+	idx := -1
+	for i, p := range m.plugins {
+		if p.name == name {
+			idx = i
+			break
+		}
+	}
+
+	// Load new module.
+	newPlugin, err := loadPlugin(ctx, m.runtime, wasmPath)
+	if err != nil {
+		return "", "", fmt.Errorf("load plugin %s: %w", name, err)
+	}
+
+	if idx >= 0 {
+		oldVer = m.plugins[idx].info.Version
+		// Close old module.
+		_ = m.plugins[idx].module.Close(ctx)
+		m.plugins[idx] = newPlugin
+	} else {
+		m.plugins = append(m.plugins, newPlugin)
+	}
+	newVer = newPlugin.info.Version
+	return oldVer, newVer, nil
+}
+
 // pluginResult holds the outcome of a single plugin call.
 type pluginResult struct {
 	name    string

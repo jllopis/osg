@@ -2960,7 +2960,7 @@ func TestRenderSiteFeed_Disabled(t *testing.T) {
 	baseCtx := baseContext(cfg, site.New().View(), map[string]*taxonomy.Index{}, nil)
 	plan := buildPlan{full: true}
 
-	rendered, cached, err := renderSiteFeed(renderer, cfg, baseCtx, site.New(), plan)
+	rendered, cached, err := renderSiteFeed(context.Background(), renderer, cfg, baseCtx, site.New(), nil, plan)
 	if err != nil {
 		t.Fatalf("renderSiteFeed: %v", err)
 	}
@@ -2992,7 +2992,7 @@ func TestRenderSiteFeed_FullBuild(t *testing.T) {
 	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
 	plan := buildPlan{full: true}
 
-	rendered, cached, err := renderSiteFeed(renderer, cfg, baseCtx, s, plan)
+	rendered, cached, err := renderSiteFeed(context.Background(), renderer, cfg, baseCtx, s, nil, plan)
 	if err != nil {
 		t.Fatalf("renderSiteFeed: %v", err)
 	}
@@ -3030,7 +3030,7 @@ func TestRenderSiteFeed_WithLimit(t *testing.T) {
 	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
 	plan := buildPlan{full: true}
 
-	rendered, _, err := renderSiteFeed(renderer, cfg, baseCtx, s, plan)
+	rendered, _, err := renderSiteFeed(context.Background(), renderer, cfg, baseCtx, s, nil, plan)
 	if err != nil {
 		t.Fatalf("renderSiteFeed: %v", err)
 	}
@@ -3053,7 +3053,7 @@ func TestRenderSitemap_EmptyEntries(t *testing.T) {
 	baseCtx := baseContext(cfg, site.New().View(), map[string]*taxonomy.Index{}, nil)
 	plan := buildPlan{full: true}
 
-	rendered, cached, err := renderSitemap(renderer, cfg, baseCtx, nil, plan)
+	rendered, cached, err := renderSitemap(context.Background(), renderer, cfg, baseCtx, nil, nil, plan)
 	if err != nil {
 		t.Fatalf("renderSitemap: %v", err)
 	}
@@ -3077,7 +3077,7 @@ func TestRenderSitemap_FullBuild(t *testing.T) {
 		{Permalink: "http://example.com/b/", Updated: time.Now()},
 	}
 
-	rendered, cached, err := renderSitemap(renderer, cfg, baseCtx, entries, plan)
+	rendered, cached, err := renderSitemap(context.Background(), renderer, cfg, baseCtx, entries, nil, plan)
 	if err != nil {
 		t.Fatalf("renderSitemap: %v", err)
 	}
@@ -3112,7 +3112,7 @@ func TestRenderSitemap_CachedPlan(t *testing.T) {
 		{Permalink: "http://example.com/a/", Updated: time.Now()},
 	}
 
-	rendered, cached, err := renderSitemap(renderer, cfg, baseCtx, entries, plan)
+	rendered, cached, err := renderSitemap(context.Background(), renderer, cfg, baseCtx, entries, nil, plan)
 	if err != nil {
 		t.Fatalf("renderSitemap: %v", err)
 	}
@@ -3848,7 +3848,7 @@ func TestRenderSectionFeeds_Disabled(t *testing.T) {
 	baseCtx := baseContext(cfg, site.New().View(), map[string]*taxonomy.Index{}, nil)
 	plan := buildPlan{full: true}
 
-	rendered, cached, err := renderSectionFeeds(renderer, cfg, baseCtx, site.New(), plan)
+	rendered, cached, err := renderSectionFeeds(context.Background(), renderer, cfg, baseCtx, site.New(), nil, plan)
 	if err != nil {
 		t.Fatalf("renderSectionFeeds: %v", err)
 	}
@@ -3879,7 +3879,7 @@ func TestRenderSectionFeeds_SkipsRoot(t *testing.T) {
 	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
 	plan := buildPlan{full: true}
 
-	rendered, cached, err := renderSectionFeeds(renderer, cfg, baseCtx, s, plan)
+	rendered, cached, err := renderSectionFeeds(context.Background(), renderer, cfg, baseCtx, s, nil, plan)
 	if err != nil {
 		t.Fatalf("renderSectionFeeds: %v", err)
 	}
@@ -3917,7 +3917,7 @@ func TestRenderSectionFeeds_FullBuild(t *testing.T) {
 	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
 	plan := buildPlan{full: true}
 
-	rendered, cached, err := renderSectionFeeds(renderer, cfg, baseCtx, s, plan)
+	rendered, cached, err := renderSectionFeeds(context.Background(), renderer, cfg, baseCtx, s, nil, plan)
 	if err != nil {
 		t.Fatalf("renderSectionFeeds: %v", err)
 	}
@@ -3960,7 +3960,7 @@ func TestRenderSectionFeeds_SkipsDraftOnlySection(t *testing.T) {
 	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
 	plan := buildPlan{full: true}
 
-	rendered, _, err := renderSectionFeeds(renderer, cfg, baseCtx, s, plan)
+	rendered, _, err := renderSectionFeeds(context.Background(), renderer, cfg, baseCtx, s, nil, plan)
 	if err != nil {
 		t.Fatalf("renderSectionFeeds: %v", err)
 	}
