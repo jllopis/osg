@@ -299,6 +299,8 @@ func (m Model) handleSubmit() (Model, tea.Cmd) {
 		return m.toggleAPI()
 	case "stop":
 		return m.handleStop(args)
+	case "stats":
+		return m.handleStatsCommand()
 	case "check":
 		return m.runSimpleAction("Check", m.actions.Check)
 	case "doctor":
@@ -588,6 +590,20 @@ func (m Model) handleNext() (Model, tea.Cmd) {
 		m.appendMessage("INFO", "No next action")
 		return m, nil
 	}
+}
+
+func (m Model) handleStatsCommand() (Model, tea.Cmd) {
+	if m.actions.Stats == nil {
+		m.appendMessage("ERROR", "Stats not available")
+		return m, nil
+	}
+	output, err := m.actions.Stats()
+	if err != nil {
+		m.appendMessage("ERROR", fmt.Sprintf("Stats failed: %v", err))
+		return m, nil
+	}
+	m.appendMessage("INFO", output)
+	return m, nil
 }
 
 func (m Model) handleVersionCommand() (Model, tea.Cmd) {

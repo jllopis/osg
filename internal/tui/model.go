@@ -42,6 +42,7 @@ type Actions struct {
 	PluginSearch  func(context.Context, string) error
 	PluginUpdate  func(context.Context, string) error
 	NewPost       func(context.Context, string) error
+	Stats         func() (string, error)
 	Version       func() string
 }
 

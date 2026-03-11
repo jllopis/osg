@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/alecthomas/kong"
 
@@ -29,6 +30,7 @@ type CLI struct {
 	Serve         ServeCmd      `cmd:"" help:"Serve public directory"`
 	API           APICmd        `cmd:"" help:"Run standalone interactions API server" name:"api"`
 	New           NewCmd        `cmd:"" help:"Create a new post in the vault"`
+	Preview       PreviewCmd    `cmd:"" help:"Preview a single markdown file in the browser"`
 	TUI           struct{}      `cmd:"" help:"Launch TUI"`
 	Theme         ThemeCmd      `cmd:"" help:"Theme tools"`
 	Plugin        PluginCmd     `cmd:"" help:"Plugin tools"`
@@ -74,6 +76,12 @@ type NewCmd struct {
 	Publish  bool     `help:"Mark as published (default: draft)"`
 	Editor   *bool    `help:"Open in editor after creation (auto-detected from default_editor config or $EDITOR)" negatable:""`
 	NotesDir string   `help:"Subdirectory within the vault for the new note (overrides new_notes_dir config)" name:"notes-dir"`
+}
+
+type PreviewCmd struct {
+	File    string `arg:"" help:"Path to markdown file to preview"`
+	Port    int    `help:"Port to serve on (default: random)" default:"0"`
+	Timeout int    `help:"Inactivity timeout in minutes before auto-close" default:"5"`
 }
 
 type ThemeCmd struct {
@@ -220,6 +228,13 @@ func main() {
 			postOpts.EditorAuto = true
 		}
 		runErr = app.RunNew(context.Background(), opts, postOpts)
+	case strings.HasPrefix(command, "preview"):
+		previewOpts := app.PreviewOptions{
+			FilePath: cli.Preview.File,
+			Port:     cli.Preview.Port,
+			Timeout:  time.Duration(cli.Preview.Timeout) * time.Minute,
+		}
+		runErr = app.RunPreview(context.Background(), opts, previewOpts)
 	case command == "serve":
 		if cli.Serve.Drafts {
 			t := true
@@ -304,7 +319,7 @@ func hasHelpFlag(args []string) bool {
 }
 
 func printCompletion(shell string) {
-	commands := "init update-content build deploy serve api new tui theme plugin check doctor version completion"
+	commands := "init update-content build deploy serve api new preview tui theme plugin check doctor version completion"
 
 	switch shell {
 	case "bash":

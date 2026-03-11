@@ -705,7 +705,7 @@ Funcionalidades orientadas al lector y a sitios con mucho contenido.
 - [done] i18n: claves `bookmark_save`, `bookmark_remove`, `bookmarks`, `no_bookmarks`
 - [done] Dual-file sync: templates, JS, CSS, i18n
 
-## Phase 22 — DX y experiencia de desarrollo (todo)
+## Phase 22 — DX y experiencia de desarrollo (partial)
 
 Mejoras al flujo de trabajo del autor de contenido y del desarrollador de temas/plugins.
 
@@ -722,16 +722,18 @@ Mejoras al flujo de trabajo del autor de contenido y del desarrollador de temas/
 - [done] Formato tabla con ruta de salida y tamano estimado
 - [done] Util para verificar permalinks y estructura antes de publicar
 
-### 22C — Preview de fichero unico
-- [todo] `osg preview <file.md>`: renderizar una sola nota y abrir en browser
-- [todo] Template minimal (sin sidebar, sin navigation) enfocado en el contenido
-- [todo] Servidor temporal en puerto aleatorio, auto-cierre tras N minutos de inactividad
-- [todo] Util para revisar formato, shortcodes y imagenes de un post antes de publicar
+### 22C — Preview de fichero unico (done)
+- [done] `osg preview <file.md>`: renderizar una sola nota y abrir en browser
+- [done] Servidor temporal en puerto aleatorio, auto-cierre tras 5 min de inactividad
+- [done] Abre browser automaticamente, CLI con --port y --timeout flags
+- [done] PreviewBuild en build/preview.go: mini-build con theme, i18n, assets, una pagina
 
-### 22D — Health dashboard en TUI
-- [todo] Panel con estadisticas del sitio: total posts, drafts, secciones, imagenes, tamano de output
-- [todo] Desglose por seccion: posts por seccion, posts sin tags, posts sin imagen
-- [todo] Histograma de publicaciones por mes (sparkline ASCII)
+### 22D — Health dashboard en TUI (done)
+- [done] ComputeStats en build/stats.go: parsea contenido y public dir
+- [done] Panel con estadisticas del sitio: total posts, drafts, secciones, imagenes, tamano de output
+- [done] Desglose por seccion: posts por seccion, posts sin tags, posts sin imagen
+- [done] Histograma de publicaciones por mes (sparkline ASCII)
+- [done] /stats slash command en TUI
 - [todo] Accesible via `/stats` slash command o tecla dedicada
 
 ## Phase 23 — Rendimiento avanzado (todo)

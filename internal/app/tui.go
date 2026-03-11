@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"osg/internal/build"
 	"osg/internal/config"
 	"osg/internal/tui"
 )
@@ -110,6 +111,13 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 		NewPost: func(actionCtx context.Context, title string) error {
 			postOpts := NewPostOptions{Title: title}
 			return RunNew(actionCtx, withLog(generalSink), postOpts)
+		},
+		Stats: func() (string, error) {
+			s, err := build.ComputeStats(cfg)
+			if err != nil {
+				return "", err
+			}
+			return build.FormatStats(s), nil
 		},
 		Version: VersionInfo,
 	}

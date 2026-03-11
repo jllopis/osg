@@ -23,6 +23,7 @@ var commandRegistry = []slashCommand{
 	{Name: "/stop", Hint: "Stop a service", Args: "serve|api"},
 	{Name: "/logs", Hint: "Toggle log panel"},
 	{Name: "/config", Hint: "Open config editor"},
+	{Name: "/stats", Hint: "Show site statistics"},
 	{Name: "/check", Hint: "Validate content (links, images, frontmatter)"},
 	{Name: "/doctor", Hint: "Run diagnostics"},
 	{Name: "/next", Aliases: []string{"n"}, Hint: "Run next workflow step"},

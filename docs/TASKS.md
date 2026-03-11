@@ -492,12 +492,14 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 22B) `osg build --dry-run`: mostrar ficheros que se generarian sin escribir
 [done] (Phase 22B) Formato tabla con ruta y tamano estimado
 
-[todo] (Phase 22C) `osg preview <file.md>`: renderizar una nota y abrir en browser
-[todo] (Phase 22C) Template minimal, servidor temporal, auto-cierre
+[done] (Phase 22C) `osg preview <file.md>`: renderizar una nota y abrir en browser
+[done] (Phase 22C) Servidor temporal en puerto aleatorio, auto-cierre tras inactividad
+[done] (Phase 22C) PreviewBuild: mini-build con theme, i18n, assets, una sola pagina
 
-[todo] (Phase 22D) Health dashboard TUI: stats del sitio (posts, drafts, imagenes, tamano output)
-[todo] (Phase 22D) Desglose por seccion, histograma publicaciones
-[todo] (Phase 22D) /stats slash command
+[done] (Phase 22D) ComputeStats + FormatStats en build/stats.go
+[done] (Phase 22D) Health dashboard TUI: stats del sitio (posts, drafts, imagenes, tamano output)
+[done] (Phase 22D) Desglose por seccion, histograma publicaciones (sparkline ASCII)
+[done] (Phase 22D) /stats slash command en TUI
 
 [todo] (Phase 23A) Dependency tracking template->pagina para incremental builds inteligentes
 [todo] (Phase 23A) Cache de dependencias persistente entre builds
