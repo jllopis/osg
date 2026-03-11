@@ -716,11 +716,11 @@ Mejoras al flujo de trabajo del autor de contenido y del desarrollador de temas/
 - [todo] Si cambia un fichero Sass/CSS, solo recompilar assets (no re-renderizar HTML)
 - [todo] Log del motivo de rebuild: "rebuilding page X (content changed)" vs "full rebuild (template changed)"
 
-### 22B — Dry-run para build
-- [todo] `osg build --dry-run`: mostrar que ficheros se generarian sin escribir a disco
-- [todo] Incluir: paginas, feeds, sitemap, assets copiados, imagenes optimizadas
-- [todo] Formato tabla con ruta de salida y tamano estimado
-- [todo] Util para verificar permalinks y estructura antes de publicar
+### 22B — Dry-run para build (done)
+- [done] `osg build --dry-run`: mostrar que ficheros se generarian sin escribir a disco
+- [done] Incluir: paginas, feeds, sitemap, assets copiados, imagenes optimizadas
+- [done] Formato tabla con ruta de salida y tamano estimado
+- [done] Util para verificar permalinks y estructura antes de publicar
 
 ### 22C — Preview de fichero unico
 - [todo] `osg preview <file.md>`: renderizar una sola nota y abrir en browser

@@ -28,6 +28,7 @@ func RunBuild(ctx context.Context, opts CLIOptions) error {
 		ForceAISummaries: opts.ForceAISummaries,
 		Progress:         opts.Progress,
 		Profile:          opts.Profile,
+		DryRun:           opts.DryRun,
 	}
 
 	return build.Run(ctx, cfg, buildOpts, opts.Verbose, opts.LogWriter)

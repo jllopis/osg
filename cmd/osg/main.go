@@ -46,6 +46,7 @@ type BuildCmd struct {
 	ForceAISummaries bool   `help:"Regenerate all AI summaries (bypasses cache)" name:"force-ai-summaries"`
 	Yes              bool   `help:"Skip confirmation prompts" short:"y"`
 	Profile          string `help:"Write CPU profile to file" name:"profile" default:""`
+	DryRun           bool   `help:"Show what would be generated without writing" name:"dry-run"`
 }
 
 type DeployCmd struct {
@@ -193,6 +194,7 @@ func main() {
 				os.Exit(0)
 			}
 		}
+		opts.DryRun = cli.Build.DryRun
 		runErr = app.RunBuild(context.Background(), opts)
 	case strings.HasPrefix(command, "deploy"):
 		deployOpts := app.DeployOptions{

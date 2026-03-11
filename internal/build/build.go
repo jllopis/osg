@@ -59,6 +59,8 @@ type BuildOptions struct {
 	// Profile is an optional filesystem path for a CPU profile output.
 	// When non-empty, a pprof CPU profile is written to this path.
 	Profile string
+	// DryRun builds to a temp directory and prints what would be generated.
+	DryRun bool
 }
 
 func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool, logWriter io.Writer) error {
@@ -67,6 +69,11 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	}
 
 	logger := logging.NewWithWriter(cfg.Logging, verbose, logWriter)
+
+	// Dry-run: build to a temp directory, then print results.
+	if opts.DryRun {
+		return runDryRun(ctx, cfg, opts, verbose, logWriter, logger)
+	}
 
 	// CPU profiling (--profile flag).
 	if opts.Profile != "" {
@@ -1904,4 +1911,78 @@ func isNilInterface(i any) bool {
 		return v.IsNil()
 	}
 	return false
+}
+
+// runDryRun builds the site to a temp directory, then prints what would be
+// generated as a table of file paths and sizes.
+func runDryRun(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool, logWriter io.Writer, logger *slog.Logger) error {
+	tmpDir, err := os.MkdirTemp("", "osg-dryrun-*")
+	if err != nil {
+		return fmt.Errorf("create temp dir: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	origPublicDir := cfg.PublicDir
+	cfg.PublicDir = tmpDir
+
+	// Run the actual build silently.
+	dryOpts := opts
+	dryOpts.DryRun = false
+	if err := Run(ctx, cfg, dryOpts, false, io.Discard); err != nil {
+		return fmt.Errorf("dry-run build: %w", err)
+	}
+
+	// Walk the output and collect files.
+	type entry struct {
+		path string
+		size int64
+	}
+	var entries []entry
+	var totalSize int64
+
+	_ = filepath.Walk(tmpDir, func(p string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		relPath, _ := filepath.Rel(tmpDir, p)
+		entries = append(entries, entry{path: "/" + filepath.ToSlash(relPath), size: info.Size()})
+		totalSize += info.Size()
+		return nil
+	})
+
+	// Sort by path for deterministic output.
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].path < entries[j].path
+	})
+
+	// Print table.
+	w := logWriter
+	if w == nil {
+		w = os.Stdout
+	}
+	_, _ = fmt.Fprintf(w, "\n  Dry run: %d files would be generated in %s\n\n", len(entries), origPublicDir)
+	_, _ = fmt.Fprintf(w, "  %-60s %10s\n", "PATH", "SIZE")
+	_, _ = fmt.Fprintf(w, "  %-60s %10s\n", strings.Repeat("─", 60), strings.Repeat("─", 10))
+	for _, e := range entries {
+		_, _ = fmt.Fprintf(w, "  %-60s %10s\n", e.path, humanSize(e.size))
+	}
+	_, _ = fmt.Fprintf(w, "  %-60s %10s\n", strings.Repeat("─", 60), strings.Repeat("─", 10))
+	_, _ = fmt.Fprintf(w, "  %-60s %10s\n\n", "TOTAL", humanSize(totalSize))
+
+	return nil
+}
+
+func humanSize(b int64) string {
+	const (
+		kb = 1024
+		mb = 1024 * kb
+	)
+	switch {
+	case b >= mb:
+		return fmt.Sprintf("%.1f MB", float64(b)/float64(mb))
+	case b >= kb:
+		return fmt.Sprintf("%.1f KB", float64(b)/float64(kb))
+	default:
+		return fmt.Sprintf("%d B", b)
+	}
 }

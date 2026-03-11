@@ -489,8 +489,8 @@ Formato: [todo|doing|done] Tarea
 [todo] (Phase 22A) Sass/CSS change -> solo recompilar assets
 [todo] (Phase 22A) Log motivo de rebuild
 
-[todo] (Phase 22B) `osg build --dry-run`: mostrar ficheros que se generarian sin escribir
-[todo] (Phase 22B) Formato tabla con ruta y tamano estimado
+[done] (Phase 22B) `osg build --dry-run`: mostrar ficheros que se generarian sin escribir
+[done] (Phase 22B) Formato tabla con ruta y tamano estimado
 
 [todo] (Phase 22C) `osg preview <file.md>`: renderizar una nota y abrir en browser
 [todo] (Phase 22C) Template minimal, servidor temporal, auto-cierre
