@@ -505,16 +505,16 @@ Formato: [todo|doing|done] Tarea
 [todo] (Phase 23A) Cache de dependencias persistente entre builds
 [todo] (Phase 23A) Log de decisiones de cache
 
-[todo] (Phase 23B) Lazy image optimization: comparar mtime/hash vs cache
-[todo] (Phase 23B) Solo generar variantes WebP/srcset de imagenes nuevas/modificadas
-[todo] (Phase 23B) Cache de imagenes optimizadas en .osg/cache/images/
-[todo] (Phase 23B) Metrica: "optimized 3/50 images (47 cached)"
+[done] (Phase 23B) Lazy image optimization: SHA-256 hash vs cache
+[done] (Phase 23B) Solo generar variantes WebP/srcset de imagenes nuevas/modificadas
+[done] (Phase 23B) Cache de imagenes optimizadas en .osg/cache/images.json
+[done] (Phase 23B) Metrica: "optimized N/M images (K cached)"
 
-[todo] (Phase 23C) Worker pool acotado para template rendering (NumCPU limit)
-[todo] (Phase 23C) Cola con canal buffer para backpressure
+[done] (Phase 23C) Worker pool acotado para template rendering (NumCPU limit)
+[done] (Phase 23C) Cola con canal buffer para backpressure
 
-[todo] (Phase 23D) `osg build --timing=json` para exportar timing a JSON
-[todo] (Phase 23D) Historial de builds en .osg/build-history.json
+[done] (Phase 23D) `osg build --timing=<file.json>` para exportar timing a JSON
+[done] (Phase 23D) Historial de builds en .osg/build-history.json (max 100 entradas)
 
 [todo] (Phase 24A) Plugin hot-reload en osg serve (detectar cambios .wasm, Close + Load)
 [todo] (Phase 24A) Emitir config.validate tras reload

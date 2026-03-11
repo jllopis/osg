@@ -58,6 +58,7 @@ type Variant struct {
 type imageJob struct {
 	path    string
 	urlPath string
+	hash    string // SHA-256 of source content (set during cache check)
 }
 
 // imageResult collects the output of a single image optimization job.
@@ -65,6 +66,7 @@ type imageResult struct {
 	urlPath string
 	result  *Result
 	count   int
+	hash    string // carried from job for cache update
 }
 
 // Optimize walks publicDir looking for raster images that were copied from
@@ -122,54 +124,92 @@ func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*
 		return map[string]*Result{}, nil
 	}
 
-	// Phase 2: process images in parallel.
-	workers := runtime.NumCPU()
-	if workers > len(jobs) {
-		workers = len(jobs)
-	}
+	// Load image cache to skip unchanged images.
+	cache := loadImageCache()
 
-	jobCh := make(chan imageJob, len(jobs))
-	resCh := make(chan imageResult, len(jobs))
-	var wg sync.WaitGroup
-
-	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := range jobCh {
-				res, n, err := optimizeFile(j.path, j.urlPath, opts, hasWebP, logger)
-				if err != nil {
-					logger.Warn("image optimize failed", "path", j.path, "error", err)
-					continue
-				}
-				if res != nil {
-					resCh <- imageResult{urlPath: j.urlPath, result: res, count: n}
-				}
-			}
-		}()
-	}
+	// Phase 2: separate cached vs uncached jobs.
+	var uncached []imageJob
+	results := make(map[string]*Result, len(jobs))
+	cached := 0
 
 	for _, j := range jobs {
-		jobCh <- j
+		hash, err := hashFile(j.path)
+		if err != nil {
+			uncached = append(uncached, j)
+			continue
+		}
+		if entry, ok := cache.Entries[j.urlPath]; ok && entry.Hash == hash {
+			// Cache hit — verify variant files still exist.
+			if variantsExist(publicDir, entry.Result) {
+				results[j.urlPath] = entry.Result
+				cached++
+				continue
+			}
+		}
+		j.hash = hash
+		uncached = append(uncached, j)
 	}
-	close(jobCh)
 
-	// Wait for workers, then close results channel.
-	go func() {
-		wg.Wait()
-		close(resCh)
-	}()
-
-	// Phase 3: collect results.
-	results := make(map[string]*Result, len(jobs))
+	// Phase 3: process uncached images in parallel.
 	generated := 0
-	for r := range resCh {
-		results[r.urlPath] = r.result
-		generated += r.count
+	if len(uncached) > 0 {
+		workers := runtime.NumCPU()
+		if workers > len(uncached) {
+			workers = len(uncached)
+		}
+
+		jobCh := make(chan imageJob, len(uncached))
+		resCh := make(chan imageResult, len(uncached))
+		var wg sync.WaitGroup
+
+		for range workers {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := range jobCh {
+					res, n, err := optimizeFile(j.path, j.urlPath, opts, hasWebP, logger)
+					if err != nil {
+						logger.Warn("image optimize failed", "path", j.path, "error", err)
+						continue
+					}
+					if res != nil {
+						resCh <- imageResult{urlPath: j.urlPath, result: res, count: n, hash: j.hash}
+					}
+				}
+			}()
+		}
+
+		for _, j := range uncached {
+			jobCh <- j
+		}
+		close(jobCh)
+
+		go func() {
+			wg.Wait()
+			close(resCh)
+		}()
+
+		for r := range resCh {
+			results[r.urlPath] = r.result
+			generated += r.count
+			if r.hash != "" {
+				cache.Entries[r.urlPath] = &cacheEntry{
+					Hash:   r.hash,
+					Result: r.result,
+					Count:  r.count,
+				}
+			}
+		}
 	}
 
-	if generated > 0 {
-		logger.Info("images optimized", "sources", len(results), "variants", generated, "workers", workers)
+	// Save updated cache.
+	if err := saveImageCache(cache); err != nil {
+		logger.Warn("failed to save image cache", "error", err)
+	}
+
+	total := len(jobs)
+	if generated > 0 || cached > 0 {
+		logger.Info("images optimized", "total", total, "optimized", total-cached, "cached", cached, "variants", generated)
 	}
 
 	return results, nil

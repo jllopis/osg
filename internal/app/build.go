@@ -29,6 +29,7 @@ func RunBuild(ctx context.Context, opts CLIOptions) error {
 		Progress:         opts.Progress,
 		Profile:          opts.Profile,
 		DryRun:           opts.DryRun,
+		TimingJSON:       opts.TimingJSON,
 	}
 
 	return build.Run(ctx, cfg, buildOpts, opts.Verbose, opts.LogWriter)

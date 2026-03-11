@@ -61,6 +61,8 @@ type BuildOptions struct {
 	Profile string
 	// DryRun builds to a temp directory and prints what would be generated.
 	DryRun bool
+	// TimingJSON, when non-empty, writes build timing as JSON to this path.
+	TimingJSON string
 }
 
 func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool, logWriter io.Writer) error {
@@ -460,6 +462,16 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	timings.Total = time.Since(buildStart)
 	timings.Log(logger)
 
+	// Export timing as JSON if requested.
+	if opts.TimingJSON != "" {
+		if err := timings.WriteJSON(opts.TimingJSON); err != nil {
+			logger.Warn("failed to write timing JSON", "error", err)
+		}
+	}
+
+	// Append to build history.
+	appendBuildHistory(timings, stats)
+
 	logger.Info("build summary",
 		"total", stats.Total,
 		"rendered", stats.Rendered,
@@ -562,7 +574,15 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 		pagePos[p] = i
 	}
 
-	rendered := 0
+	// Separate pages into cached vs to-render.
+	type renderJob struct {
+		page       *site.Page
+		template   string
+		outputPath string
+		renderCtx  map[string]any
+	}
+
+	var jobs []renderJob
 	cached := 0
 	for _, page := range siteIndex.Pages {
 		templateName := page.Template
@@ -606,12 +626,52 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 		}
 
 		renderCtx = applyPluginOverrides(ctx, plugins, "page.render", renderCtx)
-		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
-			return rendered, cached, err
-		}
-		rendered++
+		jobs = append(jobs, renderJob{page: page, template: templateName, outputPath: outputPath, renderCtx: renderCtx})
 	}
-	return rendered, cached, nil
+
+	if len(jobs) == 0 {
+		return 0, cached, nil
+	}
+
+	// Render pages in parallel with a bounded worker pool.
+	workers := runtime.NumCPU()
+	if workers > len(jobs) {
+		workers = len(jobs)
+	}
+
+	jobCh := make(chan renderJob, len(jobs))
+	errCh := make(chan error, 1)
+	var wg sync.WaitGroup
+
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := range jobCh {
+				if err := renderer.RenderToFile(j.template, j.renderCtx, j.outputPath); err != nil {
+					select {
+					case errCh <- err:
+					default:
+					}
+					return
+				}
+			}
+		}()
+	}
+
+	for _, j := range jobs {
+		jobCh <- j
+	}
+	close(jobCh)
+	wg.Wait()
+
+	select {
+	case err := <-errCh:
+		return 0, cached, err
+	default:
+	}
+
+	return len(jobs), cached, nil
 }
 
 // relatedPages returns up to limit pages that share taxonomy terms with page,

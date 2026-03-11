@@ -49,6 +49,7 @@ type BuildCmd struct {
 	Yes              bool   `help:"Skip confirmation prompts" short:"y"`
 	Profile          string `help:"Write CPU profile to file" name:"profile" default:""`
 	DryRun           bool   `help:"Show what would be generated without writing" name:"dry-run"`
+	Timing           string `help:"Write build timing as JSON to file" name:"timing" default:""`
 }
 
 type DeployCmd struct {
@@ -203,6 +204,7 @@ func main() {
 			}
 		}
 		opts.DryRun = cli.Build.DryRun
+		opts.TimingJSON = cli.Build.Timing
 		runErr = app.RunBuild(context.Background(), opts)
 	case strings.HasPrefix(command, "deploy"):
 		deployOpts := app.DeployOptions{

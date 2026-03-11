@@ -25,4 +25,5 @@ type CLIOptions struct {
 	SkipAI           bool
 	Progress         logging.Progress
 	Profile          string
+	TimingJSON       string
 }

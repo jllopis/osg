@@ -736,7 +736,7 @@ Mejoras al flujo de trabajo del autor de contenido y del desarrollador de temas/
 - [done] /stats slash command en TUI
 - [todo] Accesible via `/stats` slash command o tecla dedicada
 
-## Phase 23 — Rendimiento avanzado (todo)
+## Phase 23 — Rendimiento avanzado (partial)
 
 Optimizaciones para sitios grandes (100+ posts, muchas imagenes).
 
@@ -746,21 +746,23 @@ Optimizaciones para sitios grandes (100+ posts, muchas imagenes).
 - [todo] Cache de dependencias template->pagina persistente entre builds
 - [todo] Log de decisiones de cache: "skipping page X (no changes)" vs "rebuilding page X (template changed)"
 
-### 23B — Lazy image optimization
-- [todo] Comparar mtime/hash de imagen fuente vs cache antes de re-procesar
-- [todo] Solo generar variantes WebP/srcset de imagenes nuevas o modificadas
-- [todo] Cache de imagenes optimizadas persistente entre builds (`.osg/cache/images/`)
-- [todo] Metrica: "optimized 3/50 images (47 cached)"
+### 23B — Lazy image optimization (done)
+- [done] SHA-256 hash de imagen fuente vs cache antes de re-procesar
+- [done] Solo generar variantes WebP/srcset de imagenes nuevas o modificadas
+- [done] Cache persistente en `.osg/cache/images.json`
+- [done] Metrica: "optimized N/M images (K cached)"
+- [done] Verificacion de que variantes existen en disco antes de cache hit
 
-### 23C — Worker pool acotado para template rendering
-- [todo] Limitar goroutines de rendering a `runtime.NumCPU()` (evitar exceso en sitios con 500+ paginas)
-- [todo] Cola de trabajo con canal buffer para backpressure
-- [todo] Metrica de concurrencia en build timing
+### 23C — Worker pool acotado para template rendering (done)
+- [done] Limitar goroutines de rendering a `runtime.NumCPU()` (evitar exceso en sitios con 500+ paginas)
+- [done] Cola de trabajo con canal buffer para backpressure
+- [done] Error propagation desde workers
 
-### 23D — Metricas de build exportables
-- [todo] `osg build --timing=json`: exportar timing por stage a JSON (parseable por scripts)
-- [todo] `osg build --timing=opentelemetry`: exportar spans OTLP (compatible con Jaeger/Grafana)
-- [todo] Historial de builds: `.osg/build-history.json` con timestamp + duracion + stats por stage
+### 23D — Metricas de build exportables (done)
+- [done] `osg build --timing=<file.json>`: exportar timing por stage a JSON
+- [done] BuildTimings.WriteJSON() con total_ms y stages array
+- [done] Historial de builds: `.osg/build-history.json` (max 100 entradas, auto-trim)
+- [done] Cada entrada: timestamp, total_ms, rendered, cached, errors, stages
 
 ## Phase 24 — Plugins y ecosistema avanzado (todo)
 
