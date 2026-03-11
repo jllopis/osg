@@ -32,6 +32,7 @@ type CLI struct {
 	TUI           struct{}      `cmd:"" help:"Launch TUI"`
 	Theme         ThemeCmd      `cmd:"" help:"Theme tools"`
 	Plugin        PluginCmd     `cmd:"" help:"Plugin tools"`
+	Check         CheckCmd      `cmd:"" help:"Validate content (links, images, frontmatter)"`
 	Doctor        struct{}      `cmd:"" help:"Validate configuration and environment"`
 	Version       struct{}      `cmd:"" help:"Show version information"`
 	Completion    CompletionCmd `cmd:"" help:"Generate shell completion script" hidden:""`
@@ -92,6 +93,13 @@ type PluginCmd struct {
 	Init    PluginInitCmd    `cmd:"" help:"Scaffold a plugin project"`
 	Search  PluginSearchCmd  `cmd:"" help:"Search the curated plugin index"`
 	Update  PluginUpdateCmd  `cmd:"" help:"Update a plugin to the latest version"`
+}
+
+type CheckCmd struct {
+	Links       bool `help:"Check broken internal links" name:"links"`
+	Images      bool `help:"Check broken/orphan images" name:"images"`
+	Frontmatter bool `help:"Check frontmatter issues (dates, tags, slugs)" name:"frontmatter"`
+	JSON        bool `help:"Output results as JSON" name:"json"`
 }
 
 type PluginInstallCmd struct {
@@ -224,6 +232,14 @@ func main() {
 		runErr = app.RunAPI(context.Background(), opts, apiOpts)
 	case command == "tui":
 		runErr = app.RunTUI(context.Background(), opts)
+	case command == "check":
+		checkOpts := app.CheckOptions{
+			Links:       cli.Check.Links,
+			Images:      cli.Check.Images,
+			Frontmatter: cli.Check.Frontmatter,
+			JSON:        cli.Check.JSON,
+		}
+		runErr = app.RunCheck(context.Background(), opts, checkOpts)
 	case command == "doctor":
 		runErr = app.RunDoctor(context.Background(), opts)
 	case strings.HasPrefix(command, "theme init"):
@@ -286,7 +302,7 @@ func hasHelpFlag(args []string) bool {
 }
 
 func printCompletion(shell string) {
-	commands := "init update-content build deploy serve api new tui theme plugin doctor version completion"
+	commands := "init update-content build deploy serve api new tui theme plugin check doctor version completion"
 
 	switch shell {
 	case "bash":

@@ -422,22 +422,23 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 18F) ADR-002: dual-file sync strategy (docs/adr/002-dual-file-sync-theme.md)
 [done] (Phase 18F) Politica de versionado semantico, proceso de release y linting (docs/RELEASE.md)
 
-[todo] (Phase 19A) Escanear links internos rotos en contenido renderizado
-[todo] (Phase 19A) Detectar wikilinks que no resuelven a fichero del vault
-[todo] (Phase 19A) Reporte con fichero fuente, linea y link roto
-[todo] (Phase 19A) Exit code != 0 si hay errores (integrable en CI)
+[done] (Phase 19A) Escanear links internos rotos en contenido renderizado (HTML href)
+[done] (Phase 19A) Wikilinks rotos delegados a osg doctor (no duplicar)
+[done] (Phase 19A) Reporte con fichero fuente y link roto, exit code != 0
 
-[todo] (Phase 19B) Detectar imagenes referenciadas que no existen
-[todo] (Phase 19B) Detectar imagenes huerfanas (copiadas pero no referenciadas)
-[todo] (Phase 19B) Reporte con tamano de imagenes huerfanas
+[done] (Phase 19B) Detectar imagenes referenciadas en HTML que no existen en static/content/theme
+[done] (Phase 19B) Detectar imagenes huerfanas (copiadas pero no referenciadas) con tamano
+[done] (Phase 19B) Reconoce ![alt](path), ![[image]] y <img src=""> como referencias
 
-[todo] (Phase 19C) Detectar posts sin fecha, sin tags, slugs duplicados
-[todo] (Phase 19C) Detectar colisiones de osg.permalink
-[todo] (Phase 19C) Nivel de severidad configurable (error vs warning)
+[done] (Phase 19C) Detectar posts sin fecha (warning) y sin tags (warning, excluye menu pages)
+[done] (Phase 19C) Detectar duplicados de slug (error) y colisiones de osg.permalink (error)
+[done] (Phase 19C) Severidad diferenciada: collisions=error, missing metadata=warning
 
-[todo] (Phase 19D) CLI: `osg check` con flags --links, --images, --frontmatter, --all
-[todo] (Phase 19D) TUI: /check slash command
-[todo] (Phase 19D) Formato de salida: texto (default), JSON (--json)
+[done] (Phase 19D) CLI: `osg check` con flags --links, --images, --frontmatter, --json
+[done] (Phase 19D) TUI: /check slash command
+[done] (Phase 19D) Formato de salida: texto (default), JSON (--json)
+[done] (Phase 19D) 17 tests unitarios en check_test.go
+[done] (Phase 19D) Shell completion actualizado con check
 
 [todo] (Phase 20A) JSON-LD Article schema para paginas de post
 [todo] (Phase 20A) JSON-LD BlogPosting subtipo

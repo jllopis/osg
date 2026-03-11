@@ -71,6 +71,9 @@ func RunTUI(ctx context.Context, opts CLIOptions) error {
 			apiOpts := APIOptions{Listen: cfg.Interactions.Listen}
 			return RunAPI(actionCtx, withLog(apiSink), apiOpts)
 		},
+		Check: func(actionCtx context.Context) error {
+			return RunCheck(actionCtx, withLog(generalSink), CheckOptions{})
+		},
 		Doctor: func(actionCtx context.Context) error {
 			return RunDoctor(actionCtx, withLog(generalSink))
 		},

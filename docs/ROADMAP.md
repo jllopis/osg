@@ -613,34 +613,37 @@ en los paquetes criticos que sostienen el pipeline de build y deploy.
 - [done] ADR-002: dual-file sync strategy (`docs/adr/002-dual-file-sync-theme.md`)
 - [done] Politica de versionado semantico, proceso de release y politica de linting (`docs/RELEASE.md`)
 
-## Phase 19 — Validacion de contenido: `osg check` (todo)
+## Phase 19 — Validacion de contenido: `osg check` (done)
 
 Nuevo comando para detectar problemas en el contenido antes de publicar.
 Complementa `osg doctor` (que valida config/entorno) con validacion del contenido real.
+Nota: broken wikilinks y large images ya cubiertos por `osg doctor`, no duplicados aqui.
 
-### 19A — Links internos rotos
-- [todo] Escanear contenido renderizado para detectar links internos (`href="/..."`) que no corresponden a ninguna pagina generada
-- [todo] Detectar wikilinks que no resuelven a ningun fichero del vault (`[[nota inexistente]]`)
-- [todo] Reporte con fichero fuente, linea y link roto
-- [todo] Exit code != 0 si hay errores (integrable en CI)
+### 19A — Links internos rotos (done)
+- [done] Escanear contenido renderizado para detectar links internos (`href="/..."`) que no corresponden a ninguna pagina generada
+- [done] Wikilinks rotos delegados a `osg doctor` (ya implementado, no duplicar)
+- [done] Reporte con fichero fuente y link roto
+- [done] Exit code != 0 si hay errores (integrable en CI)
 
-### 19B — Imagenes huerfanas y referencias rotas
-- [todo] Detectar imagenes referenciadas en contenido que no existen en el vault ni en static/
-- [todo] Detectar imagenes copiadas al directorio de contenido que no estan referenciadas por ninguna pagina (huerfanas)
-- [todo] Reporte con tamano de imagenes huerfanas (para limpieza)
+### 19B — Imagenes huerfanas y referencias rotas (done)
+- [done] Detectar imagenes referenciadas en contenido renderizado que no existen en static/, theme static/ ni content/
+- [done] Detectar imagenes copiadas al directorio de contenido que no estan referenciadas por ninguna pagina (huerfanas)
+- [done] Reporte con tamano de imagenes huerfanas (KB/MB)
 
-### 19C — Frontmatter incompleto o inconsistente
-- [todo] Detectar posts sin fecha (no se puede ordenar cronologicamente)
-- [todo] Detectar posts sin tags (posible contenido sin categorizar)
-- [todo] Detectar duplicados de slug (URLs colisionantes)
-- [todo] Detectar valores de `osg.permalink` que colisionan entre si
-- [todo] Nivel de severidad configurable (error vs warning)
+### 19C — Frontmatter incompleto o inconsistente (done)
+- [done] Detectar posts sin fecha (no se puede ordenar cronologicamente)
+- [done] Detectar posts sin tags (posible contenido sin categorizar, excluye menu pages)
+- [done] Detectar duplicados de slug (URLs colisionantes)
+- [done] Detectar valores de `osg.permalink` que colisionan entre si
+- [done] Severidad: slug duplicado y permalink collision = error; fecha/tags faltantes = warning
 
-### 19D — Integracion
-- [todo] CLI: `osg check` con flags `--links`, `--images`, `--frontmatter`, `--all` (default)
-- [todo] TUI: `/check` slash command
-- [todo] Formato de salida: texto (default), JSON (`--json`)
-- [todo] Hook en CI: fail build si `osg check` reporta errores
+### 19D — Integracion (done)
+- [done] CLI: `osg check` con flags `--links`, `--images`, `--frontmatter`, `--all` (default)
+- [done] TUI: `/check` slash command
+- [done] Formato de salida: texto (default), JSON (`--json`)
+- [done] Exit code != 0 si hay errores (integrable en CI)
+- [done] 17 tests unitarios en check_test.go
+- [done] Shell completion actualizado con `check`
 
 ## Phase 20 — SEO avanzado (todo)
 

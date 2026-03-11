@@ -299,6 +299,8 @@ func (m Model) handleSubmit() (Model, tea.Cmd) {
 		return m.toggleAPI()
 	case "stop":
 		return m.handleStop(args)
+	case "check":
+		return m.runSimpleAction("Check", m.actions.Check)
 	case "doctor":
 		return m.runSimpleAction("Doctor", m.actions.Doctor)
 	case "next":

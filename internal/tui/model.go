@@ -29,6 +29,7 @@ type Actions struct {
 	Serve         func(context.Context) error // static-only dev server
 	ServeWithAPI  func(context.Context) error // dev server + embedded API
 	RunAPI        func(context.Context) error // standalone API server
+	Check         func(context.Context) error
 	Doctor        func(context.Context) error
 	ThemeInit     func(context.Context, string, string) error
 	ThemeList     func(context.Context) error
