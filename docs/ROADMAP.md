@@ -671,25 +671,25 @@ Quick wins de alto impacto para mejorar indexacion y visibilidad en buscadores.
 - [done] 6 tests: renderSectionFeeds (4) + sectionFeedContext (2)
 - [done] Dual-file sync: head.html, page.html
 
-## Phase 21 — Mejoras de contenido y tema (todo)
+## Phase 21 — Mejoras de contenido y tema (done)
 
 Funcionalidades orientadas al lector y a sitios con mucho contenido.
 
 ### 21A — Paginacion en index
-- [todo] Paginacion configurable en homepage (`posts_per_page`, default 10)
-- [todo] Paginas generadas: `/`, `/page/2/`, `/page/3/`, etc.
-- [todo] Template `index.html` con navegacion prev/next y numeros de pagina
-- [todo] Funciona con featured posts (featured en primera pagina, paginados el resto)
-- [todo] i18n: claves `page_of`, `newer_posts`, `older_posts`
-- [todo] CSS: `.pagination` component Nord-styled
+- [done] Paginacion configurable en homepage (`posts_per_page`, default 10)
+- [done] `renderPaginatedIndex()` genera `/`, `/page/2/`, `/page/3/` via `taxonomy.BuildPaginator`
+- [done] Template `index.html` con navegacion prev/next y indicador de pagina
+- [done] Compatible con featured posts (featured en primera pagina)
+- [done] i18n: claves `page_of`, `newer_posts`, `older_posts`
+- [done] CSS: `.pagination` component Nord-styled
+- [done] 4 tests: no pagination, with pagination, disabled, context
 
 ### 21B — Table of Contents flotante (sticky TOC)
-- [todo] Sidebar TOC fijo para articulos largos (position: sticky)
-- [todo] Scroll-spy: resaltar heading actual en el TOC al hacer scroll
-- [todo] Colapsar en mobile (debajo del titulo, toggle expandible como ahora)
-- [todo] Config `toc_sticky: true` (default habilitado en desktop, colapsado en mobile)
-- [todo] CSS: `.toc-sidebar` con breakpoints responsive
-- [todo] JS: IntersectionObserver para scroll-spy (zero-dependency)
+- [done] Desktop (>1200px): TOC en sidebar sticky con `position: sticky`, `border-left` accent
+- [done] Mobile: TOC colapsable via `<details>/<summary>` (no JS necesario)
+- [done] Scroll-spy: `toc-spy.js` con IntersectionObserver, marca heading activo con `.toc-active`
+- [done] Grid layout: `.article-content--with-toc` (1fr + 220px) solo en desktop
+- [done] Dual renderizado: `.toc-mobile-details` + `.toc-desktop` (CSS show/hide por breakpoint)
 
 ### 21C — Busqueda mejorada
 - [todo] Filtros por fecha (rango), tags y seccion en el plugin de search
@@ -698,11 +698,12 @@ Funcionalidades orientadas al lector y a sitios con mucho contenido.
 - [todo] Navegacion con teclado en resultados (arrow keys, Enter)
 
 ### 21D — Reading list / Bookmarks
-- [todo] Boton "guardar para despues" en cada post (localStorage client-side)
-- [todo] Pagina `/bookmarks/` que lista posts guardados (client-side rendered)
-- [todo] Badge de conteo en el link de bookmarks del header
-- [todo] Import/export de bookmarks (JSON)
-- [todo] i18n: claves `bookmark_save`, `bookmark_remove`, `bookmarks`, `no_bookmarks`
+- [done] Boton "guardar para despues" en cada post (localStorage client-side)
+- [done] Pagina `/bookmarks/` generada con template `bookmarks.html`
+- [done] `bookmarks.js`: save/remove, badge count, client-side rendering, export/import JSON
+- [done] CSS: bookmark button, badge, remove button, bookmarks page
+- [done] i18n: claves `bookmark_save`, `bookmark_remove`, `bookmarks`, `no_bookmarks`
+- [done] Dual-file sync: templates, JS, CSS, i18n
 
 ## Phase 22 — DX y experiencia de desarrollo (todo)
 

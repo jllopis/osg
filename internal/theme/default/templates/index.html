@@ -68,6 +68,22 @@
               </a>
               {{ end }}
             </div>
+
+            {{ if .paginator }}
+            <nav class="pagination" aria-label="{{ trans "aria_paginated_posts" .lang }}">
+              {{ if .paginator.previous }}
+              <a class="pagination-link pagination-prev" href="{{ .paginator.previous }}">&larr; {{ trans "newer_posts" .lang }}</a>
+              {{ else }}
+              <span class="pagination-link pagination-prev pagination-disabled"></span>
+              {{ end }}
+              <span class="pagination-info">{{ printf (trans "page_of" .lang) .paginator.current_index .paginator.total_pages }}</span>
+              {{ if .paginator.next }}
+              <a class="pagination-link pagination-next" href="{{ .paginator.next }}">{{ trans "older_posts" .lang }} &rarr;</a>
+              {{ else }}
+              <span class="pagination-link pagination-next pagination-disabled"></span>
+              {{ end }}
+            </nav>
+            {{ end }}
           </section>
           {{ end }}
 

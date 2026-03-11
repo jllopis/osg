@@ -152,7 +152,7 @@ func checkBrokenInternalLinks(cfg config.Config, s *site.Site, result *CheckResu
 	}
 	// Add well-known generated paths.
 	for _, p := range []string{"/", "/sitemap.xml", "/robots.txt", "/atom.xml", "/rss.xml", "/404.html",
-		"/search/", "/archive/", "/llms.txt", "/llms-full.txt"} {
+		"/search/", "/archive/", "/bookmarks/", "/llms.txt", "/llms-full.txt"} {
 		known[normalizeLinkPath(p)] = true
 	}
 	// Add taxonomy term paths.

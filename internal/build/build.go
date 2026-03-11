@@ -420,6 +420,14 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	}
 	stats.Rendered += notFoundRendered
 	stats.Cached += notFoundCached
+
+	bookmarksRendered, bookmarksCached, err := renderBookmarks(renderer, cfg, baseCtx, plan)
+	if err != nil {
+		stats.Errors++
+		return err
+	}
+	stats.Rendered += bookmarksRendered
+	stats.Cached += bookmarksCached
 	done()
 
 	// --- Stage: minify ---
@@ -664,6 +672,17 @@ func renderSections(ctx context.Context, renderer *render.Renderer, cfg config.C
 			}
 		}
 
+		// Homepage pagination: split root section pages into multiple index pages.
+		if section.IsRoot && cfg.PostsPerPage > 0 {
+			r, c, err := renderPaginatedIndex(ctx, renderer, cfg, baseCtx, section, templateName, plugins, plan)
+			if err != nil {
+				return rendered, cached, err
+			}
+			rendered += r
+			cached += c
+			continue
+		}
+
 		outputPath := outputHTMLPath(cfg.PublicDir, section.Path)
 		if !plan.shouldRenderCollection(outputPath) {
 			cached++
@@ -677,6 +696,70 @@ func renderSections(ctx context.Context, renderer *render.Renderer, cfg config.C
 		rendered++
 	}
 	return rendered, cached, nil
+}
+
+// renderPaginatedIndex generates paginated index pages for the homepage.
+// Page 1 is written to /index.html, page 2 to /page/2/index.html, etc.
+func renderPaginatedIndex(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, section *site.Section, templateName string, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
+	paginators := taxonomy.BuildPaginator(section.Pages, cfg.PostsPerPage, "/", "page")
+	rendered := 0
+	cached := 0
+
+	if len(paginators) == 0 {
+		// Fewer pages than PostsPerPage — render the index without pagination.
+		outputPath := outputHTMLPath(cfg.PublicDir, section.Path)
+		if !plan.shouldRenderCollection(outputPath) {
+			return 0, 1, nil
+		}
+		renderCtx := sectionContext(baseCtx, section)
+		renderCtx = applyPluginOverrides(ctx, plugins, "section.render", renderCtx)
+		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
+			return 0, 0, err
+		}
+		return 1, 0, nil
+	}
+
+	for i, paginator := range paginators {
+		pagePath := "/"
+		if i > 0 {
+			pagePath = fmt.Sprintf("/page/%d/", i+1)
+		}
+		outputPath := outputHTMLPath(cfg.PublicDir, pagePath)
+		if !plan.shouldRenderCollection(outputPath) {
+			cached++
+			continue
+		}
+		renderCtx := paginatedSectionContext(baseCtx, section, paginator)
+		renderCtx = applyPluginOverrides(ctx, plugins, "section.render", renderCtx)
+		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
+			return rendered, cached, err
+		}
+		rendered++
+	}
+
+	return rendered, cached, nil
+}
+
+// paginatedSectionContext builds a section context with paginated pages
+// and pagination metadata for the template.
+func paginatedSectionContext(baseCtx map[string]any, section *site.Section, paginator taxonomy.Paginator) map[string]any {
+	ctx := cloneMap(baseCtx)
+
+	// Build a section view with the paginated subset of pages.
+	sectionView := section.View()
+	paginatedPages := make([]map[string]any, 0, len(paginator.Pages))
+	for _, page := range paginator.Pages {
+		paginatedPages = append(paginatedPages, page.View())
+	}
+	sectionView["pages"] = paginatedPages
+
+	ctx["section"] = sectionView
+	ctx["current_path"] = section.Path
+	ctx["current_url"] = section.Permalink
+	ctx["lang"] = defaultLangFromCtx(baseCtx)
+	ctx["paginator"] = taxonomy.PaginatorView(paginator)
+
+	return ctx
 }
 
 func outputHTMLPath(publicDir string, sitePath string) string {
@@ -785,6 +868,7 @@ func configView(cfg config.Config) map[string]any {
 		"site_feed":          cfg.SiteFeed,
 		"site_feed_limit":    cfg.SiteFeedLimit,
 		"section_feeds":      cfg.SectionFeeds,
+		"posts_per_page":     cfg.PostsPerPage,
 		"image_optimization": cfg.ImageOptimization,
 		"image_quality":      cfg.ImageQuality,
 		"image_widths":       cfg.ImageWidths,
@@ -1396,6 +1480,23 @@ func renderNotFound(renderer *render.Renderer, cfg config.Config, baseCtx map[st
 		return 0, 1, nil
 	}
 	if err := renderer.RenderToFile("404.html", ctx, outputPath); err != nil {
+		return 0, 0, err
+	}
+	return 1, 0, nil
+}
+
+func renderBookmarks(renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, plan buildPlan) (int, int, error) {
+	if !renderer.HasTemplate("bookmarks.html") {
+		return 0, 0, nil
+	}
+	ctx := cloneMap(baseCtx)
+	ctx["lang"] = defaultLangFromCtx(baseCtx)
+	ctx["current_path"] = "/bookmarks/"
+	outputPath := filepath.Join(cfg.PublicDir, "bookmarks", "index.html")
+	if !plan.shouldRenderCollection(outputPath) {
+		return 0, 1, nil
+	}
+	if err := renderer.RenderToFile("bookmarks.html", ctx, outputPath); err != nil {
 		return 0, 0, err
 	}
 	return 1, 0, nil

@@ -1,12 +1,24 @@
 {{ if .toc }}
 <nav class="toc" aria-label="{{ trans "toc_label" .lang }}">
-  <h2 class="toc-title">{{ trans "toc_title" .lang }}</h2>
-  <ul class="toc-list">
-    {{ range .toc }}
-    <li class="toc-item toc-level-{{ .level }}">
-      <a href="#{{ .id }}">{{ .title }}</a>
-    </li>
-    {{ end }}
-  </ul>
+  <details class="toc-mobile-details">
+    <summary class="toc-title toc-mobile-toggle">{{ trans "toc_title" .lang }}</summary>
+    <ul class="toc-list toc-mobile-list">
+      {{ range .toc }}
+      <li class="toc-item toc-level-{{ .level }}">
+        <a href="#{{ .id }}">{{ .title }}</a>
+      </li>
+      {{ end }}
+    </ul>
+  </details>
+  <div class="toc-desktop">
+    <h2 class="toc-title">{{ trans "toc_title" .lang }}</h2>
+    <ul class="toc-list">
+      {{ range .toc }}
+      <li class="toc-item toc-level-{{ .level }}">
+        <a href="#{{ .id }}">{{ .title }}</a>
+      </li>
+      {{ end }}
+    </ul>
+  </div>
 </nav>
 {{ end }}

@@ -38,7 +38,7 @@
           {{ end }}
 
           {{ block "page-content" . }}
-          <div class="article-content container-narrow">
+          <div class="article-content {{ if .toc }}article-content--with-toc{{ end }} container-narrow">
             {{ template "partials/toc.html" . }}
             <div class="prose">
               {{ .page.content }}
@@ -68,8 +68,18 @@
           {{ end }}
 
           {{ block "page-actions" . }}
-          {{ if or .config.interactions_enabled (and .config.sharing .page.permalink) }}
+          {{ if or .config.interactions_enabled (and .config.sharing .page.permalink) true }}
           <div class="article-actions container-narrow">
+            <button class="bookmark-btn" type="button" aria-pressed="false"
+                    data-path="{{ get_url .page.path true false }}"
+                    data-title="{{ .page.title }}"
+                    data-summary="{{ .page.summary }}"
+                    data-date="{{ .page.date.Format "2006-01-02" }}"
+                    data-label-save="{{ trans "bookmark_save" .lang }}"
+                    data-label-remove="{{ trans "bookmark_remove" .lang }}">
+              <svg class="bookmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              <span class="bookmark-label">{{ trans "bookmark_save" .lang }}</span>
+            </button>
             {{ if .config.interactions_enabled }}
             <div id="osg-interactions" class="interactions-group"
                  data-api-url="{{ .config.interactions_api_url }}"
@@ -223,6 +233,8 @@
     {{ if .config.comments_enabled }}<script defer src="{{ get_url "/js/comments.js" false true }}"></script>{{ end }}
     <script defer src="{{ get_url "/js/tabs.js" false true }}"></script>
     <script defer src="{{ get_url "/js/progress.js" false true }}"></script>
+    {{ if .toc }}<script defer src="{{ get_url "/js/toc-spy.js" false true }}"></script>{{ end }}
+    <script defer src="{{ get_url "/js/bookmarks.js" false true }}"></script>
     {{ end }}
   </body>
 </html>

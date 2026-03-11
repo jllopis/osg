@@ -458,26 +458,30 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 20C) 6 tests: renderSectionFeeds (disabled, skips root, full build, draft-only), sectionFeedContext (2)
 [done] (Phase 20C) Dual-file sync: head.html, page.html
 
-[todo] (Phase 21A) Paginacion configurable en homepage (posts_per_page, default 10)
-[todo] (Phase 21A) Paginas generadas: /, /page/2/, /page/3/...
-[todo] (Phase 21A) Template index.html con nav prev/next y numeros de pagina
-[todo] (Phase 21A) Compatible con featured posts
-[todo] (Phase 21A) i18n y CSS para paginacion
+[done] (Phase 21A) Paginacion configurable en homepage (posts_per_page, default 10)
+[done] (Phase 21A) renderPaginatedIndex() genera /, /page/2/, /page/3/ via taxonomy.BuildPaginator
+[done] (Phase 21A) Template index.html con nav prev/next y indicador de pagina
+[done] (Phase 21A) Compatible con featured posts (featured en primera pagina)
+[done] (Phase 21A) i18n: page_of, newer_posts, older_posts (en + es)
+[done] (Phase 21A) CSS: .pagination component Nord-styled
+[done] (Phase 21A) 4 tests: no pagination, with pagination, disabled, context
 
-[todo] (Phase 21B) Sidebar TOC sticky para articulos largos
-[todo] (Phase 21B) Scroll-spy: resaltar heading actual con IntersectionObserver
-[todo] (Phase 21B) Colapsar en mobile (toggle expandible)
-[todo] (Phase 21B) Config toc_sticky: true
+[done] (Phase 21B) Desktop sticky TOC sidebar (position: sticky, grid layout 1fr + 220px)
+[done] (Phase 21B) Mobile collapsible TOC (details/summary, no JS)
+[done] (Phase 21B) Scroll-spy: toc-spy.js con IntersectionObserver, .toc-active class
+[done] (Phase 21B) Dual rendering: .toc-mobile-details + .toc-desktop (CSS breakpoint)
 
 [todo] (Phase 21C) Filtros por fecha, tags y seccion en plugin de search
 [todo] (Phase 21C) Highlight snippets en resultados
 [todo] (Phase 21C) Ordenar por relevancia vs fecha (toggle)
 [todo] (Phase 21C) Navegacion con teclado en resultados
 
-[todo] (Phase 21D) Boton "guardar para despues" (localStorage)
-[todo] (Phase 21D) Pagina /bookmarks/ client-side rendered
-[todo] (Phase 21D) Badge de conteo en header, import/export JSON
-[todo] (Phase 21D) i18n claves bookmarks
+[done] (Phase 21D) Boton "guardar para despues" en cada post (localStorage)
+[done] (Phase 21D) Pagina /bookmarks/ generada con bookmarks.html template
+[done] (Phase 21D) bookmarks.js: save/remove, badge, client-side rendering, export/import JSON
+[done] (Phase 21D) CSS: bookmark button, badge, remove, bookmarks page
+[done] (Phase 21D) i18n: bookmark_save, bookmark_remove, bookmarks, no_bookmarks
+[done] (Phase 21D) Dual-file sync: templates, JS, CSS, i18n
 
 [todo] (Phase 22A) Hot reload parcial: detectar fichero cambiado, solo re-renderizar afectados
 [todo] (Phase 22A) Template change -> solo paginas que usan ese template

@@ -22,6 +22,11 @@ no_terms: Aun no hay terminos.
 previous: Anterior
 next: Siguiente
 
+# --- Paginacion ---
+page_of: "Pagina %d de %d"
+newer_posts: "Publicaciones mas recientes"
+older_posts: "Publicaciones anteriores"
+
 # --- Navegacion de posts ---
 newer_post: Mas reciente
 older_post: Anterior
@@ -94,6 +99,12 @@ share_on: "Compartir en"
 share_via_email: "Compartir por email"
 copy_link: "Copiar enlace"
 link_copied: "Enlace copiado!"
+
+# --- Marcadores ---
+bookmark_save: "Guardar para despues"
+bookmark_remove: "Quitar marcador"
+bookmarks: Marcadores
+no_bookmarks: "Aun no hay marcadores. Guarda publicaciones para leerlas despues."
 
 # --- Comentarios ---
 comments: Comentarios

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="{{ .lang }}" data-color-scheme="{{ .config.color_scheme }}">
+  <head>
+    <title>{{ trans "bookmarks" .lang }} &mdash; {{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}</title>
+    {{ template "partials/head.html" . }}
+  </head>
+  <body>
+    <div class="page">
+      {{ template "partials/header.html" . }}
+
+      <main id="main-content" class="container" role="main">
+        <section class="hero hero-compact">
+          <h1>{{ trans "bookmarks" .lang }}</h1>
+        </section>
+
+        <div class="bookmarks-actions">
+          <button class="bookmarks-export" type="button">Export</button>
+          <button class="bookmarks-import" type="button">Import</button>
+          <input class="bookmarks-import-file" type="file" accept=".json" />
+        </div>
+
+        <div class="bookmarks-list post-list"
+             data-empty-text="{{ trans "no_bookmarks" .lang }}"
+             data-remove-text="{{ trans "bookmark_remove" .lang }}">
+          <p class="bookmarks-empty">{{ trans "no_bookmarks" .lang }}</p>
+        </div>
+      </main>
+
+      {{ template "partials/footer.html" . }}
+    </div>
+    <script defer src="{{ get_url "/js/bookmarks.js" false true }}"></script>
+  </body>
+</html>

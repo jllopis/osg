@@ -2,6 +2,7 @@ package build
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -4003,6 +4004,195 @@ func TestSectionFeedContext(t *testing.T) {
 	}
 	if pp, ok := ctx["pages"].([]map[string]any); !ok || len(pp) != 1 {
 		t.Errorf("pages = %v, want 1 page", ctx["pages"])
+	}
+}
+
+// --- renderPaginatedIndex tests ---
+
+func TestRenderPaginatedIndex_NoPagination(t *testing.T) {
+	renderer := testRenderer(t)
+	dir := t.TempDir()
+	now := time.Now()
+	s := site.New()
+	// Only 2 pages, PostsPerPage=10 -> no pagination
+	for i := 0; i < 2; i++ {
+		s.AddPage(&site.Page{
+			Title:     fmt.Sprintf("Post %d", i),
+			Path:      fmt.Sprintf("/post-%d/", i),
+			Permalink: fmt.Sprintf("http://example.com/post-%d/", i),
+			Date:      now.Add(time.Duration(-i) * time.Hour),
+			Content:   "<p>Hello</p>",
+		})
+	}
+	s.BuildHierarchy()
+	cfg := config.Config{
+		BaseURL:         "http://example.com",
+		PublicDir:       dir,
+		PostsPerPage:    10,
+		DefaultLanguage: "es",
+	}
+	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
+	plan := buildPlan{full: true}
+
+	rendered, cached, err := renderSections(context.Background(), renderer, cfg, baseCtx, s, nil, plan)
+	if err != nil {
+		t.Fatalf("renderSections: %v", err)
+	}
+	// Should render index.html without pagination pages.
+	if rendered != 1 {
+		t.Errorf("rendered = %d, want 1 (single index)", rendered)
+	}
+	if cached != 0 {
+		t.Errorf("cached = %d, want 0", cached)
+	}
+	// Only /index.html should exist, not /page/2/.
+	page2 := filepath.Join(dir, "page", "2", "index.html")
+	if _, err := os.Stat(page2); !os.IsNotExist(err) {
+		t.Errorf("unexpected %s when no pagination needed", page2)
+	}
+}
+
+func TestRenderPaginatedIndex_WithPagination(t *testing.T) {
+	renderer := testRenderer(t)
+	dir := t.TempDir()
+	now := time.Now()
+	s := site.New()
+	// 5 pages, PostsPerPage=2 -> 3 pagination pages
+	for i := 0; i < 5; i++ {
+		s.AddPage(&site.Page{
+			Title:     fmt.Sprintf("Post %d", i),
+			Path:      fmt.Sprintf("/post-%d/", i),
+			Permalink: fmt.Sprintf("http://example.com/post-%d/", i),
+			Date:      now.Add(time.Duration(-i) * time.Hour),
+			Content:   "<p>Hello</p>",
+		})
+	}
+	s.BuildHierarchy()
+	cfg := config.Config{
+		BaseURL:         "http://example.com",
+		SiteTitle:       "Test",
+		PublicDir:       dir,
+		PostsPerPage:    2,
+		DefaultLanguage: "es",
+	}
+	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
+	plan := buildPlan{full: true}
+
+	rendered, cached, err := renderSections(context.Background(), renderer, cfg, baseCtx, s, nil, plan)
+	if err != nil {
+		t.Fatalf("renderSections: %v", err)
+	}
+	// 3 paginated index pages (page 1, 2, 3).
+	if rendered < 3 {
+		t.Errorf("rendered = %d, want >= 3 (3 pagination pages)", rendered)
+	}
+	if cached != 0 {
+		t.Errorf("cached = %d, want 0", cached)
+	}
+
+	// Verify /index.html exists.
+	indexPath := filepath.Join(dir, "index.html")
+	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
+		t.Error("expected /index.html to exist")
+	}
+	// Verify /page/2/index.html exists.
+	page2 := filepath.Join(dir, "page", "2", "index.html")
+	if _, err := os.Stat(page2); os.IsNotExist(err) {
+		t.Error("expected /page/2/index.html to exist")
+	}
+	// Verify /page/3/index.html exists.
+	page3 := filepath.Join(dir, "page", "3", "index.html")
+	if _, err := os.Stat(page3); os.IsNotExist(err) {
+		t.Error("expected /page/3/index.html to exist")
+	}
+}
+
+func TestRenderPaginatedIndex_DisabledWhenZero(t *testing.T) {
+	renderer := testRenderer(t)
+	dir := t.TempDir()
+	now := time.Now()
+	s := site.New()
+	for i := 0; i < 5; i++ {
+		s.AddPage(&site.Page{
+			Title:     fmt.Sprintf("Post %d", i),
+			Path:      fmt.Sprintf("/post-%d/", i),
+			Permalink: fmt.Sprintf("http://example.com/post-%d/", i),
+			Date:      now.Add(time.Duration(-i) * time.Hour),
+			Content:   "<p>Hello</p>",
+		})
+	}
+	s.BuildHierarchy()
+	cfg := config.Config{
+		BaseURL:         "http://example.com",
+		PublicDir:       dir,
+		PostsPerPage:    0, // disabled
+		DefaultLanguage: "es",
+	}
+	baseCtx := baseContext(cfg, s.View(), map[string]*taxonomy.Index{}, nil)
+	plan := buildPlan{full: true}
+
+	rendered, _, err := renderSections(context.Background(), renderer, cfg, baseCtx, s, nil, plan)
+	if err != nil {
+		t.Fatalf("renderSections: %v", err)
+	}
+	// Should render a single index page (no pagination).
+	if rendered != 1 {
+		t.Errorf("rendered = %d, want 1 (no pagination when PostsPerPage=0)", rendered)
+	}
+}
+
+func TestPaginatedSectionContext(t *testing.T) {
+	cfg := config.Config{DefaultLanguage: "es"}
+	base := baseContext(cfg, site.New().View(), map[string]*taxonomy.Index{}, nil)
+	section := &site.Section{
+		Title:  "Home",
+		Path:   "/",
+		IsRoot: true,
+		Pages: []*site.Page{
+			{Title: "P1", Path: "/p1/", Permalink: "http://example.com/p1/"},
+			{Title: "P2", Path: "/p2/", Permalink: "http://example.com/p2/"},
+		},
+	}
+	paginator := taxonomy.Paginator{
+		PaginateBy:   2,
+		BaseURL:      "/",
+		NumberPagers: 3,
+		CurrentIndex: 1,
+		TotalPages:   3,
+		First:        "/",
+		Last:         "/page/3/",
+		Next:         "/page/2/",
+		Pages:        section.Pages,
+	}
+
+	ctx := paginatedSectionContext(base, section, paginator)
+
+	// Should have a paginator.
+	pag, ok := ctx["paginator"].(map[string]any)
+	if !ok {
+		t.Fatal("expected paginator in context")
+	}
+	if pag["current_index"] != 1 {
+		t.Errorf("current_index = %v, want 1", pag["current_index"])
+	}
+	if pag["total_pages"] != 3 {
+		t.Errorf("total_pages = %v, want 3", pag["total_pages"])
+	}
+	if pag["next"] != "/page/2/" {
+		t.Errorf("next = %v, want /page/2/", pag["next"])
+	}
+
+	// Section pages should be the paginated subset.
+	sec, ok := ctx["section"].(map[string]any)
+	if !ok {
+		t.Fatal("expected section in context")
+	}
+	pages, ok := sec["pages"].([]map[string]any)
+	if !ok {
+		t.Fatal("expected pages as []map[string]any")
+	}
+	if len(pages) != 2 {
+		t.Errorf("pages = %d, want 2", len(pages))
 	}
 }
 

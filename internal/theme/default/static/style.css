@@ -1791,14 +1791,7 @@ picture {
 /* ============================================================
    TABLE OF CONTENTS
    ============================================================ */
-.toc {
-  margin-bottom: var(--sp-8);
-  padding: var(--sp-5) var(--sp-6);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
+/* --- TOC: shared --- */
 .toc-title {
   font-size: var(--text-sm);
   font-weight: 600;
@@ -1831,10 +1824,100 @@ picture {
   color: var(--accent);
 }
 
+.toc-item.toc-active > a {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .toc-level-3 { padding-left: var(--sp-4); }
 .toc-level-4 { padding-left: var(--sp-8); }
 .toc-level-5 { padding-left: var(--sp-10); }
 .toc-level-6 { padding-left: var(--sp-12); }
+
+/* --- TOC: mobile (inline collapsible) --- */
+.toc {
+  margin-bottom: var(--sp-8);
+}
+
+.toc-mobile-details {
+  padding: var(--sp-5) var(--sp-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.toc-mobile-toggle {
+  cursor: pointer;
+  margin-bottom: 0;
+  list-style: none;
+}
+
+.toc-mobile-toggle::marker,
+.toc-mobile-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.toc-mobile-toggle::after {
+  content: " +";
+  font-weight: 400;
+}
+
+.toc-mobile-details[open] .toc-mobile-toggle::after {
+  content: " −";
+}
+
+.toc-mobile-list {
+  margin-top: var(--sp-3);
+}
+
+.toc-desktop {
+  display: none;
+}
+
+/* --- TOC: desktop sticky sidebar --- */
+@media (min-width: 1200px) {
+  .article-content--with-toc {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: var(--sp-8);
+    width: min(1080px, 100% - var(--sp-8));
+  }
+
+  .article-content--with-toc .prose {
+    min-width: 0;
+  }
+
+  .article-content--with-toc .toc {
+    margin-bottom: 0;
+    order: 1;
+  }
+
+  .toc-mobile-details {
+    display: none;
+  }
+
+  .toc-desktop {
+    display: block;
+    position: sticky;
+    top: calc(var(--header-height, 64px) + var(--sp-6));
+    max-height: calc(100vh - var(--header-height, 64px) - var(--sp-12));
+    overflow-y: auto;
+    padding: var(--sp-4) 0;
+    border-left: 2px solid var(--border);
+    padding-left: var(--sp-4);
+    font-size: var(--text-sm);
+  }
+
+  .toc-desktop .toc-title {
+    font-size: 0.7rem;
+    margin-bottom: var(--sp-2);
+  }
+
+  .toc-desktop .toc-item a {
+    font-size: 0.8rem;
+    padding: 2px 0;
+  }
+}
 
 /* ============================================================
    ADMONITIONS (shortcodes: note, warning, tip)
@@ -2211,6 +2294,40 @@ blockquote.quote > p {
 
 .post-nav-spacer {
   flex: 1;
+}
+
+/* ============================================================
+   PAGINATION (Homepage)
+   ============================================================ */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--sp-8);
+  padding-top: var(--sp-6);
+  border-top: 1px solid var(--border);
+  gap: var(--sp-4);
+}
+
+.pagination-link {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.pagination-link:hover {
+  color: var(--accent-dim);
+}
+
+.pagination-disabled {
+  visibility: hidden;
+}
+
+.pagination-info {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
 }
 
 /* ============================================================
@@ -2838,6 +2955,110 @@ blockquote.quote > p {
     gap: var(--sp-3);
     padding: var(--sp-3) var(--sp-4);
   }
+}
+
+/* ============================================================
+   BOOKMARK BUTTON
+   ============================================================ */
+.bookmark-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.bookmark-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.bookmark-btn--saved {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.bookmark-btn--saved .bookmark-icon {
+  fill: var(--accent);
+}
+
+.bookmark-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.bookmarks-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--white, #fff);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.bookmark-remove-btn {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  border: none;
+  background: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: var(--sp-1);
+  border-radius: var(--radius);
+  transition: color var(--transition-fast);
+}
+
+.bookmark-remove-btn:hover {
+  color: var(--danger, #bf616a);
+}
+
+.bookmarks-list .post-item {
+  position: relative;
+}
+
+.bookmarks-actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+
+.bookmarks-actions button {
+  padding: var(--sp-2) var(--sp-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.bookmarks-actions button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.bookmarks-import-file {
+  display: none;
+}
+
+.bookmarks-empty {
+  color: var(--ink-muted);
+  font-style: italic;
 }
 
 /* ============================================================
