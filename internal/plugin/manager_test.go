@@ -245,8 +245,8 @@ func TestClose_NilRuntime(t *testing.T) {
 // Integration tests using the bundled search.wasm
 // ---------------------------------------------------------------------------
 
-// setupSearchPlugin extracts the bundled search.wasm and loads it.
-func setupSearchPlugin(t *testing.T) (*Manager, context.Context) {
+// setupPlugin extracts bundled plugins and loads the named one.
+func setupPlugin(t *testing.T, name string) (*Manager, context.Context) {
 	t.Helper()
 	dir := t.TempDir()
 	pluginsDir := filepath.Join(dir, "plugins")
@@ -257,7 +257,7 @@ func setupSearchPlugin(t *testing.T) (*Manager, context.Context) {
 
 	ctx := context.Background()
 	logger := slog.Default()
-	m, err := Load(ctx, pluginsDir, []string{"search"}, 0, logger)
+	m, err := Load(ctx, pluginsDir, []string{name}, 0, logger)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -269,7 +269,7 @@ func setupSearchPlugin(t *testing.T) (*Manager, context.Context) {
 
 func TestLoad_BundledSearch(t *testing.T) {
 	t.Parallel()
-	m, ctx := setupSearchPlugin(t)
+	m, ctx := setupPlugin(t, "search")
 	defer func() { _ = m.Close(ctx) }()
 
 	if m.plugins[0].name != "search" {
@@ -279,7 +279,7 @@ func TestLoad_BundledSearch(t *testing.T) {
 
 func TestMetadata_FallbackToFilename(t *testing.T) {
 	t.Parallel()
-	m, ctx := setupSearchPlugin(t)
+	m, ctx := setupPlugin(t, "search")
 	defer func() { _ = m.Close(ctx) }()
 
 	// The current search plugin does not export plugin_info,
@@ -308,7 +308,7 @@ func TestMetadata_EmptyManager(t *testing.T) {
 
 func TestEmit_SearchIgnoresNonFinished(t *testing.T) {
 	t.Parallel()
-	m, ctx := setupSearchPlugin(t)
+	m, ctx := setupPlugin(t, "search")
 	defer func() { _ = m.Close(ctx) }()
 
 	// The search plugin only listens to build.finished.
@@ -324,7 +324,7 @@ func TestEmit_SearchIgnoresNonFinished(t *testing.T) {
 
 func TestEmit_SearchBuildFinished(t *testing.T) {
 	t.Parallel()
-	m, ctx := setupSearchPlugin(t)
+	m, ctx := setupPlugin(t, "search")
 	defer func() { _ = m.Close(ctx) }()
 
 	publicDir := filepath.Join(t.TempDir(), "public")
@@ -383,7 +383,7 @@ func TestEmit_SearchBuildFinished(t *testing.T) {
 
 func TestEmit_SearchBuildFinished_Section(t *testing.T) {
 	t.Parallel()
-	m, ctx := setupSearchPlugin(t)
+	m, ctx := setupPlugin(t, "search")
 	defer func() { _ = m.Close(ctx) }()
 
 	publicDir := filepath.Join(t.TempDir(), "public")
@@ -418,30 +418,10 @@ func TestEmit_SearchBuildFinished_Section(t *testing.T) {
 // Integration tests using the bundled mermaid.wasm
 // ---------------------------------------------------------------------------
 
-func setupMermaidPlugin(t *testing.T) (*Manager, context.Context) {
-	t.Helper()
-	dir := t.TempDir()
-	pluginsDir := filepath.Join(dir, "plugins")
-
-	if err := EnsureBundledPlugins(pluginsDir); err != nil {
-		t.Fatalf("EnsureBundledPlugins: %v", err)
-	}
-
-	ctx := context.Background()
-	logger := slog.Default()
-	m, err := Load(ctx, pluginsDir, []string{"mermaid"}, 0, logger)
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	if len(m.plugins) != 1 {
-		t.Fatalf("expected 1 plugin loaded, got %d", len(m.plugins))
-	}
-	return m, ctx
-}
 
 func TestEmit_MermaidContentTransform(t *testing.T) {
 	t.Parallel()
-	m, ctx := setupMermaidPlugin(t)
+	m, ctx := setupPlugin(t, "mermaid")
 	defer func() { _ = m.Close(ctx) }()
 
 	body := "# Hello\n\n```mermaid\ngraph TD\n  A --> B\n```\n\nMore text."
@@ -462,7 +442,7 @@ func TestEmit_MermaidContentTransform(t *testing.T) {
 
 func TestEmit_MermaidPageBeforeRender_WithDiagram(t *testing.T) {
 	t.Parallel()
-	m, ctx := setupMermaidPlugin(t)
+	m, ctx := setupPlugin(t, "mermaid")
 	defer func() { _ = m.Close(ctx) }()
 
 	content := `<p>Hello</p><pre class="mermaid">graph TD A--&gt;B</pre><p>End</p>`
@@ -486,7 +466,7 @@ func TestEmit_MermaidPageBeforeRender_WithDiagram(t *testing.T) {
 
 func TestEmit_MermaidPageBeforeRender_NoDiagram(t *testing.T) {
 	t.Parallel()
-	m, ctx := setupMermaidPlugin(t)
+	m, ctx := setupPlugin(t, "mermaid")
 	defer func() { _ = m.Close(ctx) }()
 
 	content := `<p>Just regular content, no diagrams</p>`

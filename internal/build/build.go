@@ -821,6 +821,7 @@ func renderSections(ctx context.Context, renderer *render.Renderer, cfg config.C
 		}
 		renderCtx := sectionContext(baseCtx, section)
 		renderCtx = applyPluginOverrides(ctx, plugins, "section.render", renderCtx)
+		preserveHTMLFields(renderCtx)
 		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
 			return rendered, cached, err
 		}
@@ -844,6 +845,7 @@ func renderPaginatedIndex(ctx context.Context, renderer *render.Renderer, cfg co
 		}
 		renderCtx := sectionContext(baseCtx, section)
 		renderCtx = applyPluginOverrides(ctx, plugins, "section.render", renderCtx)
+		preserveHTMLFields(renderCtx)
 		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
 			return 0, 0, err
 		}
@@ -862,6 +864,7 @@ func renderPaginatedIndex(ctx context.Context, renderer *render.Renderer, cfg co
 		}
 		renderCtx := paginatedSectionContext(baseCtx, section, paginator)
 		renderCtx = applyPluginOverrides(ctx, plugins, "section.render", renderCtx)
+		preserveHTMLFields(renderCtx)
 		if err := renderer.RenderToFile(templateName, renderCtx, outputPath); err != nil {
 			return rendered, cached, err
 		}
@@ -1109,15 +1112,18 @@ func cloneMap(input map[string]any) map[string]any {
 	return out
 }
 
-// preserveHTMLFields ensures that page.content remains template.HTML after
-// plugin deep-merge (which replaces it with a plain string from JSON).
+// preserveHTMLFields ensures that content fields remain template.HTML after
+// plugin deep-merge (which replaces them with plain strings from JSON).
+// Handles both page and section contexts.
 func preserveHTMLFields(renderCtx map[string]any) {
-	pageMap, ok := renderCtx["page"].(map[string]any)
-	if !ok {
-		return
-	}
-	if content, ok := pageMap["content"].(string); ok {
-		pageMap["content"] = template.HTML(content)
+	for _, key := range []string{"page", "section"} {
+		m, ok := renderCtx[key].(map[string]any)
+		if !ok {
+			continue
+		}
+		if content, ok := m["content"].(string); ok {
+			m["content"] = template.HTML(content)
+		}
 	}
 }
 
