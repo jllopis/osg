@@ -50,7 +50,6 @@ type BuildCmd struct {
 	ForceAISummaries bool   `help:"Regenerate all AI summaries (bypasses cache)" name:"force-ai-summaries"`
 	Yes              bool   `help:"Skip confirmation prompts" short:"y"`
 	Profile          string `help:"Write CPU profile to file" name:"profile" default:""`
-	DryRun           bool   `help:"Show what would be generated without writing" name:"dry-run"`
 	Timing           string `help:"Write build timing as JSON to file" name:"timing" default:""`
 }
 
@@ -147,13 +146,11 @@ type ImportCmd struct {
 }
 
 type ImportWordpressCmd struct {
-	File   string `arg:"" help:"Path to WordPress WXR export XML file"`
-	DryRun bool   `help:"Preview what would be imported without writing" name:"dry-run"`
+	File string `arg:"" help:"Path to WordPress WXR export XML file"`
 }
 
 type ImportHugoCmd struct {
-	Dir    string `arg:"" help:"Path to Hugo content directory"`
-	DryRun bool   `help:"Preview what would be imported without writing" name:"dry-run"`
+	Dir string `arg:"" help:"Path to Hugo content directory"`
 }
 
 func main() {
@@ -224,7 +221,7 @@ func main() {
 				os.Exit(0)
 			}
 		}
-		opts.DryRun = cli.Build.DryRun
+		opts.DryRun = cli.DryRun
 		opts.TimingJSON = cli.Build.Timing
 		runErr = app.RunBuild(context.Background(), opts)
 	case strings.HasPrefix(command, "deploy"):
@@ -303,9 +300,9 @@ func main() {
 	case strings.HasPrefix(command, "plugin update"):
 		runErr = app.RunPluginUpdate(context.Background(), opts, cli.Plugin.Update.Name, os.Stdout)
 	case strings.HasPrefix(command, "import wordpress"):
-		runErr = app.RunImportWordpress(context.Background(), opts, cli.Import.Wordpress.File, cli.Import.Wordpress.DryRun)
+		runErr = app.RunImportWordpress(context.Background(), opts, cli.Import.Wordpress.File, cli.DryRun)
 	case strings.HasPrefix(command, "import hugo"):
-		runErr = app.RunImportHugo(context.Background(), opts, cli.Import.Hugo.Dir, cli.Import.Hugo.DryRun)
+		runErr = app.RunImportHugo(context.Background(), opts, cli.Import.Hugo.Dir, cli.DryRun)
 	case command == "version":
 		fmt.Println(app.VersionInfo())
 	case strings.HasPrefix(command, "completion"):
