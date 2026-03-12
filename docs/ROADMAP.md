@@ -35,7 +35,7 @@
 - [done] hooks y filtros externos
 - [done] TUI avanzada
 
-## Phase 6 - producto y DX (todo)
+## Phase 6 - producto y DX (done)
 - [done] plugin WASM de ejemplo (RSS feed en Rust)
 - [done] live reload + watch (serve + build incremental)
 - [done] build incremental con cache de contenido
@@ -734,7 +734,7 @@ Mejoras al flujo de trabajo del autor de contenido y del desarrollador de temas/
 - [done] Desglose por seccion: posts por seccion, posts sin tags, posts sin imagen
 - [done] Histograma de publicaciones por mes (sparkline ASCII)
 - [done] /stats slash command en TUI
-- [todo] Accesible via `/stats` slash command o tecla dedicada
+- [done] Accesible via `/stats` slash command en TUI
 
 ## Phase 23 — Rendimiento avanzado (partial)
 
