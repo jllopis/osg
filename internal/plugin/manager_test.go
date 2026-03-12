@@ -418,7 +418,6 @@ func TestEmit_SearchBuildFinished_Section(t *testing.T) {
 // Integration tests using the bundled mermaid.wasm
 // ---------------------------------------------------------------------------
 
-
 func TestEmit_MermaidContentTransform(t *testing.T) {
 	t.Parallel()
 	m, ctx := setupPlugin(t, "mermaid")
