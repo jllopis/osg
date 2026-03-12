@@ -108,14 +108,14 @@ func TestCloudflareDeploy_WranglerTomlGeneration(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestRsyncDeploy_ArgConstruction(t *testing.T) {
-	// We can't actually run rsync in test, but we can exercise the argument
-	// construction code paths by calling Deploy and checking the error.
-	// The function builds args and then calls runCommand which will fail
-	// because rsync either isn't installed or the host doesn't exist.
+	// Test argument construction via buildArgs without executing rsync.
+	// This avoids SSH connection attempts that hang in CI.
 
 	tests := []struct {
-		name string
-		cfg  map[string]any
+		name     string
+		cfg      map[string]any
+		contains []string // substrings expected in joined args
+		excludes []string // substrings that must NOT appear
 	}{
 		{
 			name: "default options",
@@ -123,6 +123,7 @@ func TestRsyncDeploy_ArgConstruction(t *testing.T) {
 				"host": "user@example.com",
 				"path": "/var/www",
 			},
+			contains: []string{"-avz", "--delete-after", "--checksum", "user@example.com:/var/www/"},
 		},
 		{
 			name: "custom port",
@@ -131,6 +132,7 @@ func TestRsyncDeploy_ArgConstruction(t *testing.T) {
 				"path": "/var/www",
 				"port": "2222",
 			},
+			contains: []string{"-p", "2222"},
 		},
 		{
 			name: "with exclude patterns",
@@ -139,6 +141,7 @@ func TestRsyncDeploy_ArgConstruction(t *testing.T) {
 				"path":    "/var/www",
 				"exclude": ".git,*.tmp,node_modules",
 			},
+			contains: []string{"--exclude", ".git", "*.tmp", "node_modules"},
 		},
 		{
 			name: "with extra flags and delete false",
@@ -148,6 +151,8 @@ func TestRsyncDeploy_ArgConstruction(t *testing.T) {
 				"delete":      false,
 				"extra_flags": "--dry-run --verbose",
 			},
+			contains: []string{"--dry-run", "--verbose"},
+			excludes: []string{"--delete-after"},
 		},
 		{
 			name: "with key file",
@@ -156,24 +161,25 @@ func TestRsyncDeploy_ArgConstruction(t *testing.T) {
 				"path":     "/var/www",
 				"key_file": "/tmp/fake-key",
 			},
+			contains: []string{"-i", "/tmp/fake-key"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := newRsync(tt.cfg).(*RsyncProvider)
+			args := p.buildArgs("/tmp/public")
+			joined := strings.Join(args, " ")
 
-			// Create a minimal publicDir so filepath.Abs succeeds.
-			tmpDir := t.TempDir()
-			err := p.Deploy(context.Background(), tmpDir)
-			// rsync will fail (command not found or connection refused), but
-			// this exercises all the argument construction code.
-			if err == nil {
-				t.Fatal("expected error (rsync execution should fail in test)")
+			for _, want := range tt.contains {
+				if !strings.Contains(joined, want) {
+					t.Errorf("args should contain %q, got: %s", want, joined)
+				}
 			}
-			// Error should come from rsync itself, not from path resolution.
-			if !strings.Contains(err.Error(), "rsync:") {
-				t.Errorf("expected rsync error, got: %v", err)
+			for _, nope := range tt.excludes {
+				if strings.Contains(joined, nope) {
+					t.Errorf("args should NOT contain %q, got: %s", nope, joined)
+				}
 			}
 		})
 	}

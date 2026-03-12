@@ -53,12 +53,8 @@ func (p *RsyncProvider) Validate() error {
 	return nil
 }
 
-func (p *RsyncProvider) Deploy(ctx context.Context, publicDir string) error {
-	absPublic, err := filepath.Abs(publicDir)
-	if err != nil {
-		return fmt.Errorf("rsync: resolving public dir: %w", err)
-	}
-
+// buildArgs constructs the rsync argument list for the given public directory.
+func (p *RsyncProvider) buildArgs(absPublic string) []string {
 	args := []string{
 		"-avz",              // archive, verbose, compress
 		"--checksum",        // use checksums for file comparison
@@ -95,6 +91,17 @@ func (p *RsyncProvider) Deploy(ctx context.Context, publicDir string) error {
 
 	// Source and destination
 	args = append(args, absPublic+"/", p.Host+":"+strings.TrimSuffix(p.Path, "/")+"/")
+
+	return args
+}
+
+func (p *RsyncProvider) Deploy(ctx context.Context, publicDir string) error {
+	absPublic, err := filepath.Abs(publicDir)
+	if err != nil {
+		return fmt.Errorf("rsync: resolving public dir: %w", err)
+	}
+
+	args := p.buildArgs(absPublic)
 
 	fmt.Printf("Deploying via rsync to %s:%s ...\n", p.Host, p.Path)
 	if err := runCommand(ctx, "rsync", args...); err != nil {
