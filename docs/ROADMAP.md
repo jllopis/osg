@@ -804,7 +804,7 @@ Expandir las capacidades del sistema de plugins.
 - [done] Preservar fechas, tags, categorias, imagenes referenciadas
 - [done] Modo `--dry-run` para previsualizar sin escribir
 
-## Phase 26 — Observabilidad y operaciones (partial)
+## Phase 26 — Observabilidad y operaciones (done)
 
 Herramientas para monitorizar el sitio generado y el proceso de build.
 
@@ -816,7 +816,7 @@ Herramientas para monitorizar el sitio generado y el proceso de build.
 - [done] Config `analytics: true` (default deshabilitado)
 
 ### 26B — Site audit automatico
-- [todo] `osg audit`: analizar el sitio generado en public/ para problemas comunes
-- [todo] Checks: HTML validation (tags abiertos), accesibilidad basica (alt en imagenes, headings order), performance (tamano de paginas > 500KB)
-- [todo] Reporte con severidad (error/warning/info) y sugerencias de fix
-- [todo] Integrable en CI como quality gate
+- [done] `osg audit`: analizar el sitio generado en public/ para problemas comunes
+- [done] Checks: HTML validation (tags abiertos), accesibilidad basica (alt en imagenes, headings order), performance (tamano de paginas > 500KB)
+- [done] Reporte con severidad (error/warning/info) y sugerencias de fix
+- [done] Integrable en CI como quality gate (exit code 1 si hay errores, --json para parsing)

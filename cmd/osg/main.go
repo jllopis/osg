@@ -36,6 +36,7 @@ type CLI struct {
 	Plugin        PluginCmd     `cmd:"" help:"Plugin tools"`
 	Import        ImportCmd     `cmd:"" help:"Import content from another platform"`
 	Check         CheckCmd      `cmd:"" help:"Validate content (links, images, frontmatter)"`
+	Audit         AuditCmd      `cmd:"" help:"Audit generated site for quality issues"`
 	Doctor        struct{}      `cmd:"" help:"Validate configuration and environment"`
 	Version       struct{}      `cmd:"" help:"Show version information"`
 	Completion    CompletionCmd `cmd:"" help:"Generate shell completion script" hidden:""`
@@ -111,6 +112,10 @@ type CheckCmd struct {
 	Images      bool `help:"Check broken/orphan images" name:"images"`
 	Frontmatter bool `help:"Check frontmatter issues (dates, tags, slugs)" name:"frontmatter"`
 	JSON        bool `help:"Output results as JSON" name:"json"`
+}
+
+type AuditCmd struct {
+	JSON bool `help:"Output results as JSON" name:"json"`
 }
 
 type PluginInstallCmd struct {
@@ -275,6 +280,8 @@ func main() {
 			JSON:        cli.Check.JSON,
 		}
 		runErr = app.RunCheck(context.Background(), opts, checkOpts)
+	case command == "audit":
+		runErr = app.RunAudit(context.Background(), opts, cli.Audit.JSON)
 	case command == "doctor":
 		runErr = app.RunDoctor(context.Background(), opts)
 	case strings.HasPrefix(command, "theme init"):

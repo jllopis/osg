@@ -539,5 +539,5 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 26A) SQLite storage reutilizando API server, respetar DNT
 [done] (Phase 26A) Config analytics: true, script js/analytics.js, summary endpoint
 
-[todo] (Phase 26B) `osg audit`: analizar public/ para problemas (HTML, a11y, performance)
-[todo] (Phase 26B) Reporte con severidad y sugerencias, integrable en CI
+[done] (Phase 26B) `osg audit`: analizar public/ para problemas (HTML, a11y, performance)
+[done] (Phase 26B) Reporte con severidad y sugerencias, integrable en CI (--json, exit code)
