@@ -125,10 +125,12 @@ func ConfigSchema() []ConfigSection {
 		},
 		{
 			Name:        "Feeds",
-			Description: "Site-wide RSS and Atom feed settings.",
+			Description: "Site-wide and per-section RSS/Atom feed settings.",
 			Fields: []ConfigField{
 				{Key: "site_feed", Label: "Site Feed", Description: "Generate site-wide RSS and Atom feeds.", Type: FieldBool, Default: "true"},
 				{Key: "site_feed_limit", Label: "Feed Limit", Description: "Maximum entries in the site feed (0 = all pages).", Type: FieldInt, Default: "20"},
+				{Key: "section_feeds", Label: "Section Feeds", Description: "Generate per-section RSS and Atom feeds (e.g. /blog/atom.xml).", Type: FieldBool, Default: "false"},
+				{Key: "posts_per_page", Label: "Posts Per Page", Description: "Number of posts per page on the homepage (0 = no pagination).", Type: FieldInt, Default: "0"},
 			},
 		},
 		{
@@ -254,6 +256,24 @@ func ConfigSchema() []ConfigSection {
 					{Key: "client_id", Label: "Client ID", Description: "OAuth2 client ID.", Type: FieldString, Sensitive: true},
 					{Key: "client_secret", Label: "Client Secret", Description: "OAuth2 client secret.", Type: FieldString, Sensitive: true},
 				}},
+			},
+		},
+		{
+			Name:        "Webhooks",
+			Description: "HTTP POST notifications on build and deploy events.",
+			Fields: []ConfigField{
+				{Key: "webhooks", Label: "Webhooks", Description: "List of webhook endpoints.", Type: FieldStructList, Nested: []ConfigField{
+					{Key: "url", Label: "URL", Description: "HTTP endpoint that receives POST notifications.", Type: FieldString},
+					{Key: "events", Label: "Events", Description: "Events to subscribe to (empty = all). Supported: build.success, build.failure, deploy.success.", Type: FieldStringList},
+					{Key: "secret", Label: "Secret", Description: "Shared secret for HMAC-SHA256 signature in X-OSG-Signature header.", Type: FieldString, Sensitive: true},
+				}},
+			},
+		},
+		{
+			Name:        "Analytics",
+			Description: "Lightweight first-party analytics (pageviews, referrers, browsers).",
+			Fields: []ConfigField{
+				{Key: "analytics", Label: "Analytics", Description: "Enable first-party analytics. Requires the API server (osg serve --api or osg api). Respects DNT.", Type: FieldBool, Default: "false"},
 			},
 		},
 		{

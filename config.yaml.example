@@ -409,6 +409,61 @@ logging:
   format: json
 
 # -----------------------------------------------------------------------------
+# Section feeds & pagination
+# -----------------------------------------------------------------------------
+# section_feeds: Generate per-section RSS and Atom feeds (e.g. /blog/atom.xml).
+# posts_per_page: Number of posts per page on the homepage (0 = no pagination).
+section_feeds: true
+posts_per_page: 10
+
+# -----------------------------------------------------------------------------
+# Webhooks
+# -----------------------------------------------------------------------------
+# Receive HTTP POST notifications on build and deploy events.
+# Each webhook specifies a URL, an optional list of events to subscribe to,
+# and an optional HMAC-SHA256 secret for verifying payloads.
+#
+# Events:
+#   build.success  — build completed without errors
+#   build.failure  — build completed with errors
+#   deploy.success — deploy completed successfully
+#
+# If "events" is empty or omitted, the webhook receives ALL events.
+# The request body is JSON with the event payload (build stats, etc.).
+# If "secret" is set, an X-OSG-Signature header is sent with the request:
+#   X-OSG-Signature: sha256=<hex-encoded HMAC-SHA256 of the body>
+#
+# webhooks:
+#   - url: "https://hooks.example.com/osg"
+#     events: ["build.success", "deploy.success"]
+#     secret: "my-webhook-secret"
+#   - url: "https://slack.example.com/webhook"
+#     events: []            # empty = all events
+
+# -----------------------------------------------------------------------------
+# Analytics
+# -----------------------------------------------------------------------------
+# analytics: Enable lightweight first-party analytics (no third-party scripts).
+#   When enabled and the API server is running (osg serve --api or osg api),
+#   OSG tracks pageviews, referrer domains, and browser families in the same
+#   SQLite database used by interactions.
+#
+#   A tracking script is generated at /js/analytics.js — add it to your
+#   templates or use the build helper GenerateAnalyticsScript().
+#
+#   Respects the DNT (Do Not Track) header: both the JS script and the API
+#   endpoint skip tracking when DNT=1.
+#
+#   API endpoints (when analytics is enabled):
+#     POST /api/v1/analytics/hit     — record a pageview
+#     GET  /api/v1/analytics/summary — aggregated data (top pages, referrers,
+#                                      daily views, browser breakdown)
+#
+#   Default: false (disabled).
+# analytics: true
+analytics: false
+
+# -----------------------------------------------------------------------------
 # Taxonomies
 # -----------------------------------------------------------------------------
 # Define content groupings derived from front-matter fields.

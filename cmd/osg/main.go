@@ -348,7 +348,7 @@ func hasHelpFlag(args []string) bool {
 }
 
 func printCompletion(shell string) {
-	commands := "init update-content build deploy serve api new preview tui theme plugin check doctor version completion"
+	commands := "init update-content build deploy serve api new preview tui theme plugin import check audit doctor version completion"
 
 	switch shell {
 	case "bash":

@@ -9,7 +9,7 @@ El sistema soporta themes, plugins WASM para extender el pipeline y un modo TUI 
 Componentes principales:
 
 - cmd/osg: CLI y wiring
-- internal/app: comandos (init, update-content, build, serve, tui)
+- internal/app: comandos (init, update-content, build, serve, tui, import, audit)
 - internal/config: carga y merge de config (YAML + env + flags)
 - internal/vault: descubrimiento de archivos, lectura e indice de imagenes
 - internal/frontmatter: parse YAML y split frontmatter/body
@@ -23,10 +23,14 @@ Componentes principales:
 - internal/placeholder: generacion determinista de imagenes SVG placeholder (Nord)
 - internal/summary: auto-generacion de summaries (Provider interface, PlainText, truncate, Kairos AI)
 - internal/wikilink: deteccion y reescritura de wikilinks de imagen Obsidian
-- internal/plugin: host WASM y hooks
+- internal/plugin: host WASM y hooks (hot-reload en serve)
 - internal/tui: UI con Bubble Tea
 - internal/i18n: carga de traducciones YAML, funcion trans() y date_format() para plantillas
 - internal/theme: theme embebido por defecto con EnsureDefaultTheme
+- internal/webhook: despacho de webhooks HTTP con HMAC-SHA256
+- internal/importer: importacion desde WordPress (WXR XML) y Hugo (YAML/TOML)
+- internal/audit: auditoria HTML (accesibilidad, headings, tamano)
+- internal/api: API de interacciones (views, likes, comments) y analytics
 
 ## Data flow
 
