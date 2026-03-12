@@ -51,61 +51,76 @@ type LanguageConfig struct {
 }
 
 type Config struct {
-	BaseURL           string             `koanf:"base_url" yaml:"base_url"`
-	SiteTitle         string             `koanf:"site_title" yaml:"site_title"`
-	SiteDescription   string             `koanf:"site_description" yaml:"site_description"`
-	Theme             string             `koanf:"theme" yaml:"theme"`
-	Logo              string             `koanf:"logo" yaml:"logo"`
-	Favicon           string             `koanf:"favicon" yaml:"favicon"`
-	ColorScheme       string             `koanf:"color_scheme" yaml:"color_scheme"`
-	VaultPath         string             `koanf:"vault_path" yaml:"vault_path"`
-	ContentDir        string             `koanf:"content_dir" yaml:"content_dir"`
-	PublicDir         string             `koanf:"public_dir" yaml:"public_dir"`
-	TemplatesDir      string             `koanf:"templates_dir" yaml:"templates_dir"`
-	StaticDir         string             `koanf:"static_dir" yaml:"static_dir"`
-	ThemesDir         string             `koanf:"themes_dir" yaml:"themes_dir"`
-	PluginsDir        string             `koanf:"plugins_dir" yaml:"plugins_dir"`
-	PluginsEnabled    []string           `koanf:"plugins_enabled" yaml:"plugins_enabled"`
-	PluginTimeout     int                `koanf:"plugin_timeout" yaml:"plugin_timeout"`
-	SassDir           string             `koanf:"sass_dir" yaml:"sass_dir"`
-	ContentLayout     string             `koanf:"content_layout" yaml:"content_layout"`
-	IncludeDrafts     bool               `koanf:"include_drafts" yaml:"include_drafts"`
-	CompileSass       bool               `koanf:"compile_sass" yaml:"compile_sass"`
-	TUIPrefix         string             `koanf:"tui_prefix" yaml:"tui_prefix"`
-	TUIPrefixMs       int                `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
-	TUILogModifier    string             `koanf:"tui_log_modifier" yaml:"tui_log_modifier"`
-	ServeWatch        bool               `koanf:"serve_watch" yaml:"serve_watch"`
-	ServeReload       bool               `koanf:"serve_live_reload" yaml:"serve_live_reload"`
-	ServeDebounce     int                `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
-	BuildIncremental  bool               `koanf:"build_incremental" yaml:"build_incremental"`
-	BuildCacheDir     string             `koanf:"build_cache_dir" yaml:"build_cache_dir"`
-	CleanPublic       bool               `koanf:"clean_public" yaml:"clean_public"`
-	SummaryStrategy   string             `koanf:"summary_strategy" yaml:"summary_strategy"`
-	SiteFeed          bool               `koanf:"site_feed" yaml:"site_feed"`
-	SiteFeedLimit     int                `koanf:"site_feed_limit" yaml:"site_feed_limit"`
-	SectionFeeds      bool               `koanf:"section_feeds" yaml:"section_feeds"`
-	PostsPerPage      int                `koanf:"posts_per_page" yaml:"posts_per_page"`
-	ImageOptimization bool               `koanf:"image_optimization" yaml:"image_optimization"`
-	ImageQuality      int                `koanf:"image_quality" yaml:"image_quality"`
-	ImageWidths       []int              `koanf:"image_widths" yaml:"image_widths"`
-	Lightbox          bool               `koanf:"lightbox" yaml:"lightbox"`
-	Sharing           bool               `koanf:"sharing" yaml:"sharing"`
-	Minify            bool               `koanf:"minify" yaml:"minify"`
-	NavTaxonomy       string             `koanf:"nav_taxonomy" yaml:"nav_taxonomy"`
-	DefaultLanguage   string             `koanf:"default_language" yaml:"default_language"`
-	Languages         []LanguageConfig   `koanf:"languages" yaml:"languages"`
-	DefaultEditor     string             `koanf:"default_editor" yaml:"default_editor"`
-	NewNotesDir       string             `koanf:"new_notes_dir" yaml:"new_notes_dir"`
-	DoctorProfile     string             `koanf:"doctor_profile" yaml:"doctor_profile"`
-	Social            map[string]string  `koanf:"social" yaml:"social"`
-	Copyright         string             `koanf:"copyright" yaml:"copyright"`
-	AI                AIConfig           `koanf:"ai" yaml:"ai"`
-	Logging           LoggingConfig      `koanf:"logging" yaml:"logging"`
-	Taxonomies        []TaxonomyConfig   `koanf:"taxonomies" yaml:"taxonomies"`
-	Deploy            DeployConfig       `koanf:"deploy" yaml:"deploy"`
-	Interactions      InteractionsConfig `koanf:"interactions" yaml:"interactions"`
-	Webhooks          []WebhookConfig    `koanf:"webhooks" yaml:"webhooks"`
-	Analytics         bool               `koanf:"analytics" yaml:"analytics"`
+	BaseURL            string                    `koanf:"base_url" yaml:"base_url"`
+	SiteTitle          string                    `koanf:"site_title" yaml:"site_title"`
+	SiteDescription    string                    `koanf:"site_description" yaml:"site_description"`
+	Theme              string                    `koanf:"theme" yaml:"theme"`
+	Logo               string                    `koanf:"logo" yaml:"logo"`
+	Favicon            string                    `koanf:"favicon" yaml:"favicon"`
+	ColorScheme        string                    `koanf:"color_scheme" yaml:"color_scheme"`
+	VaultPath          string                    `koanf:"vault_path" yaml:"vault_path"`
+	ContentDir         string                    `koanf:"content_dir" yaml:"content_dir"`
+	PublicDir          string                    `koanf:"public_dir" yaml:"public_dir"`
+	TemplatesDir       string                    `koanf:"templates_dir" yaml:"templates_dir"`
+	StaticDir          string                    `koanf:"static_dir" yaml:"static_dir"`
+	ThemesDir          string                    `koanf:"themes_dir" yaml:"themes_dir"`
+	PluginsDir         string                    `koanf:"plugins_dir" yaml:"plugins_dir"`
+	PluginsEnabled     []string                  `koanf:"plugins_enabled" yaml:"plugins_enabled"`
+	PluginTimeout      int                       `koanf:"plugin_timeout" yaml:"plugin_timeout"`
+	SassDir            string                    `koanf:"sass_dir" yaml:"sass_dir"`
+	ContentLayout      string                    `koanf:"content_layout" yaml:"content_layout"`
+	IncludeDrafts      bool                      `koanf:"include_drafts" yaml:"include_drafts"`
+	CompileSass        bool                      `koanf:"compile_sass" yaml:"compile_sass"`
+	TUIPrefix          string                    `koanf:"tui_prefix" yaml:"tui_prefix"`
+	TUIPrefixMs        int                       `koanf:"tui_prefix_ms" yaml:"tui_prefix_ms"`
+	TUILogModifier     string                    `koanf:"tui_log_modifier" yaml:"tui_log_modifier"`
+	ServeWatch         bool                      `koanf:"serve_watch" yaml:"serve_watch"`
+	ServeReload        bool                      `koanf:"serve_live_reload" yaml:"serve_live_reload"`
+	ServeDebounce      int                       `koanf:"serve_debounce_ms" yaml:"serve_debounce_ms"`
+	BuildIncremental   bool                      `koanf:"build_incremental" yaml:"build_incremental"`
+	BuildCacheDir      string                    `koanf:"build_cache_dir" yaml:"build_cache_dir"`
+	CleanPublic        bool                      `koanf:"clean_public" yaml:"clean_public"`
+	SummaryStrategy    string                    `koanf:"summary_strategy" yaml:"summary_strategy"`
+	SiteFeed           bool                      `koanf:"site_feed" yaml:"site_feed"`
+	SiteFeedLimit      int                       `koanf:"site_feed_limit" yaml:"site_feed_limit"`
+	SectionFeeds       bool                      `koanf:"section_feeds" yaml:"section_feeds"`
+	PostsPerPage       int                       `koanf:"posts_per_page" yaml:"posts_per_page"`
+	ImageOptimization  bool                      `koanf:"image_optimization" yaml:"image_optimization"`
+	ImageQuality       int                       `koanf:"image_quality" yaml:"image_quality"`
+	ImageWidths        []int                     `koanf:"image_widths" yaml:"image_widths"`
+	Lightbox           bool                      `koanf:"lightbox" yaml:"lightbox"`
+	Sharing            bool                      `koanf:"sharing" yaml:"sharing"`
+	Minify             bool                      `koanf:"minify" yaml:"minify"`
+	NavTaxonomy        string                    `koanf:"nav_taxonomy" yaml:"nav_taxonomy"`
+	DefaultLanguage    string                    `koanf:"default_language" yaml:"default_language"`
+	Languages          []LanguageConfig          `koanf:"languages" yaml:"languages"`
+	DefaultEditor      string                    `koanf:"default_editor" yaml:"default_editor"`
+	NewNotesDir        string                    `koanf:"new_notes_dir" yaml:"new_notes_dir"`
+	DoctorProfile      string                    `koanf:"doctor_profile" yaml:"doctor_profile"`
+	Social             map[string]string         `koanf:"social" yaml:"social"`
+	Copyright          string                    `koanf:"copyright" yaml:"copyright"`
+	AI                 AIConfig                  `koanf:"ai" yaml:"ai"`
+	Logging            LoggingConfig             `koanf:"logging" yaml:"logging"`
+	Taxonomies         []TaxonomyConfig          `koanf:"taxonomies" yaml:"taxonomies"`
+	Deploy             DeployConfig              `koanf:"deploy" yaml:"deploy"`
+	Interactions       InteractionsConfig        `koanf:"interactions" yaml:"interactions"`
+	Webhooks           []WebhookConfig           `koanf:"webhooks" yaml:"webhooks"`
+	Analytics          bool                      `koanf:"analytics" yaml:"analytics"`
+	AnalyticsProviders []AnalyticsProviderConfig `koanf:"analytics_providers" yaml:"analytics_providers"`
+	HeadExtra          string                    `koanf:"head_extra" yaml:"head_extra"`
+	BodyExtra          string                    `koanf:"body_extra" yaml:"body_extra"`
+}
+
+// AnalyticsProviderConfig describes a third-party analytics provider.
+type AnalyticsProviderConfig struct {
+	// Provider name: "cloudflare", "google", "plausible", "fathom".
+	Provider string `koanf:"provider" yaml:"provider"`
+	// Token is the site token (Cloudflare Web Analytics, Fathom).
+	Token string `koanf:"token" yaml:"token"`
+	// TrackingID is the measurement ID (Google GA4: "G-XXXXXXX").
+	TrackingID string `koanf:"tracking_id" yaml:"tracking_id"`
+	// Domain is the site domain (Plausible).
+	Domain string `koanf:"domain" yaml:"domain"`
 }
 
 // WebhookConfig defines a single webhook endpoint.
@@ -377,6 +392,34 @@ func Load(path string) (Config, error) {
 		}
 		if cfg.Interactions.Comments.Providers[i].ClientSecret == "" {
 			return cfg, fmt.Errorf("interactions.comments.providers[%d].client_secret is required", i)
+		}
+	}
+
+	// Normalise and validate analytics providers.
+	for i, ap := range cfg.AnalyticsProviders {
+		cfg.AnalyticsProviders[i].Provider = strings.ToLower(strings.TrimSpace(ap.Provider))
+		cfg.AnalyticsProviders[i].Token = strings.TrimSpace(ap.Token)
+		cfg.AnalyticsProviders[i].TrackingID = strings.TrimSpace(ap.TrackingID)
+		cfg.AnalyticsProviders[i].Domain = strings.TrimSpace(ap.Domain)
+		switch cfg.AnalyticsProviders[i].Provider {
+		case "cloudflare":
+			if cfg.AnalyticsProviders[i].Token == "" {
+				return cfg, fmt.Errorf("analytics_providers[%d] (cloudflare): token is required", i)
+			}
+		case "google":
+			if cfg.AnalyticsProviders[i].TrackingID == "" {
+				return cfg, fmt.Errorf("analytics_providers[%d] (google): tracking_id is required", i)
+			}
+		case "plausible":
+			if cfg.AnalyticsProviders[i].Domain == "" {
+				return cfg, fmt.Errorf("analytics_providers[%d] (plausible): domain is required", i)
+			}
+		case "fathom":
+			if cfg.AnalyticsProviders[i].Token == "" {
+				return cfg, fmt.Errorf("analytics_providers[%d] (fathom): token is required", i)
+			}
+		default:
+			return cfg, fmt.Errorf("analytics_providers[%d].provider %q: must be cloudflare, google, plausible, or fathom", i, ap.Provider)
 		}
 	}
 
@@ -713,6 +756,26 @@ doctor_profile: dev
 logging:
   level: info
   format: json
+
+# -----------------------------------------------------------------------------
+# Third-party analytics providers
+# -----------------------------------------------------------------------------
+# Inject tracking scripts from well-known analytics services.
+# Supported: cloudflare (token), google (tracking_id), plausible (domain), fathom (token).
+#
+# analytics_providers:
+#   - provider: cloudflare
+#     token: "your-cloudflare-token"
+#   - provider: google
+#     tracking_id: "G-XXXXXXX"
+
+# -----------------------------------------------------------------------------
+# Custom code injection
+# -----------------------------------------------------------------------------
+# head_extra: Custom HTML/JS injected at the end of <head> on every page.
+# body_extra: Custom HTML/JS injected before </body> on every page.
+# head_extra: ""
+# body_extra: ""
 
 # -----------------------------------------------------------------------------
 # Taxonomies

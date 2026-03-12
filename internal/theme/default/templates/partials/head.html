@@ -79,3 +79,7 @@
 {{- /* --- Stylesheets --- */ -}}
 <link rel="stylesheet" href="{{ get_url "/style.css" false true }}" />
 <link rel="stylesheet" href="{{ get_url "/css/syntax.css" false true }}" />
+{{- /* --- First-party analytics (osg built-in) --- */ -}}
+{{ if .config.analytics }}<script defer src="{{ get_url "/js/analytics.js" false true }}"></script>{{ end }}
+{{- /* --- Third-party analytics & custom head injection --- */ -}}
+{{ if .config.analytics_head }}{{ .config.analytics_head }}{{ end }}

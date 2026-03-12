@@ -440,6 +440,14 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	stats.Cached += bookmarksCached
 	done()
 
+	// --- First-party analytics script ---
+	if cfg.Analytics {
+		apiURL := cfg.Interactions.APIURL
+		if err := GenerateAnalyticsScript(cfg.PublicDir, apiURL); err != nil {
+			logger.Warn("analytics script generation failed", "error", err)
+		}
+	}
+
 	// --- Stage: minify ---
 	done = timings.stage("minify")
 	// Post-render: minify HTML, CSS, JS, JSON, SVG, XML files in public/.
@@ -965,7 +973,23 @@ func configView(cfg config.Config) map[string]any {
 		"interactions_api_url": cfg.Interactions.APIURL,
 		"comments_enabled":     cfg.Interactions.Comments.Enabled && len(cfg.Interactions.Comments.Providers) > 0,
 		"comments_providers":   commentsProvidersView(cfg.Interactions.Comments),
+		"analytics":            cfg.Analytics,
+		"analytics_head":       template.HTML(buildAnalyticsHead(cfg)),
+		"analytics_body":       template.HTML(cfg.BodyExtra),
 	}
+}
+
+// buildAnalyticsHead combines third-party provider snippets with head_extra.
+func buildAnalyticsHead(cfg config.Config) string {
+	var sb strings.Builder
+	sb.WriteString(analyticsHeadSnippets(cfg.AnalyticsProviders))
+	if cfg.HeadExtra != "" {
+		sb.WriteString(cfg.HeadExtra)
+		if !strings.HasSuffix(cfg.HeadExtra, "\n") {
+			sb.WriteByte('\n')
+		}
+	}
+	return sb.String()
 }
 
 // commentsProvidersView builds the template-friendly slice of comment

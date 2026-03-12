@@ -18,5 +18,6 @@
 
       {{ template "partials/footer.html" . }}
     </div>
+    {{ if .config.analytics_body }}{{ .config.analytics_body }}{{ end }}
   </body>
 </html>

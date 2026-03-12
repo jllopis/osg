@@ -29,5 +29,6 @@
       {{ template "partials/footer.html" . }}
     </div>
     <script defer src="{{ get_url "/js/bookmarks.js" false true }}"></script>
+    {{ if .config.analytics_body }}{{ .config.analytics_body }}{{ end }}
   </body>
 </html>

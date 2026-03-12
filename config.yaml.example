@@ -464,6 +464,41 @@ posts_per_page: 10
 analytics: false
 
 # -----------------------------------------------------------------------------
+# Third-party analytics providers
+# -----------------------------------------------------------------------------
+# Inject tracking scripts from well-known analytics services.
+# Each provider generates the appropriate <script> tag automatically.
+# You can configure multiple providers at the same time.
+#
+# Supported providers:
+#   cloudflare — Cloudflare Web Analytics (requires "token")
+#   google     — Google Analytics GA4 (requires "tracking_id", e.g. "G-XXXXXXX")
+#   plausible  — Plausible Analytics (requires "domain")
+#   fathom     — Fathom Analytics (requires "token", your Site ID)
+#
+# analytics_providers:
+#   - provider: cloudflare
+#     token: "your-cloudflare-token"
+#   - provider: google
+#     tracking_id: "G-XXXXXXX"
+#   - provider: plausible
+#     domain: "example.com"
+#   - provider: fathom
+#     token: "ABCDEF"
+
+# -----------------------------------------------------------------------------
+# Custom code injection
+# -----------------------------------------------------------------------------
+# Inject arbitrary HTML/JS into every page. Useful for verification meta tags,
+# custom scripts, or analytics providers not covered by analytics_providers.
+#
+# head_extra: Injected at the end of <head> (after stylesheets and analytics).
+# body_extra: Injected just before </body>.
+#
+# head_extra: '<meta name="google-site-verification" content="abc123" />'
+# body_extra: '<script src="/js/custom.js"></script>'
+
+# -----------------------------------------------------------------------------
 # Taxonomies
 # -----------------------------------------------------------------------------
 # Define content groupings derived from front-matter fields.

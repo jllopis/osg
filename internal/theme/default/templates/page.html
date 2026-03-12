@@ -236,5 +236,6 @@
     {{ if .toc }}<script defer src="{{ get_url "/js/toc-spy.js" false true }}"></script>{{ end }}
     <script defer src="{{ get_url "/js/bookmarks.js" false true }}"></script>
     {{ end }}
+    {{ if .config.analytics_body }}{{ .config.analytics_body }}{{ end }}
   </body>
 </html>

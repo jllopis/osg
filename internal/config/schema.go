@@ -271,9 +271,17 @@ func ConfigSchema() []ConfigSection {
 		},
 		{
 			Name:        "Analytics",
-			Description: "Lightweight first-party analytics (pageviews, referrers, browsers).",
+			Description: "First-party analytics and third-party analytics providers.",
 			Fields: []ConfigField{
-				{Key: "analytics", Label: "Analytics", Description: "Enable first-party analytics. Requires the API server (osg serve --api or osg api). Respects DNT.", Type: FieldBool, Default: "false"},
+				{Key: "analytics", Label: "First-Party Analytics", Description: "Enable built-in analytics (pageviews, referrers, browsers). Requires API server. Respects DNT.", Type: FieldBool, Default: "false"},
+				{Key: "analytics_providers", Label: "Analytics Providers", Description: "Third-party analytics services.", Type: FieldStructList, Nested: []ConfigField{
+					{Key: "provider", Label: "Provider", Description: "Provider name.", Type: FieldString, Options: []string{"cloudflare", "google", "plausible", "fathom"}},
+					{Key: "token", Label: "Token", Description: "Site token (Cloudflare, Fathom).", Type: FieldString, Sensitive: true},
+					{Key: "tracking_id", Label: "Tracking ID", Description: "Measurement ID (Google GA4: G-XXXXXXX).", Type: FieldString, Sensitive: true},
+					{Key: "domain", Label: "Domain", Description: "Site domain (Plausible).", Type: FieldString},
+				}},
+				{Key: "head_extra", Label: "Head Extra", Description: "Custom HTML/JS injected at the end of <head> on every page.", Type: FieldString},
+				{Key: "body_extra", Label: "Body Extra", Description: "Custom HTML/JS injected before </body> on every page.", Type: FieldString},
 			},
 		},
 		{
