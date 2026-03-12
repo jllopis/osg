@@ -375,6 +375,43 @@ func TestEmit_SearchBuildFinished(t *testing.T) {
 	if !contains(content, "A test summary") {
 		t.Error("search.json does not contain 'A test summary'")
 	}
+	// The permalink /2025/01/01/test-post/ starts with a year, so section is empty.
+	if !contains(content, `"section":""`) && !contains(content, `"section": ""`) {
+		t.Error("search.json should contain empty section for root-level page")
+	}
+}
+
+func TestEmit_SearchBuildFinished_Section(t *testing.T) {
+	t.Parallel()
+	m, ctx := setupSearchPlugin(t)
+	defer func() { _ = m.Close(ctx) }()
+
+	publicDir := filepath.Join(t.TempDir(), "public")
+	_ = os.MkdirAll(publicDir, 0o755)
+
+	pages := []any{
+		map[string]any{
+			"title":      "Blog Post",
+			"summary":    "A blog post",
+			"permalink":  "/blog/2025/01/01/hello/",
+			"date":       "2025-01-01",
+			"taxonomies": map[string]any{},
+		},
+	}
+
+	_ = m.Emit(ctx, "build.finished", map[string]any{
+		"config": map[string]any{"public_dir": publicDir},
+		"site":   map[string]any{"pages": pages},
+	})
+
+	data, err := os.ReadFile(filepath.Join(publicDir, "search.json"))
+	if err != nil {
+		t.Fatalf("read search.json: %v", err)
+	}
+	content := string(data)
+	if !contains(content, `"section":"blog"`) && !contains(content, `"section": "blog"`) {
+		t.Errorf("search.json should contain section 'blog', got: %s", content[:min(len(content), 200)])
+	}
 }
 
 func TestLoad_FiltersByEnabled(t *testing.T) {
