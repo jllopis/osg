@@ -705,16 +705,16 @@ Funcionalidades orientadas al lector y a sitios con mucho contenido.
 - [done] i18n: claves `bookmark_save`, `bookmark_remove`, `bookmarks`, `no_bookmarks`
 - [done] Dual-file sync: templates, JS, CSS, i18n
 
-## Phase 22 — DX y experiencia de desarrollo (partial)
+## Phase 22 — DX y experiencia de desarrollo (done)
 
 Mejoras al flujo de trabajo del autor de contenido y del desarrollador de temas/plugins.
 
-### 22A — Hot reload parcial (incremental serve)
-- [todo] En `osg serve --watch`, detectar que fichero cambio y solo re-renderizar las paginas afectadas
-- [todo] Si cambia un template, re-renderizar solo las paginas que usan ese template
-- [todo] Si cambia un fichero Markdown, solo re-renderizar esa pagina + index/section que la listan
-- [todo] Si cambia un fichero Sass/CSS, solo recompilar assets (no re-renderizar HTML)
-- [todo] Log del motivo de rebuild: "rebuilding page X (content changed)" vs "full rebuild (template changed)"
+### 22A — Hot reload parcial (incremental serve) (done)
+- [done] En `osg serve --watch`, detectar que fichero cambio y solo re-renderizar las paginas afectadas
+- [done] Si cambia un template, re-renderizar solo las paginas que usan ese template
+- [done] Si cambia un fichero Markdown, solo re-renderizar esa pagina + index/section que la listan
+- [done] Si cambia un fichero Sass/CSS, solo recompilar assets (no re-renderizar HTML)
+- [done] Log del motivo de rebuild: "rebuilding page X (content changed)" vs "full rebuild (template changed)"
 
 ### 22B — Dry-run para build (done)
 - [done] `osg build --dry-run`: mostrar que ficheros se generarian sin escribir a disco
@@ -736,15 +736,15 @@ Mejoras al flujo de trabajo del autor de contenido y del desarrollador de temas/
 - [done] /stats slash command en TUI
 - [done] Accesible via `/stats` slash command en TUI
 
-## Phase 23 — Rendimiento avanzado (partial)
+## Phase 23 — Rendimiento avanzado (done)
 
 Optimizaciones para sitios grandes (100+ posts, muchas imagenes).
 
-### 23A — Incremental builds inteligentes
-- [todo] Dependency tracking: si un template cambia, solo re-renderizar las paginas que lo usan
-- [todo] Si solo cambia contenido de una pagina, no re-renderizar secciones/taxonomias no afectadas
-- [todo] Cache de dependencias template->pagina persistente entre builds
-- [todo] Log de decisiones de cache: "skipping page X (no changes)" vs "rebuilding page X (template changed)"
+### 23A — Incremental builds inteligentes (done)
+- [done] Dependency tracking: si un template cambia, solo re-renderizar las paginas que lo usan
+- [done] Si solo cambia contenido de una pagina, no re-renderizar secciones/taxonomias no afectadas
+- [done] Cache de dependencias template->pagina persistente entre builds
+- [done] Log de decisiones de cache: "skipping page X (no changes)" vs "rebuilding page X (template changed)"
 
 ### 23B — Lazy image optimization (done)
 - [done] SHA-256 hash de imagen fuente vs cache antes de re-procesar

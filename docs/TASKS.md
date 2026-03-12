@@ -483,11 +483,11 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 21D) i18n: bookmark_save, bookmark_remove, bookmarks, no_bookmarks
 [done] (Phase 21D) Dual-file sync: templates, JS, CSS, i18n
 
-[todo] (Phase 22A) Hot reload parcial: detectar fichero cambiado, solo re-renderizar afectados
-[todo] (Phase 22A) Template change -> solo paginas que usan ese template
-[todo] (Phase 22A) Content change -> solo esa pagina + index/section
-[todo] (Phase 22A) Sass/CSS change -> solo recompilar assets
-[todo] (Phase 22A) Log motivo de rebuild
+[done] (Phase 22A) Hot reload parcial: detectar fichero cambiado, solo re-renderizar afectados
+[done] (Phase 22A) Template change -> solo paginas que usan ese template
+[done] (Phase 22A) Content change -> solo esa pagina + index/section
+[done] (Phase 22A) Sass/CSS change -> solo recompilar assets
+[done] (Phase 22A) Log motivo de rebuild
 
 [done] (Phase 22B) `osg build --dry-run`: mostrar ficheros que se generarian sin escribir
 [done] (Phase 22B) Formato tabla con ruta y tamano estimado
@@ -501,9 +501,18 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 22D) Desglose por seccion, histograma publicaciones (sparkline ASCII)
 [done] (Phase 22D) /stats slash command en TUI
 
-[todo] (Phase 23A) Dependency tracking template->pagina para incremental builds inteligentes
-[todo] (Phase 23A) Cache de dependencias persistente entre builds
-[todo] (Phase 23A) Log de decisiones de cache
+[done] (Phase 23A) Dependency tracking template->pagina para incremental builds inteligentes
+[done] (Phase 23A) Cache de dependencias persistente entre builds
+[done] (Phase 23A) Log de decisiones de cache
+
+[done] (Analytics) Third-party analytics providers: Cloudflare Web Analytics, Google GA4, Plausible, Fathom
+[done] (Analytics) analytics_providers config: provider, token, tracking_id, domain con validacion
+[done] (Analytics) Generacion automatica de <script> tags con XSS protection (html.EscapeString)
+[done] (Analytics) Custom code injection: head_extra y body_extra (template.HTML, sin escaping)
+[done] (Analytics) 7 tests unitarios analytics_providers_test.go
+[done] (Analytics) Templates actualizados: analytics_head en head.html, analytics_body en todos los templates
+[done] (Analytics) Dual-file sync: templates en internal/theme/default/ y themes/default/
+[done] (Analytics) config.yaml.example y sample-site documentados
 
 [done] (Phase 23B) Lazy image optimization: SHA-256 hash vs cache
 [done] (Phase 23B) Solo generar variantes WebP/srcset de imagenes nuevas/modificadas
