@@ -17,17 +17,23 @@ import (
 	"osg/internal/render"
 )
 
-const buildCacheVersion = 2
+const buildCacheVersion = 3
 
 type buildCache struct {
 	Version       int                  `json:"version"`
 	ConfigHash    string               `json:"config_hash"`
 	TemplatesHash string               `json:"templates_hash"`
+	Templates     map[string]string    `json:"templates,omitempty"`
 	AssetsHash    string               `json:"assets_hash"`
+	StaticHash    string               `json:"static_hash,omitempty"`
+	SassHash      string               `json:"sass_hash,omitempty"`
 	PluginsHash   string               `json:"plugins_hash"`
 	Content       map[string]fileStamp `json:"content"`
 	Outputs       map[string]string    `json:"outputs"`
-	GeneratedAt   string               `json:"generated_at"`
+	// Dependency graph for smart incremental builds.
+	PageTemplates map[string]string   `json:"page_templates,omitempty"` // source_path -> template_name
+	SectionPages  map[string][]string `json:"section_pages,omitempty"`  // section_path -> [source_paths]
+	GeneratedAt   string              `json:"generated_at"`
 }
 
 type fileStamp struct {
@@ -61,7 +67,19 @@ func buildCacheFrom(cfg config.Config, files []string) (*buildCache, error) {
 	if err != nil {
 		return nil, err
 	}
+	perTemplateHashes, err := hashTemplatesPerFile(cfg)
+	if err != nil {
+		return nil, err
+	}
 	assetsHash, err := hashAssets(cfg)
+	if err != nil {
+		return nil, err
+	}
+	staticHash, err := hashStatic(cfg)
+	if err != nil {
+		return nil, err
+	}
+	sassHash, err := hashSass(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +97,10 @@ func buildCacheFrom(cfg config.Config, files []string) (*buildCache, error) {
 		Version:       buildCacheVersion,
 		ConfigHash:    configHash,
 		TemplatesHash: templatesHash,
+		Templates:     perTemplateHashes,
 		AssetsHash:    assetsHash,
+		StaticHash:    staticHash,
+		SassHash:      sassHash,
 		PluginsHash:   pluginsHash,
 		Content:       content,
 		GeneratedAt:   time.Now().UTC().Format(time.RFC3339Nano),
@@ -190,6 +211,85 @@ func hashTemplates(cfg config.Config) (string, error) {
 		return "", err
 	}
 	hashes = append(hashes, userSig, themeSig)
+	return hashStrings(hashes), nil
+}
+
+// hashTemplatesPerFile returns a map of relative template path -> hash.
+// This allows diffing which individual templates changed between builds.
+func hashTemplatesPerFile(cfg config.Config) (map[string]string, error) {
+	result := make(map[string]string)
+	dirs := []string{
+		cfg.TemplatesDir,
+		themeTemplatesDir(cfg),
+	}
+	for _, dir := range dirs {
+		dir = strings.TrimSpace(dir)
+		if dir == "" {
+			continue
+		}
+		info, err := os.Stat(dir)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				if shouldSkipDir(d.Name()) {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !isTemplateFile(path, d) {
+				return nil
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			rel, err := filepath.Rel(dir, path)
+			if err != nil {
+				return err
+			}
+			key := filepath.ToSlash(rel)
+			result[key] = hashBytes(data) // user templates override theme
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+// hashStatic hashes only static assets (not sass).
+func hashStatic(cfg config.Config) (string, error) {
+	hashes := []string{}
+	s1, err := hashDir(cfg.StaticDir, includeAllFiles)
+	if err != nil {
+		return "", err
+	}
+	s2, err := hashDir(filepath.Join(cfg.ThemesDir, cfg.Theme, "static"), includeAllFiles)
+	if err != nil {
+		return "", err
+	}
+	hashes = append(hashes, s1, s2)
+	return hashStrings(hashes), nil
+}
+
+// hashSass hashes only sass/scss assets.
+func hashSass(cfg config.Config) (string, error) {
+	hashes := []string{}
+	s1, err := hashDir(cfg.SassDir, includeAllFiles)
+	if err != nil {
+		return "", err
+	}
+	s2, err := hashDir(filepath.Join(cfg.ThemesDir, cfg.Theme, "sass"), includeAllFiles)
+	if err != nil {
+		return "", err
+	}
+	hashes = append(hashes, s1, s2)
 	return hashStrings(hashes), nil
 }
 

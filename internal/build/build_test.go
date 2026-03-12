@@ -835,7 +835,7 @@ func TestFillWithAI_AffectedPagesMarkChangedInPlan(t *testing.T) {
 
 	// Verify shouldRenderPage returns true for affected pages.
 	pageA := &site.Page{SourcePath: "page-a.md"}
-	if !plan.shouldRenderPage(pageA, "/some/existing/output.html") {
+	if !plan.shouldRenderPage(pageA, "/some/existing/output.html", "page.html") {
 		t.Error("shouldRenderPage should return true for page-a.md (in changedFiles)")
 	}
 

@@ -714,7 +714,7 @@ func TestShouldRenderPage_NilChangedFiles(t *testing.T) {
 	page := &site.Page{SourcePath: "a.md"}
 	// nil changedFiles map means the file is not in changedFiles,
 	// so it falls through to outputMissing.
-	got := plan.shouldRenderPage(page, "/nonexistent/path.html")
+	got := plan.shouldRenderPage(page, "/nonexistent/path.html", "page.html")
 	if !got {
 		t.Error("expected true for missing output even with nil changedFiles")
 	}
@@ -2212,11 +2212,16 @@ func TestBuildPlanFromCache_TemplatesChanged(t *testing.T) {
 	}
 
 	plan, _ := buildPlanFromCache(cfg, []string{f}, logger)
-	if !plan.full {
-		t.Error("expected full build when templates changed")
+	// Smart incremental: template changes no longer trigger full rebuild.
+	// Instead, only affected pages re-render.
+	if plan.full {
+		t.Error("template change should not trigger full rebuild (smart incremental)")
 	}
-	if plan.reason != "templates changed" {
-		t.Errorf("reason = %q, want 'templates changed'", plan.reason)
+	if !plan.templatesChanged {
+		t.Error("templatesChanged should be true")
+	}
+	if len(plan.changedTemplates) == 0 {
+		t.Error("changedTemplates should not be empty")
 	}
 }
 
@@ -2270,11 +2275,12 @@ func TestBuildPlanFromCache_AssetsChanged(t *testing.T) {
 	}
 
 	plan, _ := buildPlanFromCache(cfg, []string{f}, logger)
-	if !plan.full {
-		t.Error("expected full build when assets changed")
+	// Smart incremental: asset-only changes skip HTML rendering.
+	if plan.full {
+		t.Error("asset change should not trigger full rebuild (smart incremental)")
 	}
-	if plan.reason != "assets changed" {
-		t.Errorf("reason = %q, want 'assets changed'", plan.reason)
+	if !plan.assetsOnly {
+		t.Error("assetsOnly should be true when only assets changed")
 	}
 }
 

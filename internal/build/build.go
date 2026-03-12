@@ -366,78 +366,82 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 
 	// --- Stage: render ---
 	done = timings.stage("render")
-	renderedSections, cachedSections, err := renderSections(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
-	if err != nil {
-		stats.Errors++
-		return err
-	}
-	stats.Rendered += renderedSections
-	stats.Cached += cachedSections
+	if plan.assetsOnly {
+		logger.Info("asset-only change, skipping HTML render")
+	} else {
+		renderedSections, cachedSections, err := renderSections(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
+		if err != nil {
+			stats.Errors++
+			return err
+		}
+		stats.Rendered += renderedSections
+		stats.Cached += cachedSections
 
-	renderedPages, cachedPages, err := renderPages(ctx, renderer, cfg, baseCtx, siteIndex, indices, plugins, plan)
-	if err != nil {
-		stats.Errors++
-		return err
-	}
-	stats.Rendered += renderedPages
-	stats.Cached += cachedPages
+		renderedPages, cachedPages, err := renderPages(ctx, renderer, cfg, baseCtx, siteIndex, indices, plugins, plan)
+		if err != nil {
+			stats.Errors++
+			return err
+		}
+		stats.Rendered += renderedPages
+		stats.Cached += cachedPages
 
-	taxonomyRendered, taxonomyCached, err := renderTaxonomies(ctx, renderer, cfg, baseCtx, siteIndex, indices, plugins, plan)
-	if err != nil {
-		stats.Errors++
-		return err
-	}
-	stats.Rendered += taxonomyRendered
-	stats.Cached += taxonomyCached
+		taxonomyRendered, taxonomyCached, err := renderTaxonomies(ctx, renderer, cfg, baseCtx, siteIndex, indices, plugins, plan)
+		if err != nil {
+			stats.Errors++
+			return err
+		}
+		stats.Rendered += taxonomyRendered
+		stats.Cached += taxonomyCached
 
-	siteFeedRendered, siteFeedCached, err := renderSiteFeed(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
-	if err != nil {
-		stats.Errors++
-		return err
-	}
-	stats.Rendered += siteFeedRendered
-	stats.Cached += siteFeedCached
+		siteFeedRendered, siteFeedCached, err := renderSiteFeed(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
+		if err != nil {
+			stats.Errors++
+			return err
+		}
+		stats.Rendered += siteFeedRendered
+		stats.Cached += siteFeedCached
 
-	sectionFeedRendered, sectionFeedCached, err := renderSectionFeeds(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
-	if err != nil {
-		stats.Errors++
-		return err
-	}
-	stats.Rendered += sectionFeedRendered
-	stats.Cached += sectionFeedCached
+		sectionFeedRendered, sectionFeedCached, err := renderSectionFeeds(ctx, renderer, cfg, baseCtx, siteIndex, plugins, plan)
+		if err != nil {
+			stats.Errors++
+			return err
+		}
+		stats.Rendered += sectionFeedRendered
+		stats.Cached += sectionFeedCached
 
-	sitemapEntries := collectSitemapEntries(cfg, siteIndex, indices)
-	sitemapRendered, sitemapCached, err := renderSitemap(ctx, renderer, cfg, baseCtx, sitemapEntries, plugins, plan)
-	if err != nil {
-		stats.Errors++
-		return err
-	}
-	stats.Rendered += sitemapRendered
-	stats.Cached += sitemapCached
+		sitemapEntries := collectSitemapEntries(cfg, siteIndex, indices)
+		sitemapRendered, sitemapCached, err := renderSitemap(ctx, renderer, cfg, baseCtx, sitemapEntries, plugins, plan)
+		if err != nil {
+			stats.Errors++
+			return err
+		}
+		stats.Rendered += sitemapRendered
+		stats.Cached += sitemapCached
 
-	robotsRendered, robotsCached, err := renderRobots(renderer, cfg, baseCtx, plan)
-	if err != nil {
-		stats.Errors++
-		return err
-	}
-	stats.Rendered += robotsRendered
-	stats.Cached += robotsCached
+		robotsRendered, robotsCached, err := renderRobots(renderer, cfg, baseCtx, plan)
+		if err != nil {
+			stats.Errors++
+			return err
+		}
+		stats.Rendered += robotsRendered
+		stats.Cached += robotsCached
 
-	notFoundRendered, notFoundCached, err := renderNotFound(renderer, cfg, baseCtx, plan)
-	if err != nil {
-		stats.Errors++
-		return err
-	}
-	stats.Rendered += notFoundRendered
-	stats.Cached += notFoundCached
+		notFoundRendered, notFoundCached, err := renderNotFound(renderer, cfg, baseCtx, plan)
+		if err != nil {
+			stats.Errors++
+			return err
+		}
+		stats.Rendered += notFoundRendered
+		stats.Cached += notFoundCached
 
-	bookmarksRendered, bookmarksCached, err := renderBookmarks(renderer, cfg, baseCtx, plan)
-	if err != nil {
-		stats.Errors++
-		return err
+		bookmarksRendered, bookmarksCached, err := renderBookmarks(renderer, cfg, baseCtx, plan)
+		if err != nil {
+			stats.Errors++
+			return err
+		}
+		stats.Rendered += bookmarksRendered
+		stats.Cached += bookmarksCached
 	}
-	stats.Rendered += bookmarksRendered
-	stats.Cached += bookmarksCached
 	done()
 
 	// --- First-party analytics script ---
@@ -498,6 +502,8 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 
 	if cacheToSave != nil {
 		cacheToSave.Outputs = buildOutputsIndex(siteIndex, cfg.PublicDir)
+		cacheToSave.PageTemplates = buildPageTemplatesIndex(siteIndex)
+		cacheToSave.SectionPages = buildSectionPagesIndex(siteIndex)
 		if err := saveBuildCache(buildCachePath(cfg), cacheToSave); err != nil {
 			logger.Warn("cache write failed", "error", err)
 		}
@@ -537,6 +543,46 @@ func buildOutputsIndex(siteIndex *site.Site, publicDir string) map[string]string
 		outputs[section.SourcePath] = outputHTMLPath(publicDir, section.Path)
 	}
 	return outputs
+}
+
+// buildPageTemplatesIndex records which template each page uses.
+func buildPageTemplatesIndex(siteIndex *site.Site) map[string]string {
+	if siteIndex == nil {
+		return nil
+	}
+	idx := make(map[string]string, len(siteIndex.Pages))
+	for _, page := range siteIndex.Pages {
+		if page.SourcePath == "" {
+			continue
+		}
+		tpl := page.Template
+		if tpl == "" {
+			tpl = "page.html"
+		}
+		idx[page.SourcePath] = tpl
+	}
+	return idx
+}
+
+// buildSectionPagesIndex records which pages belong to each section.
+func buildSectionPagesIndex(siteIndex *site.Site) map[string][]string {
+	if siteIndex == nil {
+		return nil
+	}
+	idx := make(map[string][]string, len(siteIndex.Sections))
+	for _, section := range siteIndex.Sections {
+		if section == nil {
+			continue
+		}
+		sources := make([]string, 0, len(section.Pages))
+		for _, p := range section.Pages {
+			if p.SourcePath != "" {
+				sources = append(sources, p.SourcePath)
+			}
+		}
+		idx[section.Path] = sources
+	}
+	return idx
 }
 
 func cleanupRemovedOutputs(publicDir string, removed []string, outputs map[string]string, logger *slog.Logger) int {
@@ -607,7 +653,7 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 		}
 
 		outputPath := outputHTMLPath(cfg.PublicDir, page.Path)
-		if !plan.shouldRenderPage(page, outputPath) {
+		if !plan.shouldRenderPage(page, outputPath, templateName) {
 			cached++
 			continue
 		}
@@ -768,7 +814,7 @@ func renderSections(ctx context.Context, renderer *render.Renderer, cfg config.C
 		}
 
 		outputPath := outputHTMLPath(cfg.PublicDir, section.Path)
-		if !plan.shouldRenderCollection(outputPath) {
+		if !plan.shouldRenderSection(section.Path, outputPath, templateName) {
 			cached++
 			continue
 		}
