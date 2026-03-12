@@ -14,7 +14,7 @@ var bundledFS embed.FS
 // BundledPlugins lists the plugin names embedded in the binary.
 // These are extracted to the site's plugins directory on each build
 // unless the user has placed their own version there.
-var BundledPlugins = []string{"search"}
+var BundledPlugins = []string{"search", "llmstxt", "mermaid", "archives"}
 
 // EnsureBundledPlugins extracts embedded .wasm files into pluginsDir.
 // It does NOT overwrite files that already exist, allowing users to
