@@ -1020,18 +1020,19 @@ func configView(cfg config.Config) map[string]any {
 		"comments_enabled":     cfg.Interactions.Comments.Enabled && len(cfg.Interactions.Comments.Providers) > 0,
 		"comments_providers":   commentsProvidersView(cfg.Interactions.Comments),
 		"analytics":            cfg.Analytics,
-		"analytics_head":       template.HTML(buildAnalyticsHead(cfg)),
-		"analytics_body":       template.HTML(cfg.BodyExtra),
+		"analytics_head":       template.HTML(cfg.HeadExtra),
+		"analytics_body":       template.HTML(buildAnalyticsBody(cfg)),
 	}
 }
 
-// buildAnalyticsHead combines third-party provider snippets with head_extra.
-func buildAnalyticsHead(cfg config.Config) string {
+// buildAnalyticsBody combines third-party provider snippets with body_extra.
+// Provider scripts are injected before </body> as recommended by most providers.
+func buildAnalyticsBody(cfg config.Config) string {
 	var sb strings.Builder
-	sb.WriteString(analyticsHeadSnippets(cfg.AnalyticsProviders))
-	if cfg.HeadExtra != "" {
-		sb.WriteString(cfg.HeadExtra)
-		if !strings.HasSuffix(cfg.HeadExtra, "\n") {
+	sb.WriteString(analyticsSnippets(cfg.AnalyticsProviders))
+	if cfg.BodyExtra != "" {
+		sb.WriteString(cfg.BodyExtra)
+		if !strings.HasSuffix(cfg.BodyExtra, "\n") {
 			sb.WriteByte('\n')
 		}
 	}

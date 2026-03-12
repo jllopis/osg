@@ -467,7 +467,8 @@ analytics: false
 # Third-party analytics providers
 # -----------------------------------------------------------------------------
 # Inject tracking scripts from well-known analytics services.
-# Each provider generates the appropriate <script> tag automatically.
+# Each provider generates the appropriate <script> tag automatically,
+# injected before </body> as recommended by most providers.
 # You can configure multiple providers at the same time.
 #
 # Supported providers:
@@ -492,8 +493,8 @@ analytics: false
 # Inject arbitrary HTML/JS into every page. Useful for verification meta tags,
 # custom scripts, or analytics providers not covered by analytics_providers.
 #
-# head_extra: Injected at the end of <head> (after stylesheets and analytics).
-# body_extra: Injected just before </body>.
+# head_extra: Injected at the end of <head> (meta tags, preloads, etc.).
+# body_extra: Injected just before </body> (after analytics provider scripts).
 #
 # head_extra: '<meta name="google-site-verification" content="abc123" />'
 # body_extra: '<script src="/js/custom.js"></script>'

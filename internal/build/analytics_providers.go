@@ -8,9 +8,9 @@ import (
 	"osg/internal/config"
 )
 
-// analyticsHeadSnippets returns the combined HTML to inject at the end of <head>
-// for all configured third-party analytics providers.
-func analyticsHeadSnippets(providers []config.AnalyticsProviderConfig) string {
+// analyticsSnippets returns the combined HTML script tags for all configured
+// third-party analytics providers, injected before </body>.
+func analyticsSnippets(providers []config.AnalyticsProviderConfig) string {
 	if len(providers) == 0 {
 		return ""
 	}
