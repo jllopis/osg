@@ -804,16 +804,16 @@ Expandir las capacidades del sistema de plugins.
 - [done] Preservar fechas, tags, categorias, imagenes referenciadas
 - [done] Modo `--dry-run` para previsualizar sin escribir
 
-## Phase 26 — Observabilidad y operaciones (todo)
+## Phase 26 — Observabilidad y operaciones (partial)
 
 Herramientas para monitorizar el sitio generado y el proceso de build.
 
 ### 26A — Analytics lightweight
-- [todo] Script de analytics propio (sin third-party): pageviews, referrers, browser/OS
-- [todo] Datos almacenados en SQLite junto con interactions (reutilizar API server)
-- [todo] Dashboard client-side minimal (o exportar a JSON para herramientas externas)
-- [todo] Respetar DNT (Do Not Track)
-- [todo] Config `analytics: true` (default deshabilitado)
+- [done] Script de analytics propio (sin third-party): pageviews, referrers, browser/OS
+- [done] Datos almacenados en SQLite junto con interactions (reutilizar API server)
+- [done] Dashboard endpoint GET /api/v1/analytics/summary (JSON para herramientas externas)
+- [done] Respetar DNT (Do Not Track) en script y en API handler
+- [done] Config `analytics: true` (default deshabilitado)
 
 ### 26B — Site audit automatico
 - [todo] `osg audit`: analizar el sitio generado en public/ para problemas comunes

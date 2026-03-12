@@ -105,6 +105,7 @@ type Config struct {
 	Deploy            DeployConfig       `koanf:"deploy" yaml:"deploy"`
 	Interactions      InteractionsConfig `koanf:"interactions" yaml:"interactions"`
 	Webhooks          []WebhookConfig    `koanf:"webhooks" yaml:"webhooks"`
+	Analytics         bool               `koanf:"analytics" yaml:"analytics"`
 }
 
 // WebhookConfig defines a single webhook endpoint.

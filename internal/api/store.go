@@ -16,6 +16,9 @@ type Store struct {
 	viewDedupHours int
 }
 
+// DB returns the underlying *sql.DB for sharing with other stores.
+func (s *Store) DB() *sql.DB { return s.db }
+
 // Stats holds aggregated interaction data for a single page.
 type Stats struct {
 	Views    int64 `json:"views"`

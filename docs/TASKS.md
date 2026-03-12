@@ -535,9 +535,9 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 25B) `osg import hugo <content-dir>`: importar posts desde Hugo (YAML + TOML frontmatter)
 [done] (Phase 25B) Mapping de frontmatter, preservar fechas/tags/imagenes, --dry-run
 
-[todo] (Phase 26A) Analytics lightweight propio (pageviews, referrers, browser/OS)
-[todo] (Phase 26A) SQLite storage reutilizando API server, respetar DNT
-[todo] (Phase 26A) Config analytics: true
+[done] (Phase 26A) Analytics lightweight propio (pageviews, referrers, browser/OS)
+[done] (Phase 26A) SQLite storage reutilizando API server, respetar DNT
+[done] (Phase 26A) Config analytics: true, script js/analytics.js, summary endpoint
 
 [todo] (Phase 26B) `osg audit`: analizar public/ para problemas (HTML, a11y, performance)
 [todo] (Phase 26B) Reporte con severidad y sugerencias, integrable en CI

@@ -62,7 +62,18 @@ func RunAPI(ctx context.Context, opts CLIOptions, apiOpts APIOptions) error {
 		logger.Info("comments enabled", "db", cfg.Interactions.Comments.DBPath, "providers", len(authProviders))
 	}
 
-	srv := api.NewServer(store, cfg.Interactions, logger, commentStore, authProviders)
+	var analyticsStore *api.AnalyticsStore
+	if cfg.Analytics {
+		as, err := api.NewAnalyticsStore(store.DB())
+		if err != nil {
+			logger.Warn("analytics init failed", "error", err)
+		} else {
+			analyticsStore = as
+			logger.Info("analytics enabled")
+		}
+	}
+
+	srv := api.NewServer(store, cfg.Interactions, logger, commentStore, authProviders, analyticsStore)
 
 	server := &http.Server{
 		Addr:    listen,
@@ -116,6 +127,6 @@ func StartAPIHandler(cfg config.InteractionsConfig, logger *slog.Logger) (*api.S
 		authProviders = api.BuildAuthProviders(cfg.Comments, baseCallback)
 	}
 
-	srv := api.NewServer(store, cfg, logger, commentStore, authProviders)
+	srv := api.NewServer(store, cfg, logger, commentStore, authProviders, nil)
 	return srv, store, commentStore, nil
 }

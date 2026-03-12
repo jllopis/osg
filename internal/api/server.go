@@ -15,14 +15,15 @@ type Server struct {
 	commentStore *CommentStore
 	authHandlers *AuthHandlers
 	commentH     *CommentHandlers
+	analyticsH   *AnalyticsHandlers
 	mux          *http.ServeMux
 	logger       *slog.Logger
 	cfg          config.InteractionsConfig
 }
 
 // NewServer creates a new interactions API server.
-// commentStore may be nil if comments are disabled.
-func NewServer(store *Store, cfg config.InteractionsConfig, logger *slog.Logger, commentStore *CommentStore, authProviders map[string]*AuthProvider) *Server {
+// commentStore and analyticsStore may be nil if those features are disabled.
+func NewServer(store *Store, cfg config.InteractionsConfig, logger *slog.Logger, commentStore *CommentStore, authProviders map[string]*AuthProvider, analyticsStore *AnalyticsStore) *Server {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -38,6 +39,9 @@ func NewServer(store *Store, cfg config.InteractionsConfig, logger *slog.Logger,
 		secureCookies := cfg.Comments.AuthCallbackURL != "" && strings.HasPrefix(cfg.Comments.AuthCallbackURL, "https")
 		s.authHandlers = NewAuthHandlers(commentStore, authProviders, logger, secureCookies)
 		s.commentH = NewCommentHandlers(commentStore, logger)
+	}
+	if analyticsStore != nil {
+		s.analyticsH = NewAnalyticsHandlers(analyticsStore, logger)
 	}
 
 	s.registerRoutes()
@@ -64,6 +68,12 @@ func (s *Server) registerRoutes() {
 		s.mux.HandleFunc("GET /api/v1/comments", s.commentH.HandleList)
 		s.mux.HandleFunc("POST /api/v1/comments", s.commentH.HandleCreate)
 		s.mux.HandleFunc("DELETE /api/v1/comments/{id}", s.commentH.HandleDelete)
+	}
+
+	// Analytics routes (only when analytics is enabled).
+	if s.analyticsH != nil {
+		s.mux.HandleFunc("POST /api/v1/analytics/hit", s.analyticsH.HandleHit)
+		s.mux.HandleFunc("GET /api/v1/analytics/summary", s.analyticsH.HandleSummary)
 	}
 }
 
