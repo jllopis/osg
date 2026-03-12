@@ -1,8 +1,6 @@
 use serde::Deserialize;
 use serde_json::{json, Value};
-use std::fs;
 use std::mem;
-use std::path::Path;
 
 #[no_mangle]
 pub extern "C" fn alloc(len: i32) -> i32 {
@@ -42,17 +40,14 @@ pub unsafe extern "C" fn handle_event(ptr: i32, len: i32) -> u64 {
 
     match event.event_type.as_str() {
         "content.transform" => handle_content_transform(&event.payload),
-        "build.finished" => {
-            let _ = write_mermaid_loader(&event.payload);
-            0
-        }
+        "page.before_render" => handle_page_before_render(&event.payload),
         _ => 0,
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn plugin_info() -> u64 {
-    let info = r#"{"name":"mermaid","version":"0.1.0","description":"Client-side Mermaid diagram rendering via CDN","author":"jllopis","hooks":["content.transform","build.finished"]}"#;
+    let info = r#"{"name":"mermaid","version":"0.2.0","description":"Client-side Mermaid diagram rendering via CDN","author":"jllopis","hooks":["content.transform","page.before_render"]}"#;
     let bytes = info.as_bytes();
     let ptr = alloc(bytes.len() as i32);
     std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr as *mut u8, bytes.len());
@@ -61,9 +56,6 @@ pub unsafe extern "C" fn plugin_info() -> u64 {
 
 /// Transform markdown: replace ```mermaid code blocks with HTML <pre class="mermaid">
 /// blocks that mermaid.js will render client-side.
-///
-/// Returns the packed ptr|len of a JSON response if any transformation was made,
-/// or 0 if nothing changed.
 fn handle_content_transform(payload: &Value) -> u64 {
     let body = match payload
         .get("page")
@@ -74,7 +66,6 @@ fn handle_content_transform(payload: &Value) -> u64 {
         None => return 0,
     };
 
-    // Quick check: does this page even have mermaid blocks?
     if !body.contains("```mermaid") {
         return 0;
     }
@@ -84,32 +75,62 @@ fn handle_content_transform(payload: &Value) -> u64 {
         return 0;
     }
 
-    // Return the modified body_markdown
     let response = json!({
-        "page": {
-            "body_markdown": transformed
+        "payload": {
+            "page": {
+                "body_markdown": transformed
+            }
         }
     });
 
-    let response_bytes = response.to_string().into_bytes();
-    let len = response_bytes.len();
+    json_to_wasm(&response)
+}
+
+/// Inject an inline mermaid loader script at the end of page.content
+/// for pages that contain mermaid diagrams.
+fn handle_page_before_render(payload: &Value) -> u64 {
+    let content = match payload
+        .get("page")
+        .and_then(|p| p.get("content"))
+        .and_then(|v| v.as_str())
+    {
+        Some(c) => c,
+        None => return 0,
+    };
+
+    if !content.contains("class=\"mermaid\"") {
+        return 0;
+    }
+
+    let mut modified = String::with_capacity(content.len() + 1024);
+    modified.push_str(content);
+    modified.push_str("\n");
+    modified.push_str(&mermaid_inline_script());
+
+    let response = json!({
+        "payload": {
+            "page": {
+                "content": modified
+            }
+        }
+    });
+
+    json_to_wasm(&response)
+}
+
+/// Serialize a JSON value into WASM memory and return packed ptr|len.
+fn json_to_wasm(value: &Value) -> u64 {
+    let bytes = value.to_string().into_bytes();
+    let len = bytes.len();
     unsafe {
         let ptr = alloc(len as i32);
-        std::ptr::copy_nonoverlapping(response_bytes.as_ptr(), ptr as *mut u8, len);
+        std::ptr::copy_nonoverlapping(bytes.as_ptr(), ptr as *mut u8, len);
         ((ptr as u64) << 32) | (len as u64)
     }
 }
 
 /// Rewrite ```mermaid ... ``` blocks into raw HTML blocks that Goldmark will
-/// pass through as-is. We use a blank line + raw HTML block pattern:
-///
-///   <pre class="mermaid">
-///   graph TD
-///     A --> B
-///   </pre>
-///
-/// Goldmark treats lines starting with certain HTML tags as HTML blocks,
-/// so `<pre>` will be passed through without escaping.
+/// pass through as-is.
 fn rewrite_mermaid_blocks(input: &str) -> String {
     let mut output = String::with_capacity(input.len());
     let mut lines = input.lines().peekable();
@@ -118,10 +139,8 @@ fn rewrite_mermaid_blocks(input: &str) -> String {
     while let Some(line) = lines.next() {
         let trimmed = line.trim();
 
-        // Detect opening ```mermaid fence (with optional spaces before ```)
         if trimmed == "```mermaid" || trimmed.starts_with("```mermaid ") {
             modified = true;
-            // Collect everything until the closing ```
             let mut diagram = String::new();
             let mut found_close = false;
             while let Some(inner) = lines.next() {
@@ -136,16 +155,13 @@ fn rewrite_mermaid_blocks(input: &str) -> String {
             }
 
             if !found_close {
-                // Malformed block: no closing fence. Output as-is.
                 output.push_str(line);
                 output.push('\n');
                 output.push_str(&diagram);
                 continue;
             }
 
-            // Emit as raw HTML block (blank line before and after for Goldmark)
             output.push_str("\n<pre class=\"mermaid\">\n");
-            // HTML-escape the diagram content to prevent XSS
             output.push_str(&escape_html(&diagram));
             output.push_str("\n</pre>\n\n");
         } else {
@@ -155,7 +171,6 @@ fn rewrite_mermaid_blocks(input: &str) -> String {
     }
 
     if modified {
-        // Remove trailing extra newline if present
         while output.ends_with("\n\n\n") {
             output.pop();
         }
@@ -174,67 +189,22 @@ fn escape_html(input: &str) -> String {
         .replace('"', "&quot;")
 }
 
-/// Write the mermaid.js loader script to public/js/mermaid-init.js.
-/// This script:
-/// 1. Checks if any <pre class="mermaid"> elements exist on the page
-/// 2. If so, dynamically loads mermaid.js from CDN and initializes it
-/// 3. Respects prefers-color-scheme for theme selection
-fn write_mermaid_loader(payload: &Value) -> Result<(), String> {
-    let config = payload.get("config").ok_or("no config")?;
-    let public_dir = config
-        .get("public_dir")
-        .and_then(|v| v.as_str())
-        .unwrap_or("public");
-
-    let js_dir = Path::new(public_dir).join("js");
-    fs::create_dir_all(&js_dir).map_err(|e| format!("mkdir {:?}: {}", js_dir, e))?;
-
-    let js_path = js_dir.join("mermaid-init.js");
-    fs::write(&js_path, mermaid_init_js()).map_err(|e| format!("write {:?}: {}", js_path, e))?;
-
-    Ok(())
-}
-
-fn mermaid_init_js() -> String {
+/// Inline script that loads mermaid from CDN and initializes it.
+/// Only executes if <pre class="mermaid"> elements exist on the page.
+fn mermaid_inline_script() -> String {
     format!(
-        r#"(function() {{
-  'use strict';
-
-  // Only load mermaid if there are diagrams on the page
-  var diagrams = document.querySelectorAll('pre.mermaid');
-  if (diagrams.length === 0) return;
-
-  // Determine theme from color scheme
-  var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  var theme = isDark ? 'dark' : 'default';
-
-  // Check if the page has an explicit color scheme
-  var root = document.documentElement;
-  if (root.dataset.colorScheme === 'dark') theme = 'dark';
-  else if (root.dataset.colorScheme === 'light') theme = 'default';
-
-  // Decode HTML entities in diagram content before mermaid processes them
-  diagrams.forEach(function(pre) {{
-    var text = pre.textContent;
-    // textContent already decodes entities, so we just need to set it back
-    // to ensure mermaid reads the raw diagram syntax
-    pre.textContent = text;
-  }});
-
-  // Dynamically load mermaid from CDN
-  var script = document.createElement('script');
-  script.src = 'https://cdn.jsdelivr.net/npm/mermaid@{version}/dist/mermaid.min.js';
-  script.onload = function() {{
-    mermaid.initialize({{
-      startOnLoad: true,
-      theme: theme,
-      securityLevel: 'strict',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }});
-  }};
-  document.head.appendChild(script);
-}})();
-"#,
+        r#"<script>(function(){{
+  var d=document.querySelectorAll('pre.mermaid');
+  if(!d.length)return;
+  var isDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;
+  var root=document.documentElement;
+  var theme=root.dataset.colorScheme==='dark'?'dark':root.dataset.colorScheme==='light'?'default':isDark?'dark':'default';
+  d.forEach(function(pre){{pre.textContent=pre.textContent}});
+  var s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/mermaid@{version}/dist/mermaid.min.js';
+  s.onload=function(){{mermaid.initialize({{startOnLoad:true,theme:theme,securityLevel:'strict'}})}};
+  document.head.appendChild(s);
+}})();</script>"#,
         version = MERMAID_VERSION
     )
 }

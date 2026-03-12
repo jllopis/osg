@@ -689,6 +689,7 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 
 		renderCtx = applyPluginOverrides(ctx, plugins, "page.before_render", renderCtx)
 		renderCtx = applyPluginOverrides(ctx, plugins, "page.render", renderCtx)
+		preserveHTMLFields(renderCtx)
 		jobs = append(jobs, renderJob{page: page, template: templateName, outputPath: outputPath, renderCtx: renderCtx})
 	}
 
@@ -1022,17 +1023,7 @@ func configView(cfg config.Config) map[string]any {
 		"analytics":            cfg.Analytics,
 		"analytics_head":       template.HTML(cfg.HeadExtra),
 		"analytics_body":       template.HTML(buildAnalyticsBody(cfg)),
-		"mermaid_enabled":      pluginEnabled(cfg.PluginsEnabled, "mermaid"),
 	}
-}
-
-func pluginEnabled(enabled []string, name string) bool {
-	for _, p := range enabled {
-		if p == name {
-			return true
-		}
-	}
-	return false
 }
 
 // buildAnalyticsBody combines third-party provider snippets with body_extra.
@@ -1116,6 +1107,18 @@ func cloneMap(input map[string]any) map[string]any {
 		out[key] = value
 	}
 	return out
+}
+
+// preserveHTMLFields ensures that page.content remains template.HTML after
+// plugin deep-merge (which replaces it with a plain string from JSON).
+func preserveHTMLFields(renderCtx map[string]any) {
+	pageMap, ok := renderCtx["page"].(map[string]any)
+	if !ok {
+		return
+	}
+	if content, ok := pageMap["content"].(string); ok {
+		pageMap["content"] = template.HTML(content)
+	}
 }
 
 func applyPluginOverrides(ctx context.Context, plugins *plugin.Manager, event string, payload map[string]any) map[string]any {

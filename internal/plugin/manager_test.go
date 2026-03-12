@@ -414,6 +414,93 @@ func TestEmit_SearchBuildFinished_Section(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Integration tests using the bundled mermaid.wasm
+// ---------------------------------------------------------------------------
+
+func setupMermaidPlugin(t *testing.T) (*Manager, context.Context) {
+	t.Helper()
+	dir := t.TempDir()
+	pluginsDir := filepath.Join(dir, "plugins")
+
+	if err := EnsureBundledPlugins(pluginsDir); err != nil {
+		t.Fatalf("EnsureBundledPlugins: %v", err)
+	}
+
+	ctx := context.Background()
+	logger := slog.Default()
+	m, err := Load(ctx, pluginsDir, []string{"mermaid"}, 0, logger)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(m.plugins) != 1 {
+		t.Fatalf("expected 1 plugin loaded, got %d", len(m.plugins))
+	}
+	return m, ctx
+}
+
+func TestEmit_MermaidContentTransform(t *testing.T) {
+	t.Parallel()
+	m, ctx := setupMermaidPlugin(t)
+	defer func() { _ = m.Close(ctx) }()
+
+	body := "# Hello\n\n```mermaid\ngraph TD\n  A --> B\n```\n\nMore text."
+
+	result := m.Emit(ctx, "content.transform", map[string]any{
+		"page": map[string]any{"body_markdown": body},
+	})
+
+	if result == nil {
+		t.Fatal("expected overrides from content.transform, got nil")
+	}
+	page, _ := result["page"].(map[string]any)
+	modified, _ := page["body_markdown"].(string)
+	if !contains(modified, `<pre class="mermaid">`) {
+		t.Errorf("expected <pre class=\"mermaid\">, got: %s", modified[:min(len(modified), 200)])
+	}
+}
+
+func TestEmit_MermaidPageBeforeRender_WithDiagram(t *testing.T) {
+	t.Parallel()
+	m, ctx := setupMermaidPlugin(t)
+	defer func() { _ = m.Close(ctx) }()
+
+	content := `<p>Hello</p><pre class="mermaid">graph TD A--&gt;B</pre><p>End</p>`
+
+	result := m.Emit(ctx, "page.before_render", map[string]any{
+		"page": map[string]any{"content": content},
+	})
+
+	if result == nil {
+		t.Fatal("expected overrides from page.before_render, got nil")
+	}
+	page, _ := result["page"].(map[string]any)
+	modified, _ := page["content"].(string)
+	if !contains(modified, "<script>") {
+		t.Error("expected inline <script> tag for mermaid loader")
+	}
+	if !contains(modified, "mermaid") {
+		t.Error("expected mermaid CDN reference in script")
+	}
+}
+
+func TestEmit_MermaidPageBeforeRender_NoDiagram(t *testing.T) {
+	t.Parallel()
+	m, ctx := setupMermaidPlugin(t)
+	defer func() { _ = m.Close(ctx) }()
+
+	content := `<p>Just regular content, no diagrams</p>`
+
+	result := m.Emit(ctx, "page.before_render", map[string]any{
+		"page": map[string]any{"content": content},
+	})
+
+	// Should return nil — no mermaid content, nothing to inject.
+	if result != nil {
+		t.Errorf("expected nil overrides for non-mermaid page, got %v", result)
+	}
+}
+
 func TestLoad_FiltersByEnabled(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
