@@ -113,6 +113,8 @@ var (
 	reLink        = regexp.MustCompile(`\[([^\]]+)\]\([^)]*\)`)
 	reWikiDisplay = regexp.MustCompile(`\[\[([^|\]]+)\|([^\]]+)\]\]`)
 	reWikiSimple  = regexp.MustCompile(`\[\[([^\]]+)\]\]`)
+	rePreBlock    = regexp.MustCompile(`(?si)<pre[^>]*>.*?</pre>`)
+	reScriptBlock = regexp.MustCompile(`(?si)<script[^>]*>.*?</script>`)
 	reHTMLTag     = regexp.MustCompile(`<[^>]+>`)
 	reHeading     = regexp.MustCompile(`(?m)^#{1,6}\s+`)
 	reHR          = regexp.MustCompile(`(?m)^[\s]*([-*_]){3,}\s*$`)
@@ -153,7 +155,12 @@ func PlainText(md string) string {
 	// Convert wiki-links: [[target|display]] -> display, [[target]] -> target.
 	s = reWikiDisplay.ReplaceAllString(s, "$2")
 	s = reWikiSimple.ReplaceAllString(s, "$1")
-	// Strip HTML tags.
+	// Strip <pre> and <script> blocks entirely (content included).
+	// This handles plugin-transformed code blocks (e.g. mermaid diagrams)
+	// and injected scripts that should never appear in summaries.
+	s = rePreBlock.ReplaceAllString(s, " ")
+	s = reScriptBlock.ReplaceAllString(s, " ")
+	// Strip remaining HTML tags.
 	s = reHTMLTag.ReplaceAllString(s, "")
 	// Strip headings markers.
 	s = reHeading.ReplaceAllString(s, "")

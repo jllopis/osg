@@ -228,6 +228,55 @@ func TestPlainText_HTMLTags(t *testing.T) {
 	}
 }
 
+func TestPlainText_PreBlock(t *testing.T) {
+	md := "Before.\n\n<pre class=\"mermaid\">\ngraph TD\n  A --> B\n</pre>\n\nAfter."
+	result := PlainText(md)
+	if strings.Contains(result, "graph TD") || strings.Contains(result, "A -->") {
+		t.Errorf("pre block content not stripped: %q", result)
+	}
+	if !strings.Contains(result, "Before") || !strings.Contains(result, "After") {
+		t.Errorf("surrounding text lost: %q", result)
+	}
+}
+
+func TestPlainText_ScriptBlock(t *testing.T) {
+	md := "Before.\n<script>(function(){mermaid.init()})()</script>\nAfter."
+	result := PlainText(md)
+	if strings.Contains(result, "mermaid") || strings.Contains(result, "function") {
+		t.Errorf("script block content not stripped: %q", result)
+	}
+	if !strings.Contains(result, "Before") || !strings.Contains(result, "After") {
+		t.Errorf("surrounding text lost: %q", result)
+	}
+}
+
+func TestPlainText_MermaidTransformed(t *testing.T) {
+	// Simulates what content.transform + page.before_render produces:
+	// mermaid blocks become <pre class="mermaid"> + inline <script>
+	md := `Intro paragraph about the Lindy effect.
+
+<pre class="mermaid">
+graph LR
+  A[Idea] --&gt; B{Survived?}
+  B --&gt; |Yes| C[More likely to survive]
+  B --&gt; |No| D[Forgotten]
+</pre>
+
+<script>(function(){var d=document.querySelectorAll('pre.mermaid');if(!d.length)return})()</script>
+
+Conclusion paragraph.`
+	result := PlainText(md)
+	if strings.Contains(result, "graph LR") || strings.Contains(result, "Survived") {
+		t.Errorf("mermaid diagram content not stripped: %q", result)
+	}
+	if strings.Contains(result, "script") || strings.Contains(result, "querySelectorAll") {
+		t.Errorf("script content not stripped: %q", result)
+	}
+	if !strings.Contains(result, "Intro paragraph") || !strings.Contains(result, "Conclusion paragraph") {
+		t.Errorf("text content lost: %q", result)
+	}
+}
+
 func TestPlainText_Headings(t *testing.T) {
 	md := "# Heading\nBody text here."
 	result := PlainText(md)
