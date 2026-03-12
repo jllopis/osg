@@ -789,7 +789,7 @@ Expandir las capacidades del sistema de plugins.
 - [done] GenerateMarketplace() en internal/build/marketplace.go
 - [done] Hooks metadata agregada a plugins-index.json
 
-## Phase 25 — Integraciones y automatizacion (partial)
+## Phase 25 — Integraciones y automatizacion (done)
 
 ### 25A — Webhooks y notificaciones
 - [done] Hook `after.build` con soporte de webhooks: POST a URL configurable con payload JSON (stats del build)
@@ -798,11 +798,11 @@ Expandir las capacidades del sistema de plugins.
 - [done] HMAC signature en header X-OSG-Signature para verificacion
 
 ### 25B — Import desde otras plataformas
-- [todo] `osg import wordpress <export.xml>`: importar posts desde WordPress WXR export
-- [todo] `osg import hugo <content-dir>`: importar posts desde Hugo (frontmatter TOML/YAML + contenido)
-- [todo] Mapping de frontmatter: convertir campos especificos de cada plataforma a formato osg
-- [todo] Preservar fechas, tags, categorias, imagenes referenciadas
-- [todo] Modo `--dry-run` para previsualizar sin escribir
+- [done] `osg import wordpress <export.xml>`: importar posts desde WordPress WXR export
+- [done] `osg import hugo <content-dir>`: importar posts desde Hugo (frontmatter TOML/YAML + contenido)
+- [done] Mapping de frontmatter: convertir campos especificos de cada plataforma a formato osg
+- [done] Preservar fechas, tags, categorias, imagenes referenciadas
+- [done] Modo `--dry-run` para previsualizar sin escribir
 
 ## Phase 26 — Observabilidad y operaciones (todo)
 

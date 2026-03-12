@@ -34,6 +34,7 @@ type CLI struct {
 	TUI           struct{}      `cmd:"" help:"Launch TUI"`
 	Theme         ThemeCmd      `cmd:"" help:"Theme tools"`
 	Plugin        PluginCmd     `cmd:"" help:"Plugin tools"`
+	Import        ImportCmd     `cmd:"" help:"Import content from another platform"`
 	Check         CheckCmd      `cmd:"" help:"Validate content (links, images, frontmatter)"`
 	Doctor        struct{}      `cmd:"" help:"Validate configuration and environment"`
 	Version       struct{}      `cmd:"" help:"Show version information"`
@@ -133,6 +134,21 @@ type PluginInitCmd struct {
 	Name string `arg:"" help:"Plugin name"`
 	Dir  string `help:"Base directory for plugin sources" default:"plugins_src"`
 	Lang string `help:"Plugin language: rust (default), go" default:"rust"`
+}
+
+type ImportCmd struct {
+	Wordpress ImportWordpressCmd `cmd:"" help:"Import posts from WordPress WXR export"`
+	Hugo      ImportHugoCmd      `cmd:"" help:"Import posts from Hugo content directory"`
+}
+
+type ImportWordpressCmd struct {
+	File   string `arg:"" help:"Path to WordPress WXR export XML file"`
+	DryRun bool   `help:"Preview what would be imported without writing" name:"dry-run"`
+}
+
+type ImportHugoCmd struct {
+	Dir    string `arg:"" help:"Path to Hugo content directory"`
+	DryRun bool   `help:"Preview what would be imported without writing" name:"dry-run"`
 }
 
 func main() {
@@ -279,6 +295,10 @@ func main() {
 		runErr = app.RunPluginSearch(context.Background(), opts, cli.Plugin.Search.Query, os.Stdout)
 	case strings.HasPrefix(command, "plugin update"):
 		runErr = app.RunPluginUpdate(context.Background(), opts, cli.Plugin.Update.Name, os.Stdout)
+	case strings.HasPrefix(command, "import wordpress"):
+		runErr = app.RunImportWordpress(context.Background(), opts, cli.Import.Wordpress.File, cli.Import.Wordpress.DryRun)
+	case strings.HasPrefix(command, "import hugo"):
+		runErr = app.RunImportHugo(context.Background(), opts, cli.Import.Hugo.Dir, cli.Import.Hugo.DryRun)
 	case command == "version":
 		fmt.Println(app.VersionInfo())
 	case strings.HasPrefix(command, "completion"):
