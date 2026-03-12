@@ -235,6 +235,7 @@
     <script defer src="{{ get_url "/js/progress.js" false true }}"></script>
     {{ if .toc }}<script defer src="{{ get_url "/js/toc-spy.js" false true }}"></script>{{ end }}
     <script defer src="{{ get_url "/js/bookmarks.js" false true }}"></script>
+    {{ if .config.mermaid_enabled }}<script defer src="{{ get_url "/js/mermaid-init.js" false true }}"></script>{{ end }}
     {{ end }}
     {{ if .config.analytics_body }}{{ .config.analytics_body }}{{ end }}
   </body>

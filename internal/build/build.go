@@ -1022,7 +1022,17 @@ func configView(cfg config.Config) map[string]any {
 		"analytics":            cfg.Analytics,
 		"analytics_head":       template.HTML(cfg.HeadExtra),
 		"analytics_body":       template.HTML(buildAnalyticsBody(cfg)),
+		"mermaid_enabled":      pluginEnabled(cfg.PluginsEnabled, "mermaid"),
 	}
+}
+
+func pluginEnabled(enabled []string, name string) bool {
+	for _, p := range enabled {
+		if p == name {
+			return true
+		}
+	}
+	return false
 }
 
 // buildAnalyticsBody combines third-party provider snippets with body_extra.
