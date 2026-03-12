@@ -78,6 +78,7 @@ footer_theme: Theme
 # --- Feeds ---
 atom_feed: Atom Feed
 rss_feed: RSS Feed
+llmstxt: LLMs.txt
 feed_description_suffix: feed
 
 # --- Draft preview ---

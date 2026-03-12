@@ -10,8 +10,10 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"runtime/pprof"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1014,6 +1016,8 @@ func configView(cfg config.Config) map[string]any {
 		"languages":          languagesView(cfg),
 		"social":             cfg.Social,
 		"copyright":          strings.ReplaceAll(cfg.Copyright, "{year}", fmt.Sprintf("%d", time.Now().Year())),
+		"license":            template.HTML(inlineMarkdownLinks(cfg.License)),
+		"llmstxt":            slices.Contains(cfg.PluginsEnabled, "llmstxt"),
 		"logging": map[string]any{
 			"level":  cfg.Logging.Level,
 			"format": cfg.Logging.Format,
@@ -1027,6 +1031,18 @@ func configView(cfg config.Config) map[string]any {
 		"analytics_head":       template.HTML(cfg.HeadExtra),
 		"analytics_body":       template.HTML(buildAnalyticsBody(cfg)),
 	}
+}
+
+// reInlineLink matches markdown-style links: [text](url)
+var reInlineLink = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+
+// inlineMarkdownLinks converts [text](url) to <a> tags in a string.
+// Used for the license config field so users can embed links naturally.
+func inlineMarkdownLinks(s string) string {
+	if s == "" {
+		return s
+	}
+	return reInlineLink.ReplaceAllString(s, `<a href="$2" rel="noopener" target="_blank">$1</a>`)
 }
 
 // buildAnalyticsBody combines third-party provider snippets with body_extra.

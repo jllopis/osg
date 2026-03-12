@@ -99,6 +99,7 @@ type Config struct {
 	DoctorProfile      string                    `koanf:"doctor_profile" yaml:"doctor_profile"`
 	Social             map[string]string         `koanf:"social" yaml:"social"`
 	Copyright          string                    `koanf:"copyright" yaml:"copyright"`
+	License            string                    `koanf:"license" yaml:"license"`
 	AI                 AIConfig                  `koanf:"ai" yaml:"ai"`
 	Logging            LoggingConfig             `koanf:"logging" yaml:"logging"`
 	Taxonomies         []TaxonomyConfig          `koanf:"taxonomies" yaml:"taxonomies"`
@@ -730,7 +731,7 @@ tui_log_modifier: shift
 doctor_profile: dev
 
 # -----------------------------------------------------------------------------
-# Social links & copyright
+# Social links, copyright & license
 # -----------------------------------------------------------------------------
 # social: Map of social network handles shown as icons in the footer.
 #   Only configured networks appear. Supported keys:
@@ -747,6 +748,11 @@ doctor_profile: dev
 #   bluesky: "https://bsky.app/profile/your_handle"
 #   email: "you@example.com"
 # copyright: ""
+#
+# license: Site content license displayed in the footer.
+#   Supports markdown links: [text](url) for linking to the full license.
+#   Leave empty to hide.
+# license: ""
 
 # -----------------------------------------------------------------------------
 # Logging

@@ -56,6 +56,7 @@ func ConfigSchema() []ConfigSection {
 				{Key: "base_url", Label: "Base URL", Description: "Absolute URL of the deployed site (e.g. \"https://blog.example.com\").", Type: FieldString},
 				{Key: "default_language", Label: "Default Language", Description: "BCP-47 language code for template translations and date localisation.", Type: FieldString, Default: "es"},
 				{Key: "copyright", Label: "Copyright", Description: "Footer copyright notice. Use {year} for current year.", Type: FieldString},
+				{Key: "license", Label: "License", Description: "Site content license shown in the footer (e.g. \"CC BY 4.0\").", Type: FieldString},
 			},
 		},
 		{

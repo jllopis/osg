@@ -25,9 +25,8 @@
 {{- /* --- Meta description: page summary > section content > site description --- */ -}}
 {{ if and .page .page.summary }}<meta name="description" content="{{ .page.summary }}" />
 {{ else if .config.site_description }}<meta name="description" content="{{ .config.site_description }}" />{{ end }}
-{{- /* --- Font preloads (self-hosted) --- */ -}}
-<link rel="preload" href="/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />
-<link rel="preload" href="/fonts/jetbrains-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin />
+{{- /* --- Font preload: only Inter (body font, always used) --- */ -}}
+<link rel="preload" href="{{ get_url "/fonts/inter-latin-var.woff2" false false }}" as="font" type="font/woff2" crossorigin />
 {{- /* --- Open Graph --- */ -}}
 {{ if .config.site_title }}<meta property="og:site_name" content="{{ .config.site_title }}" />{{ end }}
 {{ if .lang }}<meta property="og:locale" content="{{ .lang }}" />{{ else if .config.default_language }}<meta property="og:locale" content="{{ .config.default_language }}" />{{ end }}

@@ -17,10 +17,13 @@
         <nav class="footer-nav" aria-label="{{ trans "footer_nav" .lang }}">
           <a href="{{ get_url "/" true false }}">{{ trans "home" .lang }}</a>
           {{ if .config.site_feed }}
-          <a href="{{ get_url "/atom.xml" true false }}">{{ trans "atom_feed" .lang }}</a>
-          <a href="{{ get_url "/rss.xml" true false }}">{{ trans "rss_feed" .lang }}</a>
+          <a href="{{ get_url "/atom.xml" false false }}">{{ trans "atom_feed" .lang }}</a>
+          <a href="{{ get_url "/rss.xml" false false }}">{{ trans "rss_feed" .lang }}</a>
           {{ end }}
-          <a href="{{ get_url "/sitemap.xml" true false }}">{{ trans "footer_sitemap" .lang }}</a>
+          {{ if .config.llmstxt }}
+          <a href="{{ get_url "/llms.txt" false false }}">{{ trans "llmstxt" .lang }}</a>
+          {{ end }}
+          <a href="{{ get_url "/sitemap.xml" false false }}">{{ trans "footer_sitemap" .lang }}</a>
           {{ range .menu_pages }}
           <a href="{{ .path }}">{{ if .menu_title }}{{ .menu_title }}{{ else }}{{ .title }}{{ end }}</a>
           {{ end }}
@@ -72,6 +75,7 @@
       <span class="footer-copyright">
         {{ if .config.copyright }}{{ .config.copyright }}{{ else }}&copy; {{ .current_year }} {{ if .config.site_title }}{{ .config.site_title }}{{ else }}OSG{{ end }}{{ end }}
       </span>
+      {{ if .config.license }}<span class="footer-license">{{ .config.license }}</span>{{ end }}
       <span class="footer-powered">{{ trans "generated_by" .lang }} ❤️ {{ trans "and" .lang }} <a href="https://github.com/jllopis/osg">OSG</a></span>
 
       {{/* ---- Color scheme switcher ---- */}}
