@@ -691,11 +691,11 @@ Funcionalidades orientadas al lector y a sitios con mucho contenido.
 - [done] Grid layout: `.article-content--with-toc` (1fr + 220px) solo en desktop
 - [done] Dual renderizado: `.toc-mobile-details` + `.toc-desktop` (CSS show/hide por breakpoint)
 
-### 21C — Busqueda mejorada
-- [todo] Filtros por fecha (rango), tags y seccion en el plugin de search
-- [todo] Destacar fragmentos coincidentes (highlight snippets) en resultados
-- [todo] Ordenar resultados por relevancia vs por fecha (toggle)
-- [todo] Navegacion con teclado en resultados (arrow keys, Enter)
+### 21C — Busqueda mejorada (done)
+- [done] Filtros por fecha (rango), tags y seccion en el plugin de search
+- [done] Destacar fragmentos coincidentes (highlight snippets) en resultados
+- [done] Ordenar resultados por relevancia vs por fecha (toggle)
+- [done] Navegacion con teclado en resultados (arrow keys, Enter)
 
 ### 21D — Reading list / Bookmarks
 - [done] Boton "guardar para despues" en cada post (localStorage client-side)

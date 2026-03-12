@@ -471,10 +471,10 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 21B) Scroll-spy: toc-spy.js con IntersectionObserver, .toc-active class
 [done] (Phase 21B) Dual rendering: .toc-mobile-details + .toc-desktop (CSS breakpoint)
 
-[todo] (Phase 21C) Filtros por fecha, tags y seccion en plugin de search
-[todo] (Phase 21C) Highlight snippets en resultados
-[todo] (Phase 21C) Ordenar por relevancia vs fecha (toggle)
-[todo] (Phase 21C) Navegacion con teclado en resultados
+[done] (Phase 21C) Filtros por fecha, tags y seccion en plugin de search
+[done] (Phase 21C) Highlight snippets en resultados
+[done] (Phase 21C) Ordenar por relevancia vs fecha (toggle)
+[done] (Phase 21C) Navegacion con teclado en resultados
 
 [done] (Phase 21D) Boton "guardar para despues" en cada post (localStorage)
 [done] (Phase 21D) Pagina /bookmarks/ generada con bookmarks.html template
