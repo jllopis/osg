@@ -400,6 +400,45 @@ main[role="main"] {
   flex-shrink: 0;
 }
 
+.bookmarks-link {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.bookmarks-link:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.bookmarks-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .search-toggle {
   display: flex;
   align-items: center;
@@ -441,10 +480,18 @@ main[role="main"] {
   box-shadow: var(--shadow-lg);
 }
 
-.featured-link {
+.featured-image-link {
   display: block;
+}
+
+.featured-title a {
   text-decoration: none;
   color: inherit;
+}
+
+.featured-title a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ---- <picture> element reset ---- */
@@ -529,6 +576,33 @@ picture {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
+.featured-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+
+.featured-actions .bookmark-btn--compact,
+.featured-actions .share-toggle--compact {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.featured-actions .bookmark-btn--compact:hover,
+.featured-actions .share-toggle--compact:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.featured-actions .bookmark-btn--saved {
+  color: #fff;
+}
+
+.featured-actions .share-popover {
+  bottom: calc(100% + var(--sp-2));
+  top: auto;
+}
+
 /* ---- Home intro (from _index.md) ---- */
 .home-intro {
   margin-bottom: var(--sp-10);
@@ -580,8 +654,6 @@ picture {
   padding: var(--sp-6) 0;
   border-bottom: 1px solid var(--border);
   align-items: flex-start;
-  text-decoration: none;
-  color: inherit;
   transition: background var(--transition-fast);
   border-radius: var(--radius);
 }
@@ -652,11 +724,26 @@ picture {
   margin-top: var(--sp-1);
 }
 
+.post-item-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
 .post-item-reading {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--ink-faint);
-  margin-top: var(--sp-2);
+}
+
+.post-item-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.post-item-title a:hover {
+  color: var(--accent);
 }
 
 /* ---- Sidebar ---- */
@@ -690,6 +777,34 @@ picture {
   margin-bottom: var(--sp-4);
   padding-bottom: var(--sp-2);
   border-bottom: 1px solid var(--border-strong);
+}
+
+/* ---- Sidebar tags (2-column grid with counts) ---- */
+.sidebar-tags {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+}
+
+.sidebar-tag {
+  display: block;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--ink-secondary);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+
+.sidebar-tag:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-subtle);
 }
 
 /* ---- Topic pills ---- */
@@ -782,11 +897,17 @@ picture {
 
 .card .meta {
   display: flex;
-  align-items: center;
-  gap: var(--sp-3);
+  flex-direction: column;
+  gap: var(--sp-1);
   font-size: var(--text-xs);
   color: var(--ink-muted);
   font-family: var(--font-mono);
+}
+
+.card .meta-line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
 }
 
 .card .summary {
@@ -932,6 +1053,7 @@ picture {
 .reading-badge {
   display: inline-flex;
   align-items: center;
+  align-self: flex-start;
   gap: var(--sp-1);
   padding: 2px var(--sp-2);
   background: var(--bg-muted);
@@ -1704,6 +1826,14 @@ picture {
   flex-direction: column;
   gap: var(--sp-2);
   flex: 1;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: auto;
 }
 
 /* ---- Taxonomy list page ---- */
@@ -3010,53 +3140,58 @@ blockquote.quote > p {
   fill: var(--accent);
 }
 
+.bookmark-btn--compact {
+  padding: var(--sp-1);
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  border-radius: var(--radius-full);
+  font-size: 0;
+}
+
+.bookmark-btn--compact:hover {
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.bookmark-btn--compact.bookmark-btn--saved {
+  color: var(--accent);
+  border-color: transparent;
+  background: transparent;
+}
+
+.bookmark-btn--compact .bookmark-icon {
+  width: 16px;
+  height: 16px;
+}
+
 .bookmark-icon {
   width: 18px;
   height: 18px;
 }
 
-.bookmarks-badge {
+.bookmark-remove-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 9px;
-  background: var(--accent);
-  color: var(--white, #fff);
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.bookmark-remove-btn {
-  position: absolute;
-  top: var(--sp-2);
-  right: var(--sp-2);
+  margin-left: auto;
   border: none;
   background: none;
-  color: var(--ink-muted);
+  color: var(--ink-faint);
   cursor: pointer;
-  font-size: 1.2rem;
-  line-height: 1;
   padding: var(--sp-1);
-  border-radius: var(--radius);
-  transition: color var(--transition-fast);
+  border-radius: var(--radius-full);
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
 
 .bookmark-remove-btn:hover {
   color: var(--danger, #bf616a);
-}
-
-.bookmarks-list .post-item {
-  position: relative;
+  background: rgba(191, 97, 106, 0.1);
 }
 
 .bookmarks-actions {
   display: flex;
   gap: var(--sp-3);
-  margin-bottom: var(--sp-6);
+  margin-top: var(--sp-8);
 }
 
 .bookmarks-actions button {
@@ -3129,6 +3264,30 @@ blockquote.quote > p {
 .share-toggle[aria-expanded="true"] {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.share-toggle--compact {
+  padding: var(--sp-1);
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  border-radius: var(--radius-full);
+  transition: color var(--transition-fast), background var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.share-toggle--compact:hover {
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.share-toggle--compact:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .share-popover {

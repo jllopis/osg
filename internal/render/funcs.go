@@ -651,9 +651,16 @@ func jsonldFunc(ctx Context) func(map[string]any) template.HTML {
 
 		var schemas []map[string]any
 
+		lang, _ := data["lang"].(string)
+		defaultLang, _ := cfg["default_language"].(string)
+
 		// Page → Article/BlogPosting schema.
 		if pageData, ok := data["page"].(map[string]any); ok {
-			article := buildArticleSchema(pageData, baseURL, siteTitle)
+			sectionName := ""
+			if sec, ok := data["section"].(map[string]any); ok {
+				sectionName, _ = sec["title"].(string)
+			}
+			article := buildArticleSchema(pageData, baseURL, siteTitle, lang, sectionName)
 			if article != nil {
 				schemas = append(schemas, article)
 			}
@@ -665,7 +672,11 @@ func jsonldFunc(ctx Context) func(map[string]any) template.HTML {
 			// Index / section → WebSite schema.
 			currentPath, _ := data["current_path"].(string)
 			if currentPath == "/" || currentPath == "" {
-				ws := buildWebSiteSchema(baseURL, siteTitle, siteDesc)
+				siteLang := lang
+				if siteLang == "" {
+					siteLang = defaultLang
+				}
+				ws := buildWebSiteSchema(baseURL, siteTitle, siteDesc, siteLang)
 				if ws != nil {
 					schemas = append(schemas, ws)
 				}
@@ -691,7 +702,7 @@ func jsonldFunc(ctx Context) func(map[string]any) template.HTML {
 }
 
 // buildArticleSchema creates a schema.org Article (BlogPosting) JSON-LD object.
-func buildArticleSchema(page map[string]any, baseURL, siteTitle string) map[string]any {
+func buildArticleSchema(page map[string]any, baseURL, siteTitle, lang, sectionName string) map[string]any {
 	title, _ := page["title"].(string)
 	if title == "" {
 		return nil
@@ -749,11 +760,25 @@ func buildArticleSchema(page map[string]any, baseURL, siteTitle string) map[stri
 		}
 	}
 
+	if lang != "" {
+		article["inLanguage"] = lang
+	}
+
+	if sectionName != "" {
+		article["articleSection"] = sectionName
+	}
+
+	if taxonomies, ok := page["taxonomies"].(map[string][]string); ok {
+		if tags, ok := taxonomies["tags"]; ok && len(tags) > 0 {
+			article["keywords"] = strings.Join(tags, ", ")
+		}
+	}
+
 	return article
 }
 
 // buildWebSiteSchema creates a schema.org WebSite JSON-LD object for the homepage.
-func buildWebSiteSchema(baseURL, siteTitle, siteDesc string) map[string]any {
+func buildWebSiteSchema(baseURL, siteTitle, siteDesc, lang string) map[string]any {
 	if baseURL == "" {
 		return nil
 	}
@@ -769,6 +794,9 @@ func buildWebSiteSchema(baseURL, siteTitle, siteDesc string) map[string]any {
 	}
 	if siteDesc != "" {
 		ws["description"] = siteDesc
+	}
+	if lang != "" {
+		ws["inLanguage"] = lang
 	}
 
 	// SearchAction for sitelinks search box.

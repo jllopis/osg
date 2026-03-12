@@ -40,6 +40,7 @@
 
       {{ template "partials/footer.html" . }}
     </div>
+    {{ if .config.sharing }}<script defer src="{{ get_url "/js/share.js" false true }}"></script>{{ end }}
     {{ if .config.analytics_body }}{{ .config.analytics_body }}{{ end }}
   </body>
 </html>

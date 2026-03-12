@@ -1,0 +1,13 @@
+<button class="bookmark-btn bookmark-btn--compact" type="button" aria-pressed="false"
+        data-path="{{ get_url .path true false }}"
+        data-title="{{ .title }}"
+        data-summary="{{ .summary }}"
+        data-date="{{ .date.Format "2006-01-02" }}"
+        {{ if .image }}data-image="{{ .image }}"{{ end }}
+        {{ if .reading_time }}data-reading-time="{{ .reading_time }}"{{ end }}
+        {{- if .taxonomies }}{{- range $kind, $terms := .taxonomies }} data-tax-{{ $kind }}="{{ range $i, $t := $terms }}{{ if $i }},{{ end }}{{ $t }}{{ end }}"{{- end }}{{- end }}
+        data-label-save="{{ trans "bookmark_save" .lang }}"
+        data-label-remove="{{ trans "bookmark_remove" .lang }}"
+        title="{{ trans "bookmark_save" .lang }}">
+  <svg class="bookmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+</button>

@@ -106,6 +106,8 @@ bookmark_save: "Save for later"
 bookmark_remove: "Remove bookmark"
 bookmarks: Bookmarks
 no_bookmarks: "No bookmarks yet. Save posts to read them later."
+bookmarks_export: "Export"
+bookmarks_import: "Import"
 
 # --- Comments ---
 comments: Comments

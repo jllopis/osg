@@ -14,24 +14,30 @@
         {{/* ---- Featured post ---- */}}
         {{ with .section.featured_page }}
         <article class="featured">
-          <a class="featured-link" href="{{ .permalink }}">
-            {{ if .image }}
+          {{ if .image }}
+          <a class="featured-image-link" href="{{ .permalink }}">
             <div class="featured-image-wrapper">
               {{ picture .image .title "eager" }}
             </div>
-            {{ end }}
-            <div class="featured-body">
-              <span class="featured-label">{{ trans "featured" .lang }}</span>
-              <h2 class="featured-title">{{ .title }}</h2>
-              <div class="featured-meta">
-                {{ if .draft }}<span class="draft-badge draft-badge--featured">{{ trans "draft" .lang }}</span>{{ end }}
-                {{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}
-                <time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short" .lang) .lang }}</time>
-                {{ if .reading_time }}<span class="reading-badge">{{ .reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
-              </div>
-              {{ if .summary }}<p class="featured-summary">{{ .summary }}</p>{{ end }}
-            </div>
           </a>
+          {{ end }}
+          <div class="featured-body">
+            <span class="featured-label">{{ trans "featured" .lang }}</span>
+            <h2 class="featured-title"><a href="{{ .permalink }}">{{ .title }}</a></h2>
+            <div class="featured-meta">
+              {{ if .draft }}<span class="draft-badge draft-badge--featured">{{ trans "draft" .lang }}</span>{{ end }}
+              {{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}
+              <time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short" .lang) .lang }}</time>
+              {{ if .reading_time }}<span class="reading-badge">{{ .reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
+            </div>
+            {{ if .summary }}<p class="featured-summary">{{ .summary }}</p>{{ end }}
+            <div class="featured-actions">
+              {{ template "partials/bookmark.html" . }}
+              {{ if and $.config.sharing .permalink }}
+              {{ template "partials/share.html" . }}
+              {{ end }}
+            </div>
+          </div>
         </article>
         {{ end }}
         {{ end }}
@@ -53,19 +59,25 @@
             <h2 class="section-heading">{{ trans "recent_posts" .lang }}</h2>
             <div class="post-list">
               {{ range .section.pages }}
-              <a class="post-item" href="{{ .permalink }}">
+              <div class="post-item">
                 {{ if .image }}
-                <div class="post-item-thumb">
+                <a class="post-item-thumb" href="{{ .permalink }}">
                   {{ picture .image .title "lazy" }}
-                </div>
+                </a>
                 {{ end }}
                 <div class="post-item-body">
                   <div class="post-item-date">{{ if .draft }}<span class="draft-badge">{{ trans "draft" .lang }}</span>{{ end }}{{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}<time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short" .lang) .lang }}</time></div>
-                  <h3 class="post-item-title">{{ .title }}</h3>
+                  <h3 class="post-item-title"><a href="{{ .permalink }}">{{ .title }}</a></h3>
                   {{ if .summary }}<p class="post-item-summary">{{ .summary }}</p>{{ end }}
-                  {{ if .reading_time }}<span class="post-item-reading">{{ .reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
+                  <div class="post-item-footer">
+                    {{ if .reading_time }}<span class="post-item-reading">{{ .reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
+                    {{ template "partials/bookmark.html" . }}
+                    {{ if and $.config.sharing .permalink }}
+                    {{ template "partials/share.html" . }}
+                    {{ end }}
+                  </div>
                 </div>
-              </a>
+              </div>
               {{ end }}
             </div>
 
@@ -94,11 +106,11 @@
             {{ if $tags }}
             <div class="sidebar-section">
               <h3 class="sidebar-heading">{{ trans "recommended_topics" .lang }}</h3>
-              <div class="topic-pills">
+              <nav class="sidebar-tags">
                 {{ range $tags.terms }}
-                <a class="topic-pill" href="{{ .permalink }}">{{ .name }}</a>
+                <a class="sidebar-tag" href="{{ .permalink }}" title="{{ .name }} ({{ .page_count }})">{{ .name }}</a>
                 {{ end }}
-              </div>
+              </nav>
             </div>
             {{ end }}
 
@@ -127,6 +139,7 @@
 
       {{ template "partials/footer.html" . }}
     </div>
+    {{ if .config.sharing }}<script defer src="{{ get_url "/js/share.js" false true }}"></script>{{ end }}
     {{ if .config.analytics_body }}{{ .config.analytics_body }}{{ end }}
   </body>
 </html>

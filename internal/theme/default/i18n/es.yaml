@@ -106,6 +106,8 @@ bookmark_save: "Guardar para despues"
 bookmark_remove: "Quitar marcador"
 bookmarks: Marcadores
 no_bookmarks: "Aun no hay marcadores. Guarda publicaciones para leerlas despues."
+bookmarks_export: "Exportar"
+bookmarks_import: "Importar"
 
 # --- Comentarios ---
 comments: Comentarios

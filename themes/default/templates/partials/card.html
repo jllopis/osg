@@ -8,19 +8,27 @@
     <h3><a href="{{ .permalink }}">{{ .title }}</a></h3>
     <div class="meta">
       {{ if .draft }}<span class="draft-badge">{{ trans "draft" .lang }}</span>{{ end }}
-      {{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}
-      <time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short" .lang) .lang }}</time>
+      <span class="meta-line">
+        {{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}
+        <time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short" .lang) .lang }}</time>
+      </span>
       {{ if .reading_time }}<span class="reading-badge">{{ .reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
     </div>
     {{ if .summary }}<p class="summary">{{ .summary }}</p>{{ end }}
-    {{ if .taxonomies }}
-    <div class="pills">
-      {{ range $kind, $terms := .taxonomies }}
-        {{ range $terms }}
-          <span class="pill pill--default">{{ . }}</span>
+    <div class="card-footer">
+      {{ if .taxonomies }}
+      <div class="pills">
+        {{ range $kind, $terms := .taxonomies }}
+          {{ range $terms }}
+            <span class="pill pill--default">{{ . }}</span>
+          {{ end }}
         {{ end }}
+      </div>
+      {{ end }}
+      {{ template "partials/bookmark.html" . }}
+      {{ if and $.config.sharing .permalink }}
+      {{ template "partials/share.html" . }}
       {{ end }}
     </div>
-    {{ end }}
   </div>
 </article>

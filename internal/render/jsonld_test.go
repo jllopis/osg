@@ -17,9 +17,10 @@ func TestBuildArticleSchema(t *testing.T) {
 		"updated":    time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC),
 		"author":     "Alice",
 		"word_count": 500,
+		"taxonomies": map[string][]string{"tags": {"go", "web"}},
 	}
 
-	schema := buildArticleSchema(page, "https://example.com", "My Site")
+	schema := buildArticleSchema(page, "https://example.com", "My Site", "en", "Blog")
 	if schema == nil {
 		t.Fatal("expected non-nil schema")
 	}
@@ -57,6 +58,16 @@ func TestBuildArticleSchema(t *testing.T) {
 		t.Errorf("expected publisher My Site, got %v", schema["publisher"])
 	}
 
+	if schema["inLanguage"] != "en" {
+		t.Errorf("expected inLanguage en, got %v", schema["inLanguage"])
+	}
+	if schema["articleSection"] != "Blog" {
+		t.Errorf("expected articleSection Blog, got %v", schema["articleSection"])
+	}
+	if schema["keywords"] != "go, web" {
+		t.Errorf("expected keywords 'go, web', got %v", schema["keywords"])
+	}
+
 	// Verify it's valid JSON.
 	if _, err := json.Marshal(schema); err != nil {
 		t.Errorf("schema is not valid JSON: %v", err)
@@ -65,7 +76,7 @@ func TestBuildArticleSchema(t *testing.T) {
 
 func TestBuildArticleSchema_EmptyTitle(t *testing.T) {
 	page := map[string]any{"title": ""}
-	schema := buildArticleSchema(page, "https://example.com", "Site")
+	schema := buildArticleSchema(page, "https://example.com", "Site", "", "")
 	if schema != nil {
 		t.Error("expected nil for empty title")
 	}
@@ -73,7 +84,7 @@ func TestBuildArticleSchema_EmptyTitle(t *testing.T) {
 
 func TestBuildArticleSchema_MinimalFields(t *testing.T) {
 	page := map[string]any{"title": "Minimal"}
-	schema := buildArticleSchema(page, "", "")
+	schema := buildArticleSchema(page, "", "", "", "")
 	if schema == nil {
 		t.Fatal("expected non-nil schema")
 	}
@@ -91,7 +102,7 @@ func TestBuildArticleSchema_ExternalImage(t *testing.T) {
 		"title": "Post",
 		"image": "https://cdn.example.com/photo.jpg",
 	}
-	schema := buildArticleSchema(page, "https://example.com", "")
+	schema := buildArticleSchema(page, "https://example.com", "", "", "")
 	// External image should be left as-is.
 	if schema["image"] != "https://cdn.example.com/photo.jpg" {
 		t.Errorf("expected external URL preserved, got %s", schema["image"])
@@ -99,7 +110,7 @@ func TestBuildArticleSchema_ExternalImage(t *testing.T) {
 }
 
 func TestBuildWebSiteSchema(t *testing.T) {
-	schema := buildWebSiteSchema("https://example.com", "My Site", "A description")
+	schema := buildWebSiteSchema("https://example.com", "My Site", "A description", "en")
 	if schema == nil {
 		t.Fatal("expected non-nil schema")
 	}
@@ -128,10 +139,13 @@ func TestBuildWebSiteSchema(t *testing.T) {
 	if !strings.Contains(target, "/search/") {
 		t.Errorf("expected search target, got %s", target)
 	}
+	if schema["inLanguage"] != "en" {
+		t.Errorf("expected inLanguage en, got %v", schema["inLanguage"])
+	}
 }
 
 func TestBuildWebSiteSchema_EmptyBaseURL(t *testing.T) {
-	schema := buildWebSiteSchema("", "Site", "Desc")
+	schema := buildWebSiteSchema("", "Site", "Desc", "")
 	if schema != nil {
 		t.Error("expected nil for empty baseURL")
 	}

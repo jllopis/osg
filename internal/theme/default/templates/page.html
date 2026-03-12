@@ -23,6 +23,19 @@
               {{ if .page.author }}<span class="author">{{ .page.author }}</span><span class="meta-sep">&bull;</span>{{ end }}
               <time datetime="{{ .page.date.Format "2006-01-02" }}">{{ date_format .page.date (trans "date_format_long" .lang) .lang }}</time>
               {{ if .page.reading_time }}<span class="reading-badge">{{ .page.reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
+              <button class="bookmark-btn bookmark-btn--compact" type="button" aria-pressed="false"
+                      data-path="{{ get_url .page.path true false }}"
+                      data-title="{{ .page.title }}"
+                      data-summary="{{ .page.summary }}"
+                      data-date="{{ .page.date.Format "2006-01-02" }}"
+                      {{ if .page.image }}data-image="{{ .page.image }}"{{ end }}
+                      {{ if .page.reading_time }}data-reading-time="{{ .page.reading_time }}"{{ end }}
+                      {{- if .page.taxonomies }}{{- range $kind, $terms := .page.taxonomies }} data-tax-{{ $kind }}="{{ range $i, $t := $terms }}{{ if $i }},{{ end }}{{ $t }}{{ end }}"{{- end }}{{- end }}
+                      data-label-save="{{ trans "bookmark_save" .lang }}"
+                      data-label-remove="{{ trans "bookmark_remove" .lang }}"
+                      title="{{ trans "bookmark_save" .lang }}">
+                <svg class="bookmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              </button>
             </div>
 
             {{ if .page.summary }}<p class="lead">{{ .page.summary }}</p>{{ end }}
@@ -75,6 +88,9 @@
                     data-title="{{ .page.title }}"
                     data-summary="{{ .page.summary }}"
                     data-date="{{ .page.date.Format "2006-01-02" }}"
+                    {{ if .page.image }}data-image="{{ .page.image }}"{{ end }}
+                    {{ if .page.reading_time }}data-reading-time="{{ .page.reading_time }}"{{ end }}
+                    {{- if .page.taxonomies }}{{- range $kind, $terms := .page.taxonomies }} data-tax-{{ $kind }}="{{ range $i, $t := $terms }}{{ if $i }},{{ end }}{{ $t }}{{ end }}"{{- end }}{{- end }}
                     data-label-save="{{ trans "bookmark_save" .lang }}"
                     data-label-remove="{{ trans "bookmark_remove" .lang }}">
               <svg class="bookmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
@@ -234,7 +250,6 @@
     <script defer src="{{ get_url "/js/tabs.js" false true }}"></script>
     <script defer src="{{ get_url "/js/progress.js" false true }}"></script>
     {{ if .toc }}<script defer src="{{ get_url "/js/toc-spy.js" false true }}"></script>{{ end }}
-    <script defer src="{{ get_url "/js/bookmarks.js" false true }}"></script>
     {{ end }}
     {{ if .config.analytics_body }}{{ .config.analytics_body }}{{ end }}
   </body>
