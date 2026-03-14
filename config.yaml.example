@@ -234,6 +234,23 @@ image_quality: 80
 image_widths: [640, 1200]
 
 # -----------------------------------------------------------------------------
+# Breadcrumbs
+# -----------------------------------------------------------------------------
+# breadcrumbs: Show breadcrumb navigation (Home / Section / Title) at the top
+#              of article pages. Useful for section-based URL structures.
+#              For date-based layouts ({date}/{slug}) the intermediate path
+#              segments may not be meaningful — set to false to disable.
+breadcrumbs: true
+
+# -----------------------------------------------------------------------------
+# Math (KaTeX)
+# -----------------------------------------------------------------------------
+# math: Enable math/LaTeX rendering via KaTeX. When enabled, inline math
+#       ($...$) and display math ($$...$$) in Markdown content are rendered
+#       as formatted equations. KaTeX CSS and JS are loaded from CDN.
+math: false
+
+# -----------------------------------------------------------------------------
 # Dev server (osg serve)
 # -----------------------------------------------------------------------------
 # serve_watch: Watch files for changes and rebuild automatically.

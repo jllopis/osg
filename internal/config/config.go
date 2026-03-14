@@ -90,6 +90,8 @@ type Config struct {
 	ImageWidths        []int                     `koanf:"image_widths" yaml:"image_widths"`
 	Lightbox           bool                      `koanf:"lightbox" yaml:"lightbox"`
 	Sharing            bool                      `koanf:"sharing" yaml:"sharing"`
+	Breadcrumbs        bool                      `koanf:"breadcrumbs" yaml:"breadcrumbs"`
+	Math               bool                      `koanf:"math" yaml:"math"`
 	Minify             bool                      `koanf:"minify" yaml:"minify"`
 	NavTaxonomy        string                    `koanf:"nav_taxonomy" yaml:"nav_taxonomy"`
 	DefaultLanguage    string                    `koanf:"default_language" yaml:"default_language"`
@@ -240,6 +242,8 @@ func Default() Config {
 		ImageWidths:       []int{640, 1200},
 		Lightbox:          true,
 		Sharing:           true,
+		Breadcrumbs:       true,
+		Math:              false,
 		Minify:            true,
 		DefaultLanguage:   "es",
 		DoctorProfile:     "dev",

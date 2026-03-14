@@ -12,7 +12,7 @@
       <main id="main-content" role="main">
         <article class="article">
           {{ block "page-breadcrumbs" . }}
-          {{ if .page_section }}
+          {{ if and .config.breadcrumbs .page_section }}
           <nav class="breadcrumbs container-narrow" aria-label="{{ trans "aria_breadcrumb" .lang }}">
             <a href="{{ get_url "/" true false }}">{{ trans "home" .lang }}</a>
             <span class="sep">/</span>
@@ -331,6 +331,8 @@
     <script defer src="{{ get_url "/js/tabs.js" false true }}"></script>
     <script defer src="{{ get_url "/js/progress.js" false true }}"></script>
     {{ if .toc }}<script defer src="{{ get_url "/js/toc-spy.js" false true }}"></script>{{ end }}
+    {{ if .config.math }}<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.js" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/contrib/auto-render.min.js" crossorigin="anonymous" onload="renderMathInElement(document.querySelector('.prose'),{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false})"></script>{{ end }}
     {{ end }}
     {{ if .config.analytics_body }}{{ .config.analytics_body }}{{ end }}
   </body>

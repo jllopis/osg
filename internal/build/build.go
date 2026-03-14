@@ -1143,6 +1143,8 @@ func configView(cfg config.Config) map[string]any {
 		"image_widths":       cfg.ImageWidths,
 		"lightbox":           cfg.Lightbox,
 		"sharing":            cfg.Sharing,
+		"breadcrumbs":        cfg.Breadcrumbs,
+		"math":               cfg.Math,
 		"minify":             cfg.Minify,
 		"nav_taxonomy":       cfg.NavTaxonomy,
 		"multilingual":       cfg.IsMultilingual(),
