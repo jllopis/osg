@@ -49,90 +49,82 @@
         {{ end }}
         {{ end }}
 
-        {{ block "index-posts" . }}
-        {{/* ---- 2-column grid: feed + sidebar ---- */}}
-        <div class="home-grid">
+        {{ block "index-recent-cards" . }}
+        {{/* ---- Recent posts as cards (page 1 only) ---- */}}
+        {{ if .section.pages }}
+        {{ $isPage1 := true }}
+        {{ with .paginator }}{{ if gt .current_index 1 }}{{ $isPage1 = false }}{{ end }}{{ end }}
+        {{ if $isPage1 }}
+        {{ $pages := .section.pages }}
+        {{ $n := len $pages }}{{ if gt $n 8 }}{{ $n = 8 }}{{ end }}
+        <section class="recent-cards" aria-label="{{ trans "recent_posts" .lang }}">
+          <div class="cards">
+            {{ range slice $pages 0 $n }}
+            {{ template "partials/card.html" . }}
+            {{ end }}
+          </div>
+        </section>
+        {{ end }}
+        {{ end }}
+        {{ end }}
 
-          {{/* ---- Main feed (left column) ---- */}}
-          {{ if .section.pages }}
-          <section class="main-feed" aria-label="{{ trans "aria_recent_posts" .lang }}">
-            <h2 class="section-heading">{{ trans "recent_posts" .lang }}</h2>
-            <div class="post-list">
-              {{ range .section.pages }}
-              <div class="post-item">
-                {{ if .image }}
-                <a class="post-item-thumb" href="{{ .permalink }}">
-                  {{ picture .image .title "lazy" }}
-                </a>
-                {{ end }}
-                <div class="post-item-body">
-                  <div class="post-item-date">{{ if .draft }}<span class="draft-badge">{{ trans "draft" .lang }}</span>{{ end }}{{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}<time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short" .lang) .lang }}</time></div>
-                  <h3 class="post-item-title"><a href="{{ .permalink }}">{{ .title }}</a></h3>
-                  {{ if .summary }}<p class="post-item-summary">{{ .summary }}</p>{{ end }}
-                  <div class="post-item-footer">
-                    {{ if .reading_time }}<span class="post-item-reading">{{ .reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
-                    {{ template "partials/bookmark.html" . }}
-                    {{ if and $.config.sharing .permalink }}
-                    {{ template "partials/share.html" . }}
-                    {{ end }}
-                  </div>
+        {{ block "index-posts" . }}
+        {{/* ---- Post list (remaining pages after cards) ---- */}}
+        {{ $isPage1 := true }}
+        {{ with .paginator }}{{ if gt .current_index 1 }}{{ $isPage1 = false }}{{ end }}{{ end }}
+        {{ $pages := .section.pages }}
+        {{ $skip := 0 }}
+        {{ if and $isPage1 $pages }}{{ if ge (len $pages) 8 }}{{ $skip = 8 }}{{ else }}{{ $skip = len $pages }}{{ end }}{{ end }}
+        {{ $hasList := false }}
+        {{ if $pages }}{{ if gt (len $pages) $skip }}{{ $hasList = true }}{{ end }}{{ end }}
+
+        {{ if or $hasList .paginator }}
+        <section class="main-feed" aria-label="{{ trans "aria_recent_posts" .lang }}">
+          {{ if $hasList }}
+          {{ $listPages := slice $pages $skip }}
+          <h2 class="section-heading">{{ trans "recent_posts" .lang }}</h2>
+          <div class="post-list">
+            {{ range $listPages }}
+            <div class="post-item">
+              {{ if .image }}
+              <a class="post-item-thumb" href="{{ .permalink }}">
+                {{ picture .image .title "lazy" }}
+              </a>
+              {{ end }}
+              <div class="post-item-body">
+                <div class="post-item-date">{{ if .draft }}<span class="draft-badge">{{ trans "draft" .lang }}</span>{{ end }}{{ if .author }}<span class="author">{{ .author }}</span><span class="meta-sep">&bull;</span>{{ end }}<time datetime="{{ .date.Format "2006-01-02" }}">{{ date_format .date (trans "date_format_short" .lang) .lang }}</time></div>
+                <h3 class="post-item-title"><a href="{{ .permalink }}">{{ .title }}</a></h3>
+                {{ if .summary }}<p class="post-item-summary">{{ .summary }}</p>{{ end }}
+                <div class="post-item-footer">
+                  {{ if .reading_time }}<span class="post-item-reading">{{ .reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
+                  {{ template "partials/bookmark.html" . }}
+                  {{ if and $.config.sharing .permalink }}
+                  {{ template "partials/share.html" . }}
+                  {{ end }}
                 </div>
               </div>
-              {{ end }}
             </div>
-
-            {{ if .paginator }}
-            <nav class="pagination" aria-label="{{ trans "aria_paginated_posts" .lang }}">
-              {{ if .paginator.previous }}
-              <a class="pagination-link pagination-prev" href="{{ .paginator.previous }}">&larr; {{ trans "newer_posts" .lang }}</a>
-              {{ else }}
-              <span class="pagination-link pagination-prev pagination-disabled"></span>
-              {{ end }}
-              <span class="pagination-info">{{ printf (trans "page_of" .lang) .paginator.current_index .paginator.total_pages }}</span>
-              {{ if .paginator.next }}
-              <a class="pagination-link pagination-next" href="{{ .paginator.next }}">{{ trans "older_posts" .lang }} &rarr;</a>
-              {{ else }}
-              <span class="pagination-link pagination-next pagination-disabled"></span>
-              {{ end }}
-            </nav>
             {{ end }}
-          </section>
+          </div>
           {{ end }}
 
-          {{ block "index-sidebar" . }}
-          {{/* ---- Sidebar (right column) ---- */}}
-          <aside class="sidebar">
-            {{ $tags := get_taxonomy "tags" }}
-            {{ if $tags }}
-            <div class="sidebar-section">
-              <h3 class="sidebar-heading">{{ trans "recommended_topics" .lang }}</h3>
-              <nav class="sidebar-tags">
-                {{ range $tags.terms }}
-                <a class="sidebar-tag" href="{{ .permalink }}" title="{{ .name }} ({{ .page_count }})">{{ .name }}</a>
-                {{ end }}
-              </nav>
-            </div>
+          {{ if .paginator }}
+          <nav class="pagination" aria-label="{{ trans "aria_paginated_posts" .lang }}">
+            {{ if .paginator.previous }}
+            <a class="pagination-link pagination-prev" href="{{ .paginator.previous }}">&larr; {{ trans "newer_posts" .lang }}</a>
+            {{ else }}
+            <span class="pagination-link pagination-prev pagination-disabled"></span>
             {{ end }}
-
-            {{ block "index-sections" . }}
-            {{/* ---- Subsections / topic areas ---- */}}
-            {{ $hasReal := false }}
-            {{ range .section.subsections }}{{ if .has_source }}{{ $hasReal = true }}{{ end }}{{ end }}
-            {{ if $hasReal }}
-            <div class="sidebar-section">
-              <h3 class="sidebar-heading">{{ trans "sections" .lang }}</h3>
-              <div class="topic-pills">
-                {{ range .section.subsections }}{{ if .has_source }}
-                <a class="topic-pill" href="{{ .permalink }}">{{ .title }}{{ if .pages }} <span class="pill-count">{{ len .pages }}</span>{{ end }}</a>
-                {{ end }}{{ end }}
-              </div>
-            </div>
+            <span class="pagination-info">{{ printf (trans "page_of" .lang) .paginator.current_index .paginator.total_pages }}</span>
+            {{ if .paginator.next }}
+            <a class="pagination-link pagination-next" href="{{ .paginator.next }}">{{ trans "older_posts" .lang }} &rarr;</a>
+            {{ else }}
+            <span class="pagination-link pagination-next pagination-disabled"></span>
             {{ end }}
-            {{ end }}
-          </aside>
+          </nav>
           {{ end }}
-
-        </div>
+        </section>
+        {{ end }}
         {{ end }}
 
       </main>

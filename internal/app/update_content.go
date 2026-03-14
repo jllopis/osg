@@ -106,7 +106,7 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 		fm, body, _, fmErr := frontmatter.SplitFrontmatter(data)
 		if fmErr != nil {
 			logger.Warn("failed to parse frontmatter", "path", path, "error", fmErr)
-			stats.Errors++
+			stats.Skipped++
 			continue
 		}
 		stats.Parsed++
