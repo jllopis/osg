@@ -532,3 +532,40 @@ analytics: false
 #     paginate_path: page
 #     feed: false
 #     render: true
+
+# =============================================================================
+# Content front-matter fields reference
+# =============================================================================
+# These fields are set in the YAML front-matter of individual Markdown pages,
+# NOT in this config file. They are listed here for reference.
+#
+# --- Standard fields ---
+# title:        Page title (string)
+# date:         Publication date (YYYY-MM-DD)
+# draft:        true to mark as unpublished (boolean)
+# summary:      Manual summary/excerpt (string)
+# description:  Alias for summary (string)
+# tags:         List of tags ([]string)
+# image:        Hero/OG image path (string)
+# image_credit: Attribution text shown as <figcaption> under the hero (string)
+# lang:         Override default_language for this page (string, BCP-47)
+# slug:         Override the URL slug derived from filename (string)
+# toc:          Show table of contents sidebar (boolean, default: false)
+# menu:         Include page in main navigation (boolean)
+#
+# --- Series ---
+# series:       Name of the article series this page belongs to (string).
+#               Pages with the same series name are grouped into a numbered
+#               navigation widget showing all parts, with prev/next links.
+# series_order: Explicit position within the series (integer, 1-based).
+#               When omitted or 0, pages are sorted by date within the series.
+#
+# --- Footnotes / Sidenotes ---
+# Standard Markdown footnotes [^1] are automatically converted to Tufte-style
+# sidenotes in the right margin on wide screens (≥1200px) when the page does
+# NOT have a TOC sidebar. No front-matter field needed.
+#
+# --- Backlinks ---
+# Backlinks are detected automatically from internal links across all pages.
+# No front-matter field needed. A "Backlinks" section appears at the bottom
+# of any page that is linked to by other pages.
