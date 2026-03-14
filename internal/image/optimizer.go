@@ -625,10 +625,10 @@ func downsizeIfNeeded(path string, maxWidth int, quality int, hasWebP bool, logg
 		}
 		if err := writeWebP(tmpPath, path, quality); err != nil {
 			logger.Warn("downsize original failed", "path", path, "error", err)
-			os.Remove(tmpPath)
+			_ = os.Remove(tmpPath)
 			return false
 		}
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 	}
 
 	logger.Debug("downsized original", "path", path, "from", cfg.Width, "to", maxWidth)

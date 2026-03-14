@@ -272,7 +272,7 @@ func TestOptimizeFile_WebP(t *testing.T) {
 	if err := writeWebP(pngPath, webpPath, 80); err != nil {
 		t.Fatalf("creating test webp: %v", err)
 	}
-	os.Remove(pngPath) // only keep the webp
+	_ = os.Remove(pngPath) // only keep the webp
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
