@@ -109,6 +109,9 @@ no_bookmarks: "No bookmarks yet. Save posts to read them later."
 bookmarks_export: "Export"
 bookmarks_import: "Import"
 
+# --- Author ---
+about_author: About the author
+
 # --- Comments ---
 comments: Comments
 comments_login: "Log in to comment"

@@ -626,6 +626,21 @@ func removeEmptyParents(root string, leaf string) {
 }
 
 func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, indices map[string]*taxonomy.Index, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
+	// Build page -> section mapping for breadcrumbs.
+	pageSection := make(map[*site.Page]*site.Section)
+	var walkSections func(s *site.Section)
+	walkSections = func(s *site.Section) {
+		for _, p := range s.Pages {
+			pageSection[p] = s
+		}
+		for _, sub := range s.Subsections {
+			walkSections(sub)
+		}
+	}
+	if siteIndex.Root != nil {
+		walkSections(siteIndex.Root)
+	}
+
 	// Build chronological navigation index (excluding menu pages).
 	postPages := make([]*site.Page, 0, len(siteIndex.Pages))
 	for _, p := range siteIndex.Pages {
@@ -677,6 +692,14 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 				if tocEntries := markdown.ExtractTOC(string(content)); len(tocEntries) > 0 {
 					renderCtx["toc"] = markdown.TOCView(tocEntries)
 				}
+			}
+		}
+
+		// Breadcrumb section context (only for non-root sections).
+		if sec, ok := pageSection[page]; ok && !sec.IsRoot {
+			renderCtx["page_section"] = map[string]any{
+				"title": sec.Title,
+				"path":  sec.Path,
 			}
 		}
 
@@ -1014,6 +1037,8 @@ func configView(cfg config.Config) map[string]any {
 		"nav_taxonomy":       cfg.NavTaxonomy,
 		"multilingual":       cfg.IsMultilingual(),
 		"languages":          languagesView(cfg),
+		"author_bio":         cfg.AuthorBio,
+		"author_avatar":      cfg.AuthorAvatar,
 		"social":             cfg.Social,
 		"copyright":          strings.ReplaceAll(cfg.Copyright, "{year}", fmt.Sprintf("%d", time.Now().Year())),
 		"license":            template.HTML(inlineMarkdownLinks(cfg.License)),

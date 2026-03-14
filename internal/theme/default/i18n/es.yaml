@@ -109,6 +109,9 @@ no_bookmarks: "Aun no hay marcadores. Guarda publicaciones para leerlas despues.
 bookmarks_export: "Exportar"
 bookmarks_import: "Importar"
 
+# --- Autor ---
+about_author: Sobre el autor
+
 # --- Comentarios ---
 comments: Comentarios
 comments_login: "Inicia sesion para comentar"

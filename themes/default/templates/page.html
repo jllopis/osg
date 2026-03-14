@@ -11,6 +11,18 @@
 
       <main id="main-content" role="main">
         <article class="article">
+          {{ block "page-breadcrumbs" . }}
+          {{ if .page_section }}
+          <nav class="breadcrumbs container-narrow" aria-label="{{ trans "aria_breadcrumb" .lang }}">
+            <a href="{{ get_url "/" true false }}">{{ trans "home" .lang }}</a>
+            <span class="sep">/</span>
+            <a href="{{ get_url .page_section.path true false }}">{{ .page_section.title }}</a>
+            <span class="sep">/</span>
+            <span aria-current="page">{{ .page.title }}</span>
+          </nav>
+          {{ end }}
+          {{ end }}
+
           {{ block "page-header" . }}
           {{ if .page.draft }}<div class="draft-banner" role="alert">{{ trans "draft_banner" .lang }}</div>{{ end }}
           <header class="article-header container-narrow">
@@ -240,6 +252,20 @@
           {{ end }}
           {{ end }}
 
+          {{ block "page-author" . }}
+          {{ if or .config.author_bio .config.author_avatar }}
+          <aside class="author-card container-narrow">
+            {{ if .config.author_avatar }}
+            <img class="author-card-avatar" src="{{ .config.author_avatar }}" alt="{{ .page.author }}" loading="lazy" />
+            {{ end }}
+            <div class="author-card-body">
+              {{ if .page.author }}<strong class="author-card-name">{{ .page.author }}</strong>{{ end }}
+              {{ if .config.author_bio }}<p class="author-card-bio">{{ .config.author_bio }}</p>{{ end }}
+            </div>
+          </aside>
+          {{ end }}
+          {{ end }}
+
         </article>
       </main>
 
@@ -250,6 +276,7 @@
     {{ if .config.interactions_enabled }}<script defer src="{{ get_url "/js/interactions.js" false true }}"></script>{{ end }}
     {{ if .config.sharing }}<script defer src="{{ get_url "/js/share.js" false true }}"></script>{{ end }}
     {{ if .config.comments_enabled }}<script defer src="{{ get_url "/js/comments.js" false true }}"></script>{{ end }}
+    <script defer src="{{ get_url "/js/copy-code.js" false true }}"></script>
     <script defer src="{{ get_url "/js/tabs.js" false true }}"></script>
     <script defer src="{{ get_url "/js/progress.js" false true }}"></script>
     {{ if .toc }}<script defer src="{{ get_url "/js/toc-spy.js" false true }}"></script>{{ end }}

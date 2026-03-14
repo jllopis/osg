@@ -838,3 +838,36 @@ Layout de 3 columnas en la portada para widgets laterales.
 - [ ] Widget "Posts populares": lista de posts mas vistos (datos desde analytics API si habilitado)
 - [ ] Cada widget es un partial independiente (`partials/widget-*.html`)
 - [ ] Config `sidebar_widgets: [author, newsletter, popular]` para activar/ordenar widgets
+
+## Phase 28 — Blog UX: copy code, breadcrumbs, author card
+
+Sprint 1 de mejoras basado en analisis de blogs referentes (Julia Evans, Josh Comeau,
+Tania Rascia, Kent C. Dodds, Gwern, etc.).
+
+### 28A — Copy code button (done)
+- [done] JS (`copy-code.js`): boton "Copy" en cada `<pre><code>` block
+- [done] Icono de copia → checkmark durante 2s tras copiar
+- [done] CSS: visible solo en hover/focus, accent-2 (verde) en estado "copied"
+- [done] Cargado via `<script defer>` en page.html
+
+### 28B — Breadcrumbs en articulos (done)
+- [done] En `build.go`: mapa page→section, pass `page_section` al contexto de render
+- [done] Template: nav con `Home / Section / Title` (solo si la pagina pertenece a una seccion no-root)
+- [done] CSS ya existia (`style.css:1073`), aria-label con traduccion `aria_breadcrumb`
+- [done] Mejora SEO y orientacion del lector
+
+### 28C — Author bio card (done)
+- [done] Config: `author_bio` y `author_avatar` en `config.go` + `config.yaml.example`
+- [done] Template: card al final del articulo (tras related posts) con avatar + bio
+- [done] CSS: flexbox, responsive (columna en mobile), Nord palette
+- [done] Se oculta automaticamente si ambos campos estan vacios
+
+### 28D — Pendientes sprint 2+
+- [ ] Series/colecciones (frontmatter `series`, nav prev/next entre partes)
+- [ ] Sidenotes estilo Tufte (CSS + JS para notas al margen)
+- [ ] Backlinks (renderizar lista inversa de wikilinks)
+- [ ] AVIF support en image optimizer
+- [ ] Newsletter form embed (configurable)
+- [ ] Feed XSLT styling (RSS legible en browser)
+- [ ] Prefetch on hover (Speculation Rules API)
+- [ ] Font subsetting (Inter latin-only)

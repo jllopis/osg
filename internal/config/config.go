@@ -97,6 +97,8 @@ type Config struct {
 	DefaultEditor      string                    `koanf:"default_editor" yaml:"default_editor"`
 	NewNotesDir        string                    `koanf:"new_notes_dir" yaml:"new_notes_dir"`
 	DoctorProfile      string                    `koanf:"doctor_profile" yaml:"doctor_profile"`
+	AuthorBio          string                    `koanf:"author_bio" yaml:"author_bio"`
+	AuthorAvatar       string                    `koanf:"author_avatar" yaml:"author_avatar"`
 	Social             map[string]string         `koanf:"social" yaml:"social"`
 	Copyright          string                    `koanf:"copyright" yaml:"copyright"`
 	License            string                    `koanf:"license" yaml:"license"`

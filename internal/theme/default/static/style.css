@@ -3650,3 +3650,98 @@ blockquote.quote > p {
 .comment-reply-form .comments-input {
   min-height: 60px;
 }
+
+/* ============================================================
+   Copy Code Button
+   ============================================================ */
+.prose pre {
+  position: relative;
+}
+
+.code-copy-btn {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-1);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+  z-index: 1;
+  line-height: 0;
+}
+
+pre:hover .code-copy-btn,
+.code-copy-btn:focus-visible {
+  opacity: 1;
+}
+
+.code-copy-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.code-copy-btn.copied {
+  opacity: 1;
+  background: var(--accent-2);
+  color: #2e3440;
+  border-color: var(--accent-2);
+}
+
+/* ============================================================
+   Author Bio Card
+   ============================================================ */
+.author-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-5);
+  margin-top: var(--sp-10);
+  padding: var(--sp-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.author-card-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.author-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.author-card-name {
+  display: block;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: var(--sp-1);
+}
+
+.author-card-bio {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  line-height: var(--lh-normal);
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .author-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}

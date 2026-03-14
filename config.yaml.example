@@ -381,6 +381,17 @@ tui_log_modifier: shift
 doctor_profile: dev
 
 # -----------------------------------------------------------------------------
+# Author bio card
+# -----------------------------------------------------------------------------
+# Displayed at the bottom of every article page. Both fields are optional;
+# the card is hidden when neither is set.
+#
+# author_bio: Short bio text shown next to the avatar.
+# author_avatar: Path or URL to a square photo/avatar (recommended: 144px+).
+# author_bio: "Developer and writer. I build things with Go and write about it."
+# author_avatar: "/images/avatar.jpg"
+
+# -----------------------------------------------------------------------------
 # Social links, copyright & license
 # -----------------------------------------------------------------------------
 # social: Map of social network handles shown as icons in the footer.
