@@ -221,12 +221,12 @@ minify: true
 # -----------------------------------------------------------------------------
 # Image optimization
 # -----------------------------------------------------------------------------
-# image_optimization: Generate responsive image variants (resized JPEG + WebP).
-#   When enabled, raster images (jpg, jpeg, png, webp) in public/ are processed
-#   after asset copy: resized to each configured width and, if the cwebp
-#   binary is available, also converted to WebP.  Templates automatically
-#   emit <picture> elements with srcset when variants exist.
-# image_quality: Encoding quality for JPEG and WebP variants (1-100).
+# image_optimization: Generate responsive image variants (resized JPEG + WebP + AVIF).
+#   When enabled, raster images (jpg, jpeg, png, webp, avif) in public/ are
+#   processed after asset copy: resized to each configured width and converted
+#   to WebP (via cwebp) and AVIF (via avifenc) when those binaries are available.
+#   Templates emit <picture> elements with srcset in priority order: AVIF > WebP > JPEG.
+# image_quality: Encoding quality for JPEG, WebP and AVIF variants (1-100).
 # image_widths: List of pixel widths to generate (images smaller than a width
 #               are skipped — no upscaling).  The original is always kept.
 image_optimization: true
