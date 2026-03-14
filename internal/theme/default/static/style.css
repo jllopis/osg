@@ -2026,10 +2026,19 @@ picture {
 
 /* --- TOC: desktop sticky sidebar --- */
 @media (min-width: 1200px) {
-  /* When TOC is present, align all container-narrow blocks (hero, header,
-     taxonomies, actions, nav, series, related, backlinks, author) with the
-     prose column so they don't extend past the TOC's left edge. */
-  article:has(.article-content--with-toc) .container-narrow:not(.article-content--with-toc) {
+  /* When TOC is present, align hero, header, and all post-article blocks
+     with the prose column so they don't extend past the TOC's left edge. */
+  article:has(.article-content--with-toc) .article-hero,
+  article:has(.article-content--with-toc) .article-header,
+  article:has(.article-content--with-toc) .published-in,
+  article:has(.article-content--with-toc) .article-actions,
+  article:has(.article-content--with-toc) .post-nav,
+  article:has(.article-content--with-toc) .series-nav,
+  article:has(.article-content--with-toc) .related-posts,
+  article:has(.article-content--with-toc) .backlinks,
+  article:has(.article-content--with-toc) .author-card,
+  article:has(.article-content--with-toc) .comments-section,
+  article:has(.article-content--with-toc) .breadcrumbs {
     width: min(1080px, 100% - var(--sp-8));
     max-width: none;
     margin-inline: auto;
