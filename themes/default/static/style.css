@@ -2029,7 +2029,7 @@ picture {
   /* When TOC is present, align all container-narrow blocks (hero, header,
      taxonomies, actions, nav, series, related, backlinks, author) with the
      prose column so they don't extend past the TOC's left edge. */
-  article:has(.article-content--with-toc) .container-narrow {
+  article:has(.article-content--with-toc) .container-narrow:not(.article-content--with-toc) {
     width: min(1080px, 100% - var(--sp-8));
     max-width: none;
     margin-inline: auto;
