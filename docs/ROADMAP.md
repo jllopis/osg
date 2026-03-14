@@ -862,10 +862,28 @@ Tania Rascia, Kent C. Dodds, Gwern, etc.).
 - [done] CSS: flexbox, responsive (columna en mobile), Nord palette
 - [done] Se oculta automaticamente si ambos campos estan vacios
 
-### 28D — Pendientes sprint 2+
-- [ ] Series/colecciones (frontmatter `series`, nav prev/next entre partes)
-- [ ] Sidenotes estilo Tufte (CSS + JS para notas al margen)
-- [ ] Backlinks (renderizar lista inversa de wikilinks)
+### 28D — Series/colecciones (done)
+- [done] Campo `series` y `series_order` en frontmatter + Page struct
+- [done] `pickInt` helper para parsear series_order
+- [done] `buildSeriesIndex`: agrupa paginas por serie, ordena por series_order/date
+- [done] Template: lista ordenada de la serie, highlight del articulo actual, nav prev/next
+- [done] CSS: series-nav con counter automático, item actual resaltado
+
+### 28E — Sidenotes estilo Tufte (done)
+- [done] Goldmark footnotes ya habilitado (`extension.Footnote`)
+- [done] `sidenotes.js`: convierte footnotes en notas al margen en pantallas anchas (>=1200px)
+- [done] No actua si hay TOC sidebar (margen derecho ya ocupado)
+- [done] CSS: footnotes styled para mobile, sidenotes para desktop (float right, negative margin)
+- [done] Fallback limpio: en mobile se ven como footnotes normales al final
+
+### 28F — Backlinks (done)
+- [done] `buildBacklinkIndex`: escanea HTML renderizado buscando `<a href="/...">` internos
+- [done] Indice inverso: pagina destino -> paginas que enlazan a ella
+- [done] Template: seccion "Enlazado desde" con cards linkables (titulo + summary)
+- [done] CSS: backlinks cards con hover accent border
+- [done] i18n: keys `backlinks`, `linked_from` en es/en
+
+### 28G — Pendientes sprint 3+
 - [ ] AVIF support en image optimizer
 - [ ] Newsletter form embed (configurable)
 - [ ] Feed XSLT styling (RSS legible en browser)

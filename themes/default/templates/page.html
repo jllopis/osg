@@ -228,6 +228,39 @@
           {{ end }}
           {{ end }}
 
+          {{ block "page-series" . }}
+          {{- /* --- Series Navigation --- */ -}}
+          {{ if .series_pages }}
+          <nav class="series-nav container-narrow" aria-label="{{ trans "series" .lang }}">
+            <div class="series-header">
+              <span class="series-label">{{ trans "part_of_series" .lang }}</span>
+              <span class="series-title">{{ .series_name }}</span>
+            </div>
+            <ol class="series-list">
+              {{ range .series_pages }}
+              <li class="series-item {{ if eq .path $.page.path }}series-item--current{{ end }}">
+                {{ if eq .path $.page.path }}
+                  <span>{{ .title }}</span>
+                {{ else }}
+                  <a href="{{ get_url .path true false }}">{{ .title }}</a>
+                {{ end }}
+              </li>
+              {{ end }}
+            </ol>
+            {{ if or .series_prev .series_next }}
+            <div class="series-prev-next">
+              {{ if $.series_prev }}
+              <a href="{{ get_url .series_prev.path true false }}">&larr; {{ .series_prev.title }}</a>
+              {{ else }}<span></span>{{ end }}
+              {{ if $.series_next }}
+              <a href="{{ get_url .series_next.path true false }}">{{ .series_next.title }} &rarr;</a>
+              {{ else }}<span></span>{{ end }}
+            </div>
+            {{ end }}
+          </nav>
+          {{ end }}
+          {{ end }}
+
           {{ block "page-related" . }}
           {{- /* --- Related Posts --- */ -}}
           {{ if .related_posts }}
@@ -245,6 +278,23 @@
                   <span class="related-card-title">{{ .title }}</span>
                   {{ if .summary }}<span class="related-card-summary">{{ .summary }}</span>{{ end }}
                 </div>
+              </a>
+              {{ end }}
+            </div>
+          </section>
+          {{ end }}
+          {{ end }}
+
+          {{ block "page-backlinks" . }}
+          {{- /* --- Backlinks (pages that link here) --- */ -}}
+          {{ if .backlinks }}
+          <section class="backlinks container-narrow" aria-label="{{ trans "backlinks" .lang }}">
+            <h2 class="section-heading">{{ trans "linked_from" .lang }}</h2>
+            <div class="backlinks-list">
+              {{ range .backlinks }}
+              <a class="backlinks-item" href="{{ get_url .path true false }}">
+                <span class="backlinks-title">{{ .title }}</span>
+                {{ if .summary }}<span class="backlinks-summary">{{ .summary }}</span>{{ end }}
               </a>
               {{ end }}
             </div>
@@ -277,6 +327,7 @@
     {{ if .config.sharing }}<script defer src="{{ get_url "/js/share.js" false true }}"></script>{{ end }}
     {{ if .config.comments_enabled }}<script defer src="{{ get_url "/js/comments.js" false true }}"></script>{{ end }}
     <script defer src="{{ get_url "/js/copy-code.js" false true }}"></script>
+    <script defer src="{{ get_url "/js/sidenotes.js" false true }}"></script>
     <script defer src="{{ get_url "/js/tabs.js" false true }}"></script>
     <script defer src="{{ get_url "/js/progress.js" false true }}"></script>
     {{ if .toc }}<script defer src="{{ get_url "/js/toc-spy.js" false true }}"></script>{{ end }}

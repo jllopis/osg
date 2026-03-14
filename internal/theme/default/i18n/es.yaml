@@ -109,6 +109,14 @@ no_bookmarks: "Aun no hay marcadores. Guarda publicaciones para leerlas despues.
 bookmarks_export: "Exportar"
 bookmarks_import: "Importar"
 
+# --- Series ---
+series: Serie
+part_of_series: "Parte de la serie"
+
+# --- Backlinks ---
+backlinks: Backlinks
+linked_from: "Enlazado desde"
+
 # --- Autor ---
 about_author: Sobre el autor
 

@@ -109,6 +109,14 @@ no_bookmarks: "No bookmarks yet. Save posts to read them later."
 bookmarks_export: "Export"
 bookmarks_import: "Import"
 
+# --- Series ---
+series: Series
+part_of_series: "Part of series"
+
+# --- Backlinks ---
+backlinks: Backlinks
+linked_from: "Linked from"
+
 # --- Author ---
 about_author: About the author
 

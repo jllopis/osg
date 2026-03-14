@@ -48,6 +48,8 @@ type Page struct {
 	Lang         string
 	WordCount    int
 	ReadingTime  int
+	Series       string
+	SeriesOrder  int
 	Taxonomies   map[string][]string
 	Extra        map[string]any
 	Translations []Translation
@@ -410,6 +412,8 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		Summary:     pageSummary,
 		Content:     contentHTML,
 		RawContent:  string(body),
+		Series:      pickString(fm, "series"),
+		SeriesOrder: pickInt(fm, "series_order"),
 		Template:    pickString(fm, "template"),
 		Lang:        pickString(fm, "lang", "language"),
 		Taxonomies:  pickTaxonomies(fm),
@@ -463,6 +467,8 @@ func (p *Page) View() map[string]any {
 		"raw_content":       p.RawContent,
 		"word_count":        p.WordCount,
 		"reading_time":      p.ReadingTime,
+		"series":            p.Series,
+		"series_order":      p.SeriesOrder,
 		"taxonomies":        p.Taxonomies,
 		"extra":             p.Extra,
 		"lang":              p.Lang,
@@ -640,6 +646,24 @@ func pickBool(fm map[string]any, key string) bool {
 		return strings.EqualFold(strings.TrimSpace(v), "true")
 	default:
 		return false
+	}
+}
+
+func pickInt(fm map[string]any, key string) int {
+	if fm == nil {
+		return 0
+	}
+	val, ok := fm[key]
+	if !ok {
+		return 0
+	}
+	switch v := val.(type) {
+	case int:
+		return v
+	case float64:
+		return int(v)
+	default:
+		return 0
 	}
 }
 

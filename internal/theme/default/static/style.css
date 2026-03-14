@@ -3745,3 +3745,213 @@ pre:hover .code-copy-btn,
     text-align: center;
   }
 }
+
+/* ============================================================
+   Footnotes & Sidenotes (Tufte-style)
+   ============================================================ */
+
+/* Base footnote reference styling */
+.footnote-ref {
+  text-decoration: none;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.footnote-backref {
+  text-decoration: none;
+  color: var(--accent);
+  margin-left: var(--sp-1);
+}
+
+/* Footnotes section (bottom of page) */
+.footnotes {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  border-top: 1px solid var(--border);
+  margin-top: var(--sp-10);
+  padding-top: var(--sp-6);
+}
+
+.footnotes hr {
+  display: none;
+}
+
+.footnotes ol {
+  margin: 0;
+  padding-left: var(--sp-6);
+}
+
+.footnotes li {
+  margin-bottom: var(--sp-3);
+  line-height: var(--lh-normal);
+}
+
+.footnotes li p {
+  margin: 0;
+}
+
+/* Sidenotes: hidden by default, shown on wide screens without TOC */
+.sidenote {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .has-sidenotes .sidenote {
+    display: block;
+    float: right;
+    clear: right;
+    width: 200px;
+    margin-right: -240px;
+    margin-top: 0;
+    margin-bottom: var(--sp-4);
+    font-size: var(--text-xs);
+    color: var(--ink-muted);
+    line-height: var(--lh-normal);
+    border-left: 2px solid var(--border);
+    padding-left: var(--sp-3);
+  }
+
+  .has-sidenotes .footnotes {
+    display: none;
+  }
+}
+
+/* ============================================================
+   Series Navigation
+   ============================================================ */
+.series-nav {
+  margin-top: var(--sp-8);
+  padding: var(--sp-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.series-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.series-label {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.series-title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.series-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: series;
+}
+
+.series-item {
+  counter-increment: series;
+  padding: var(--sp-2) 0;
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+  line-height: var(--lh-normal);
+}
+
+.series-item::before {
+  content: counter(series) ". ";
+  color: var(--ink-faint);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.series-item a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.series-item a:hover {
+  color: var(--accent-hover);
+}
+
+.series-item--current {
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--accent-subtle);
+  padding-left: var(--sp-3);
+  margin-left: calc(-1 * var(--sp-3));
+  margin-right: calc(-1 * var(--sp-3));
+  padding-right: var(--sp-3);
+  border-radius: var(--radius-sm);
+}
+
+.series-prev-next {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border);
+}
+
+.series-prev-next a {
+  font-size: var(--text-sm);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.series-prev-next a:hover {
+  color: var(--accent-hover);
+}
+
+/* ============================================================
+   Backlinks
+   ============================================================ */
+.backlinks {
+  margin-top: var(--sp-8);
+}
+
+.backlinks-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.backlinks-item {
+  display: block;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.backlinks-item:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.backlinks-title {
+  display: block;
+  font-weight: 600;
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+.backlinks-summary {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  margin-top: var(--sp-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

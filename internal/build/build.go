@@ -653,6 +653,12 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 		pagePos[p] = i
 	}
 
+	// Build series index: series name -> sorted pages.
+	seriesIndex := buildSeriesIndex(siteIndex.Pages)
+
+	// Build backlink index: page path -> pages that link to it.
+	backlinkIndex := buildBacklinkIndex(siteIndex.Pages)
+
 	// Separate pages into cached vs to-render.
 	type renderJob struct {
 		page       *site.Page
@@ -710,6 +716,35 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 				views = append(views, rp.View())
 			}
 			renderCtx["related_posts"] = views
+		}
+
+		// Series navigation (pages with same series name).
+		if page.Series != "" {
+			if seriesPages, ok := seriesIndex[page.Series]; ok && len(seriesPages) > 1 {
+				views := make([]map[string]any, 0, len(seriesPages))
+				for i, sp := range seriesPages {
+					views = append(views, sp.View())
+					if sp == page {
+						if i > 0 {
+							renderCtx["series_prev"] = seriesPages[i-1].View()
+						}
+						if i < len(seriesPages)-1 {
+							renderCtx["series_next"] = seriesPages[i+1].View()
+						}
+					}
+				}
+				renderCtx["series_name"] = page.Series
+				renderCtx["series_pages"] = views
+			}
+		}
+
+		// Backlinks: pages that link to this page.
+		if backlinks, ok := backlinkIndex[page.Path]; ok && len(backlinks) > 0 {
+			views := make([]map[string]any, 0, len(backlinks))
+			for _, bp := range backlinks {
+				views = append(views, bp.View())
+			}
+			renderCtx["backlinks"] = views
 		}
 
 		renderCtx = applyPluginOverrides(ctx, plugins, "page.before_render", renderCtx)
@@ -813,6 +848,80 @@ func relatedPages(page *site.Page, indices map[string]*taxonomy.Index, limit int
 		candidates = candidates[:limit]
 	}
 	return candidates
+}
+
+// buildSeriesIndex groups pages by series name, sorted by SeriesOrder then Date.
+func buildSeriesIndex(pages []*site.Page) map[string][]*site.Page {
+	index := map[string][]*site.Page{}
+	for _, p := range pages {
+		if p.Series != "" && !p.Menu {
+			index[p.Series] = append(index[p.Series], p)
+		}
+	}
+	for name := range index {
+		sort.Slice(index[name], func(i, j int) bool {
+			a, b := index[name][i], index[name][j]
+			if a.SeriesOrder != b.SeriesOrder {
+				return a.SeriesOrder < b.SeriesOrder
+			}
+			return a.Date.Before(b.Date) // oldest first within series
+		})
+	}
+	return index
+}
+
+// hrefRe matches href attributes in rendered HTML links.
+var hrefRe = regexp.MustCompile(`<a\s[^>]*href=["']([^"']+)["']`)
+
+// buildBacklinkIndex scans rendered HTML content for internal links and
+// builds a reverse index: target page path -> pages that link to it.
+func buildBacklinkIndex(pages []*site.Page) map[string][]*site.Page {
+	// Build a set of known page paths for quick lookup.
+	pathSet := make(map[string]*site.Page, len(pages))
+	for _, p := range pages {
+		pathSet[p.Path] = p
+		// Also index without trailing slash for flexible matching.
+		trimmed := strings.TrimSuffix(p.Path, "/")
+		if trimmed != "" {
+			pathSet[trimmed] = p
+		}
+	}
+
+	index := map[string][]*site.Page{}
+	seen := map[string]map[*site.Page]bool{} // deduplicate
+
+	for _, page := range pages {
+		if page.Menu {
+			continue
+		}
+		matches := hrefRe.FindAllStringSubmatch(page.Content, -1)
+		for _, m := range matches {
+			href := m[1]
+			// Only consider internal links (relative paths starting with /).
+			if !strings.HasPrefix(href, "/") {
+				continue
+			}
+			// Strip fragment.
+			if idx := strings.Index(href, "#"); idx >= 0 {
+				href = href[:idx]
+			}
+			target, ok := pathSet[href]
+			if !ok {
+				continue
+			}
+			if target == page {
+				continue // skip self-links
+			}
+			if seen[target.Path] == nil {
+				seen[target.Path] = map[*site.Page]bool{}
+			}
+			if !seen[target.Path][page] {
+				seen[target.Path][page] = true
+				index[target.Path] = append(index[target.Path], page)
+			}
+		}
+	}
+	return index
 }
 
 func renderSections(ctx context.Context, renderer *render.Renderer, cfg config.Config, baseCtx map[string]any, siteIndex *site.Site, plugins *plugin.Manager, plan buildPlan) (int, int, error) {
