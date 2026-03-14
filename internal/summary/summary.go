@@ -190,6 +190,29 @@ func PlainText(md string) string {
 	return strings.TrimSpace(s)
 }
 
+// truncateWords returns the first maxWords words of text.  If text has fewer
+// words it is returned unchanged.  The cut is made at a word boundary.
+func truncateWords(text string, maxWords int) string {
+	i := 0
+	count := 0
+	inWord := false
+	for i < len(text) {
+		if text[i] == ' ' || text[i] == '\t' || text[i] == '\n' || text[i] == '\r' {
+			if inWord {
+				count++
+				if count >= maxWords {
+					return text[:i]
+				}
+			}
+			inWord = false
+		} else {
+			inWord = true
+		}
+		i++
+	}
+	return text
+}
+
 // truncateSentence truncates text to at most maxLen characters, preferring
 // to break at a sentence boundary (. ! ?) or, failing that, at a word
 // boundary.  If truncated, an ellipsis is appended.

@@ -16,6 +16,7 @@ import (
 	_ "image/gif"
 
 	"golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"
 )
 
 // Options controls image optimization behaviour.
@@ -202,6 +203,22 @@ func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*
 		}
 	}
 
+	// Phase 4: downsize oversized originals.  This runs for ALL images
+	// (including cached ones whose originals were restored by asset copy)
+	// so that the fallback <img src> file stays compact.
+	maxW := maxConfiguredWidth(opts.Widths)
+	if maxW > 0 {
+		downsized := 0
+		for _, j := range jobs {
+			if downsizeIfNeeded(j.path, maxW, opts.Quality, hasWebP, logger) {
+				downsized++
+			}
+		}
+		if downsized > 0 {
+			logger.Info("downsized oversized originals", "count", downsized, "maxWidth", maxW)
+		}
+	}
+
 	// Save updated cache.
 	if err := saveImageCache(cache); err != nil {
 		logger.Warn("failed to save image cache", "error", err)
@@ -219,7 +236,7 @@ func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*
 func isOptimizable(name string) bool {
 	ext := strings.ToLower(filepath.Ext(name))
 	switch ext {
-	case ".jpg", ".jpeg", ".png":
+	case ".jpg", ".jpeg", ".png", ".webp":
 		return true
 	}
 	return false
@@ -267,9 +284,15 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, logge
 	bounds := src.Bounds()
 	srcWidth := bounds.Dx()
 
+	maxWidth := maxConfiguredWidth(opts.Widths)
+	effectiveWidth := srcWidth
+	if maxWidth > 0 && srcWidth > maxWidth {
+		effectiveWidth = maxWidth
+	}
+
 	res := &Result{
 		Original:      urlPath,
-		OriginalWidth: srcWidth,
+		OriginalWidth: effectiveWidth,
 		Variants:      map[int][]Variant{},
 	}
 
@@ -319,8 +342,10 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, logge
 		res.Variants[w] = variants
 	}
 
-	// Also generate WebP of the original size if we have cwebp.
-	if hasWebP && format != "webp" {
+	// Generate WebP of the original size only when the original is not
+	// oversized (i.e. at or below the largest configured width).  For
+	// oversized originals the largest width variant already provides a WebP.
+	if hasWebP && format != "webp" && (maxWidth == 0 || srcWidth <= maxWidth) {
 		webpName := base + ".webp"
 		webpPath := filepath.Join(dir, webpName)
 		webpURL := urlDir(urlPath) + webpName
@@ -471,4 +496,79 @@ func sortedWidths(m map[int][]Variant) []int {
 // escAttr escapes double quotes in HTML attribute values.
 func escAttr(s string) string {
 	return strings.ReplaceAll(s, `"`, "&quot;")
+}
+
+// maxConfiguredWidth returns the largest width in the list, or 0 if empty.
+func maxConfiguredWidth(widths []int) int {
+	m := 0
+	for _, w := range widths {
+		if w > m {
+			m = w
+		}
+	}
+	return m
+}
+
+// downsizeIfNeeded replaces an oversized original with a version resized to
+// maxWidth.  Returns true if the file was downsized.  It uses DecodeConfig
+// for a fast header-only check before doing the full decode+resize.
+func downsizeIfNeeded(path string, maxWidth int, quality int, hasWebP bool, logger *slog.Logger) bool {
+	if isVariant(filepath.Base(path)) {
+		return false
+	}
+
+	ext := strings.ToLower(filepath.Ext(path))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".webp" {
+		return false
+	}
+
+	// Fast header-only check.
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	cfg, _, err := image.DecodeConfig(f)
+	_ = f.Close()
+	if err != nil || cfg.Width <= maxWidth {
+		return false
+	}
+
+	// Full decode + resize.
+	f, err = os.Open(path)
+	if err != nil {
+		return false
+	}
+	src, _, err := image.Decode(f)
+	_ = f.Close()
+	if err != nil {
+		return false
+	}
+
+	resized := resize(src, maxWidth)
+
+	switch ext {
+	case ".jpg", ".jpeg":
+		if err := writeJPEG(path, resized, quality); err != nil {
+			logger.Warn("downsize original failed", "path", path, "error", err)
+			return false
+		}
+	case ".webp":
+		if !hasWebP {
+			return false
+		}
+		tmpPath := path + ".tmp.jpg"
+		if err := writeJPEG(tmpPath, resized, quality); err != nil {
+			logger.Warn("downsize original failed", "path", path, "error", err)
+			return false
+		}
+		if err := writeWebP(tmpPath, path, quality); err != nil {
+			logger.Warn("downsize original failed", "path", path, "error", err)
+			os.Remove(tmpPath)
+			return false
+		}
+		os.Remove(tmpPath)
+	}
+
+	logger.Debug("downsized original", "path", path, "from", cfg.Width, "to", maxWidth)
+	return true
 }

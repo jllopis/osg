@@ -440,6 +440,53 @@ func TestTruncateSentence_Unicode(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// truncateWords
+// ---------------------------------------------------------------------------
+
+func TestTruncateWords_Short(t *testing.T) {
+	text := "one two three"
+	if got := truncateWords(text, 10); got != text {
+		t.Errorf("expected unchanged text, got %q", got)
+	}
+}
+
+func TestTruncateWords_Exact(t *testing.T) {
+	text := "one two three"
+	if got := truncateWords(text, 3); got != text {
+		t.Errorf("expected full text for exact count, got %q", got)
+	}
+}
+
+func TestTruncateWords_Truncates(t *testing.T) {
+	text := "one two three four five six"
+	got := truncateWords(text, 3)
+	if got != "one two three" {
+		t.Errorf("expected 'one two three', got %q", got)
+	}
+}
+
+func TestTruncateWords_SingleWord(t *testing.T) {
+	text := "hello"
+	if got := truncateWords(text, 1); got != text {
+		t.Errorf("expected unchanged, got %q", got)
+	}
+}
+
+func TestTruncateWords_Empty(t *testing.T) {
+	if got := truncateWords("", 10); got != "" {
+		t.Errorf("expected empty, got %q", got)
+	}
+}
+
+func TestTruncateWords_MultipleSpaces(t *testing.T) {
+	text := "one   two   three   four"
+	got := truncateWords(text, 2)
+	if got != "one   two" {
+		t.Errorf("expected 'one   two', got %q", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Integration: ExtractProvider with realistic markdown
 // ---------------------------------------------------------------------------
 

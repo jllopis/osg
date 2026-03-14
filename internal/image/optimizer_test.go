@@ -1,12 +1,14 @@
 package image
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"image/png"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -67,7 +69,8 @@ func TestIsOptimizable(t *testing.T) {
 		{"photo.png", true},
 		{"photo.PNG", true},
 		{"photo.svg", false},
-		{"photo.webp", false},
+		{"photo.webp", true},
+		{"photo.WEBP", true},
 		{"photo.gif", false},
 		{"file.md", false},
 		{"file.html", false},
@@ -191,8 +194,10 @@ func TestOptimizeFile_JPEG(t *testing.T) {
 	if res.Original != "/img/hero.jpg" {
 		t.Errorf("Original = %q, want /img/hero.jpg", res.Original)
 	}
-	if res.OriginalWidth != 1600 {
-		t.Errorf("OriginalWidth = %d, want 1600", res.OriginalWidth)
+	// OriginalWidth is capped to the largest configured width (1200)
+	// because the source (1600px) exceeds it.
+	if res.OriginalWidth != 1200 {
+		t.Errorf("OriginalWidth = %d, want 1200 (capped)", res.OriginalWidth)
 	}
 
 	// Check 640w variant exists on disk.
@@ -248,6 +253,50 @@ func TestOptimizeFile_SkipsVariants(t *testing.T) {
 	}
 	if res != nil {
 		t.Error("expected nil result for existing variant file")
+	}
+}
+
+func TestOptimizeFile_WebP(t *testing.T) {
+	// Create a WebP test image via cwebp (skip if not available).
+	if _, err := exec.LookPath("cwebp"); err != nil {
+		t.Skip("cwebp not available")
+	}
+
+	dir := t.TempDir()
+	pngPath := filepath.Join(dir, "src.png")
+	createTestPNG(t, pngPath, 2000, 1000)
+
+	webpPath := filepath.Join(dir, "photo.webp")
+	if err := writeWebP(pngPath, webpPath, 80); err != nil {
+		t.Fatalf("creating test webp: %v", err)
+	}
+	os.Remove(pngPath) // only keep the webp
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
+
+	res, count, err := optimizeFile(webpPath, "/photo.webp", opts, false, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res == nil {
+		t.Fatal("expected non-nil result for WebP source")
+	}
+	// OriginalWidth is capped to the largest configured width (1200)
+	// because the source (2000px) exceeds it.
+	if res.OriginalWidth != 1200 {
+		t.Errorf("OriginalWidth = %d, want 1200 (capped)", res.OriginalWidth)
+	}
+	// Two JPEG variants (640, 1200) — no full-size webp copy since source is already webp.
+	if count != 2 {
+		t.Errorf("count = %d, want 2 (jpeg variants only, no full-size webp copy)", count)
+	}
+	// Verify variants exist on disk.
+	for _, w := range []int{640, 1200} {
+		jpgPath := filepath.Join(dir, fmt.Sprintf("photo-%dw.jpg", w))
+		if _, err := os.Stat(jpgPath); err != nil {
+			t.Errorf("expected JPEG variant at %s", jpgPath)
+		}
 	}
 }
 
@@ -547,5 +596,134 @@ func TestPictureHTML_WebPOnly(t *testing.T) {
 	// Fallback img should still be the original.
 	if !strings.Contains(html, `src="/img/hero.jpg"`) {
 		t.Error("expected original src in fallback img")
+	}
+}
+
+func TestMaxConfiguredWidth(t *testing.T) {
+	if got := maxConfiguredWidth(nil); got != 0 {
+		t.Errorf("maxConfiguredWidth(nil) = %d, want 0", got)
+	}
+	if got := maxConfiguredWidth([]int{640, 1200, 1920}); got != 1920 {
+		t.Errorf("maxConfiguredWidth([640,1200,1920]) = %d, want 1920", got)
+	}
+}
+
+func TestDownsizeIfNeeded_JPEG(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "big.jpg")
+	createTestJPEG(t, path, 4000, 2000)
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	// Should downsize: 4000 > 1920.
+	ok := downsizeIfNeeded(path, 1920, 80, false, logger)
+	if !ok {
+		t.Fatal("expected downsizeIfNeeded to return true")
+	}
+
+	// Verify the file is now smaller.
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, _, err := image.DecodeConfig(f)
+	_ = f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Width != 1920 {
+		t.Errorf("after downsize: width = %d, want 1920", cfg.Width)
+	}
+}
+
+func TestDownsizeIfNeeded_AlreadySmall(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "small.jpg")
+	createTestJPEG(t, path, 800, 600)
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	// 800 <= 1920, should NOT downsize.
+	ok := downsizeIfNeeded(path, 1920, 80, false, logger)
+	if ok {
+		t.Error("expected downsizeIfNeeded to return false for small image")
+	}
+}
+
+func TestDownsizeIfNeeded_SkipsVariant(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "hero-640w.jpg")
+	createTestJPEG(t, path, 4000, 2000) // variant name, should be skipped
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	ok := downsizeIfNeeded(path, 1920, 80, false, logger)
+	if ok {
+		t.Error("expected downsizeIfNeeded to skip variant files")
+	}
+}
+
+func TestOptimizeFile_OversizedSkipsFullWebP(t *testing.T) {
+	if _, err := exec.LookPath("cwebp"); err != nil {
+		t.Skip("cwebp not available")
+	}
+
+	dir := t.TempDir()
+	imgPath := filepath.Join(dir, "big.jpg")
+	createTestJPEG(t, imgPath, 4000, 2000)
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: true}
+
+	res, _, err := optimizeFile(imgPath, "/big.jpg", opts, true, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	// OriginalWidth should be capped to 1200.
+	if res.OriginalWidth != 1200 {
+		t.Errorf("OriginalWidth = %d, want 1200 (capped)", res.OriginalWidth)
+	}
+
+	// Should NOT have a full-size WebP variant at 4000px.
+	if _, exists := res.Variants[4000]; exists {
+		t.Error("should not have full-size (4000px) variant for oversized image")
+	}
+
+	// Should have variants at 640 and 1200.
+	for _, w := range []int{640, 1200} {
+		if _, exists := res.Variants[w]; !exists {
+			t.Errorf("missing variant at width %d", w)
+		}
+	}
+}
+
+func TestOptimize_DownsizesOversized(t *testing.T) {
+	dir := t.TempDir()
+	imgPath := filepath.Join(dir, "hero.jpg")
+	createTestJPEG(t, imgPath, 4000, 2000)
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
+
+	_, err := Optimize(dir, opts, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// After Optimize, the original file should be downsized to 1200px.
+	f, err := os.Open(imgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, _, err := image.DecodeConfig(f)
+	_ = f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Width != 1200 {
+		t.Errorf("original file width after Optimize = %d, want 1200", cfg.Width)
 	}
 }

@@ -44,9 +44,12 @@
 
           {{ block "page-hero" . }}
           {{ if .page.image }}
-          <div class="article-hero container-narrow">
+          <figure class="article-hero container-narrow">
             {{ picture .page.image .page.title "eager" "high" }}
-          </div>
+            {{ if .page.image_credit_html }}
+            <figcaption class="image-credit">{{ .page.image_credit_html }}</figcaption>
+            {{ end }}
+          </figure>
           {{ end }}
           {{ end }}
 

@@ -192,6 +192,63 @@ func TestKairosProvider_SendsPlainText(t *testing.T) {
 	}
 }
 
+func TestKairosProvider_TruncatesLongContent(t *testing.T) {
+	var capturedReq llm.ChatRequest
+
+	mock := &llm.MockProvider{
+		ChatFunc: func(ctx context.Context, req llm.ChatRequest) (*llm.ChatResponse, error) {
+			capturedReq = req
+			return &llm.ChatResponse{Content: "Summary."}, nil
+		},
+	}
+	kp := &KairosProvider{LLM: mock}
+
+	// Build content with 3000 words — well over the 1500-word limit.
+	words := make([]string, 3000)
+	for i := range words {
+		words[i] = fmt.Sprintf("word%d", i)
+	}
+	longContent := strings.Join(words, " ")
+
+	_, err := kp.Summarize(context.Background(), "Title", longContent)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	userMsg := capturedReq.Messages[1].Content
+	// Count words in the sent content (minus "Title: Title\n\n" prefix).
+	body := strings.TrimPrefix(userMsg, "Title: Title\n\n")
+	sentWords := len(strings.Fields(body))
+	if sentWords > maxInputWords+10 { // small tolerance for title line
+		t.Errorf("expected at most ~%d words sent to LLM, got %d", maxInputWords, sentWords)
+	}
+	if sentWords < 1000 {
+		t.Errorf("expected at least 1000 words sent, got %d", sentWords)
+	}
+}
+
+func TestKairosProvider_ShortContentNotTruncated(t *testing.T) {
+	var capturedReq llm.ChatRequest
+
+	mock := &llm.MockProvider{
+		ChatFunc: func(ctx context.Context, req llm.ChatRequest) (*llm.ChatResponse, error) {
+			capturedReq = req
+			return &llm.ChatResponse{Content: "Summary."}, nil
+		},
+	}
+	kp := &KairosProvider{LLM: mock}
+
+	_, err := kp.Summarize(context.Background(), "Title", "Short article with few words.")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	userMsg := capturedReq.Messages[1].Content
+	if !strings.Contains(userMsg, "Short article with few words.") {
+		t.Errorf("short content should be sent in full, got %q", userMsg)
+	}
+}
+
 func TestKairosProvider_Temperature(t *testing.T) {
 	var capturedReq llm.ChatRequest
 

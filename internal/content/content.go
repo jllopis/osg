@@ -77,6 +77,13 @@ func NormalizeFrontmatter(fm map[string]any, slug string, dateISO string, isDraf
 		out["image"] = image
 	}
 
+	// Image credit: osg.image_credit takes precedence, then top-level image_credit
+	if credit := pickString(osg, "image_credit"); credit != "" {
+		out["image_credit"] = credit
+	} else if credit := pickString(fm, "image_credit"); credit != "" {
+		out["image_credit"] = credit
+	}
+
 	// Featured: osg.featured takes precedence, then extra.featured
 	featured := false
 	if osg != nil {

@@ -820,3 +820,21 @@ Herramientas para monitorizar el sitio generado y el proceso de build.
 - [done] Checks: HTML validation (tags abiertos), accesibilidad basica (alt en imagenes, headings order), performance (tamano de paginas > 500KB)
 - [done] Reporte con severidad (error/warning/info) y sugerencias de fix
 - [done] Integrable en CI como quality gate (exit code 1 si hay errores, --json para parsing)
+
+## Phase 27 — Layout y widgets de portada
+
+Layout de 3 columnas en la portada para widgets laterales.
+
+### 27A — Grid 3 columnas en homepage
+- [ ] Layout CSS grid en `<main>` de `index.html`: `|sidebar-left| content |sidebar-right|`
+- [ ] Columnas laterales opcionales: si no hay contenido, el grid colapsa a 1 columna (sin espacios vacios)
+- [ ] Responsive: columnas laterales ocultas en mobile/tablet, visibles a partir de breakpoint ~1400px
+- [ ] El bloque central NO cambia de ancho ni posicion al añadir/quitar sidebars
+- [ ] Template slots (blocks) para inyectar widgets en cada sidebar desde templates hijos o parciales
+
+### 27B — Widgets de sidebar
+- [ ] Widget "Sobre el autor": foto, nombre, bio corta, links sociales (datos desde config.yaml)
+- [ ] Widget "Newsletter": formulario de suscripcion (integrable con Mailchimp, Buttondown, etc.)
+- [ ] Widget "Posts populares": lista de posts mas vistos (datos desde analytics API si habilitado)
+- [ ] Cada widget es un partial independiente (`partials/widget-*.html`)
+- [ ] Config `sidebar_widgets: [author, newsletter, popular]` para activar/ordenar widgets

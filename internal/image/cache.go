@@ -23,7 +23,7 @@ type cacheEntry struct {
 	Count  int     `json:"count"`  // number of variants generated
 }
 
-const imageCacheVersion = 1
+const imageCacheVersion = 2
 
 func loadImageCache() *imageCache {
 	data, err := os.ReadFile(imageCachePath)

@@ -9,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"html"
 	"html/template"
+	"regexp"
 
 	"osg/internal/date"
 	"osg/internal/frontmatter"
@@ -38,6 +40,7 @@ type Page struct {
 	Menu         bool
 	Author       string
 	Image        string
+	ImageCredit  string
 	Summary      string
 	Content      string
 	RawContent   string
@@ -346,6 +349,15 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		pageImage = pickString(fm, "image", "cover", "banner")
 	}
 
+	// Resolve image_credit: osg.image_credit > top-level image_credit
+	imageCredit := ""
+	if osg != nil {
+		imageCredit = pickString(osg, "image_credit")
+	}
+	if imageCredit == "" {
+		imageCredit = pickString(fm, "image_credit")
+	}
+
 	// Resolve featured flag: osg.featured > top-level featured > extra.featured
 	isFeatured := false
 	if osg != nil {
@@ -383,24 +395,25 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 	}
 
 	page := &Page{
-		Title:      title,
-		MenuTitle:  pickString(fm, "menu_title"),
-		Slug:       slug,
-		Path:       pagePath,
-		Permalink:  permalink,
-		SourcePath: filePath,
-		Date:       fileDate,
-		Draft:      pickBool(fm, "draft"),
-		Menu:       pickBool(fm, "menu"),
-		Author:     pageAuthor,
-		Image:      pageImage,
-		Summary:    pageSummary,
-		Content:    contentHTML,
-		RawContent: string(body),
-		Template:   pickString(fm, "template"),
-		Lang:       pickString(fm, "lang", "language"),
-		Taxonomies: pickTaxonomies(fm),
-		Extra:      fm,
+		Title:       title,
+		MenuTitle:   pickString(fm, "menu_title"),
+		Slug:        slug,
+		Path:        pagePath,
+		Permalink:   permalink,
+		SourcePath:  filePath,
+		Date:        fileDate,
+		Draft:       pickBool(fm, "draft"),
+		Menu:        pickBool(fm, "menu"),
+		Author:      pageAuthor,
+		Image:       pageImage,
+		ImageCredit: imageCredit,
+		Summary:     pageSummary,
+		Content:     contentHTML,
+		RawContent:  string(body),
+		Template:    pickString(fm, "template"),
+		Lang:        pickString(fm, "lang", "language"),
+		Taxonomies:  pickTaxonomies(fm),
+		Extra:       fm,
 	}
 
 	// Store featured in Extra so Section.View() can find it
@@ -432,26 +445,28 @@ func (p *Page) View() map[string]any {
 	}
 
 	return map[string]any{
-		"title":        p.Title,
-		"menu_title":   p.MenuTitle,
-		"slug":         p.Slug,
-		"path":         p.Path,
-		"permalink":    p.Permalink,
-		"date":         p.Date,
-		"updated":      p.Updated,
-		"draft":        p.Draft,
-		"menu":         p.Menu,
-		"author":       p.Author,
-		"image":        p.Image,
-		"summary":      p.Summary,
-		"content":      template.HTML(p.Content),
-		"raw_content":  p.RawContent,
-		"word_count":   p.WordCount,
-		"reading_time": p.ReadingTime,
-		"taxonomies":   p.Taxonomies,
-		"extra":        p.Extra,
-		"lang":         p.Lang,
-		"translations": translations,
+		"title":             p.Title,
+		"menu_title":        p.MenuTitle,
+		"slug":              p.Slug,
+		"path":              p.Path,
+		"permalink":         p.Permalink,
+		"date":              p.Date,
+		"updated":           p.Updated,
+		"draft":             p.Draft,
+		"menu":              p.Menu,
+		"author":            p.Author,
+		"image":             p.Image,
+		"image_credit":      p.ImageCredit,
+		"image_credit_html": template.HTML(renderCreditHTML(p.ImageCredit)),
+		"summary":           p.Summary,
+		"content":           template.HTML(p.Content),
+		"raw_content":       p.RawContent,
+		"word_count":        p.WordCount,
+		"reading_time":      p.ReadingTime,
+		"taxonomies":        p.Taxonomies,
+		"extra":             p.Extra,
+		"lang":              p.Lang,
+		"translations":      translations,
 	}
 }
 
@@ -569,6 +584,31 @@ func buildPermalink(baseURL string, path string) string {
 		return path
 	}
 	return strings.TrimRight(baseURL, "/") + path
+}
+
+// renderCreditHTML converts a markdown-link-style credit string into safe HTML.
+// It turns [text](url) into <a> tags with rel="noopener noreferrer" and escapes
+// everything else.
+var mdLinkRe = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+
+func renderCreditHTML(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+
+	var buf strings.Builder
+	last := 0
+	for _, m := range mdLinkRe.FindAllStringSubmatchIndex(raw, -1) {
+		// m[0]:m[1] = full match, m[2]:m[3] = text, m[4]:m[5] = url
+		buf.WriteString(html.EscapeString(raw[last:m[0]]))
+		text := html.EscapeString(raw[m[2]:m[3]])
+		href := html.EscapeString(raw[m[4]:m[5]])
+		buf.WriteString(`<a href="` + href + `" rel="noopener noreferrer">` + text + `</a>`)
+		last = m[1]
+	}
+	buf.WriteString(html.EscapeString(raw[last:]))
+	return buf.String()
 }
 
 func pickString(fm map[string]any, keys ...string) string {

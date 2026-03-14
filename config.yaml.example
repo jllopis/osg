@@ -222,7 +222,7 @@ minify: true
 # Image optimization
 # -----------------------------------------------------------------------------
 # image_optimization: Generate responsive image variants (resized JPEG + WebP).
-#   When enabled, raster images (jpg, jpeg, png) in public/ are processed
+#   When enabled, raster images (jpg, jpeg, png, webp) in public/ are processed
 #   after asset copy: resized to each configured width and, if the cwebp
 #   binary is available, also converted to WebP.  Templates automatically
 #   emit <picture> elements with srcset when variants exist.

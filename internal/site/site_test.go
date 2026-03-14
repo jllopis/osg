@@ -1,6 +1,7 @@
 package site
 
 import (
+	"html/template"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1068,5 +1069,118 @@ func TestPageView_MenuTitleEmpty(t *testing.T) {
 	v := p.View()
 	if v["menu_title"] != "" {
 		t.Fatalf("expected empty menu_title, got %q", v["menu_title"])
+	}
+}
+
+// ---- renderCreditHTML ----
+
+func TestRenderCreditHTML(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"empty", "", ""},
+		{"whitespace only", "   ", ""},
+		{"plain text", "Photo by John", "Photo by John"},
+		{"single link", "Foto de [Ehud](https://example.com)", `Foto de <a href="https://example.com" rel="noopener noreferrer">Ehud</a>`},
+		{"multiple links",
+			"Foto de [Ehud](https://example.com) en [Unsplash](https://unsplash.com)",
+			`Foto de <a href="https://example.com" rel="noopener noreferrer">Ehud</a> en <a href="https://unsplash.com" rel="noopener noreferrer">Unsplash</a>`},
+		{"special chars in text", "Foto <script> de [A](https://x.com)", `Foto &lt;script&gt; de <a href="https://x.com" rel="noopener noreferrer">A</a>`},
+		{"special chars in link text", "[A&B](https://x.com)", `<a href="https://x.com" rel="noopener noreferrer">A&amp;B</a>`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := renderCreditHTML(tt.in)
+			if got != tt.want {
+				t.Errorf("renderCreditHTML(%q)\n  got  %q\n  want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// ---- ParseFile: image_credit ----
+
+func TestParseFile_OSGImageCreditTakesPrecedence(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: My Post
+image_credit: "Top level credit"
+osg:
+  image_credit: "OSG credit wins"
+---
+Body text.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.ImageCredit != "OSG credit wins" {
+		t.Fatalf("expected osg.image_credit to win, got %q", page.ImageCredit)
+	}
+}
+
+func TestParseFile_FallbackImageCredit(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: My Post
+image_credit: "Foto de [Ehud](https://unsplash.com/@paramir) en [Unsplash](https://unsplash.com)"
+---
+Body text.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.ImageCredit != `Foto de [Ehud](https://unsplash.com/@paramir) en [Unsplash](https://unsplash.com)` {
+		t.Fatalf("unexpected image_credit: %q", page.ImageCredit)
+	}
+}
+
+func TestParseFile_NoImageCredit(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: My Post
+---
+Body text.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.ImageCredit != "" {
+		t.Fatalf("expected empty image_credit, got %q", page.ImageCredit)
+	}
+}
+
+func TestPageView_ImageCreditHTML(t *testing.T) {
+	p := &Page{
+		Title:       "Test",
+		Path:        "/test/",
+		ImageCredit: "Foto de [Ehud](https://example.com) en [Unsplash](https://unsplash.com)",
+	}
+	v := p.View()
+	if v["image_credit"] != "Foto de [Ehud](https://example.com) en [Unsplash](https://unsplash.com)" {
+		t.Fatalf("unexpected image_credit in view: %v", v["image_credit"])
+	}
+	htmlVal, ok := v["image_credit_html"]
+	if !ok {
+		t.Fatal("expected image_credit_html in view")
+	}
+	expected := `Foto de <a href="https://example.com" rel="noopener noreferrer">Ehud</a> en <a href="https://unsplash.com" rel="noopener noreferrer">Unsplash</a>`
+	if string(htmlVal.(template.HTML)) != expected {
+		t.Fatalf("unexpected image_credit_html:\n  got  %q\n  want %q", htmlVal, expected)
+	}
+}
+
+func TestPageView_EmptyImageCreditHTML(t *testing.T) {
+	p := &Page{Title: "Test", Path: "/test/"}
+	v := p.View()
+	if v["image_credit"] != "" {
+		t.Fatalf("expected empty image_credit, got %v", v["image_credit"])
+	}
+	if string(v["image_credit_html"].(template.HTML)) != "" {
+		t.Fatalf("expected empty image_credit_html, got %v", v["image_credit_html"])
 	}
 }

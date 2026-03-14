@@ -197,6 +197,37 @@ func TestNormalizeFrontmatter_NoAuthor(t *testing.T) {
 	}
 }
 
+func TestNormalizeFrontmatter_ImageCreditFromOSG(t *testing.T) {
+	fm := map[string]any{
+		"osg": map[string]any{
+			"image_credit": "Foto de [Ehud](https://example.com) en [Unsplash](https://unsplash.com)",
+		},
+		"image_credit": "top-level credit",
+	}
+	out := NormalizeFrontmatter(fm, "test", "2025-01-01", false, "test.md")
+	if out["image_credit"] != "Foto de [Ehud](https://example.com) en [Unsplash](https://unsplash.com)" {
+		t.Fatalf("expected osg.image_credit to take precedence, got %v", out["image_credit"])
+	}
+}
+
+func TestNormalizeFrontmatter_ImageCreditFallback(t *testing.T) {
+	fm := map[string]any{
+		"image_credit": "Foto de [Author](https://example.com)",
+	}
+	out := NormalizeFrontmatter(fm, "test", "2025-01-01", false, "test.md")
+	if out["image_credit"] != "Foto de [Author](https://example.com)" {
+		t.Fatalf("expected fallback image_credit, got %v", out["image_credit"])
+	}
+}
+
+func TestNormalizeFrontmatter_NoImageCredit(t *testing.T) {
+	fm := map[string]any{"title": "Test"}
+	out := NormalizeFrontmatter(fm, "test", "2025-01-01", false, "test.md")
+	if _, ok := out["image_credit"]; ok {
+		t.Fatalf("expected no image_credit key, got %v", out["image_credit"])
+	}
+}
+
 func TestNormalizeFrontmatter_TitleFallbackToFilename(t *testing.T) {
 	fm := map[string]any{}
 	out := NormalizeFrontmatter(fm, "test", "2025-01-01", false, "My Post.md")

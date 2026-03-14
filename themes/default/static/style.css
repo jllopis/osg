@@ -1405,6 +1405,24 @@ picture {
   box-shadow: var(--shadow-sm);
 }
 
+.image-credit {
+  margin-top: var(--sp-1);
+  font-size: 0.5625rem;        /* 9px */
+  color: var(--ink-faint);
+  opacity: 0.65;
+  text-align: right;
+}
+.image-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 2px;
+}
+.image-credit a:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
 .prose > * + * {
   margin-top: 1.5em;
 }
@@ -2008,6 +2026,16 @@ picture {
 
 /* --- TOC: desktop sticky sidebar --- */
 @media (min-width: 1200px) {
+  /* When TOC is present, align hero and header with the prose column
+     so they don't extend past the TOC's left edge. */
+  article:has(.article-content--with-toc) .article-hero,
+  article:has(.article-content--with-toc) .article-header {
+    width: min(1080px, 100% - var(--sp-8));
+    max-width: none;
+    margin-inline: auto;
+    padding-right: calc(220px + var(--sp-8));
+  }
+
   .article-content--with-toc {
     display: grid;
     grid-template-columns: 1fr 220px;

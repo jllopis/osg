@@ -91,6 +91,12 @@ func (k *KairosProvider) Summarize(ctx context.Context, title string, rawMarkdow
 		return "", nil
 	}
 
+	// Truncate to avoid sending entire long articles to the LLM.
+	// The first ~1500 words contain enough context for a good summary
+	// and keep token usage low, which also prevents context-window
+	// errors with local models (e.g. Ollama).
+	plain = truncateWords(plain, maxInputWords)
+
 	prompt := k.SystemPrompt
 	if prompt == "" {
 		prompt = buildDefaultPrompt(k.Language)
@@ -125,6 +131,11 @@ func (k *KairosProvider) Summarize(ctx context.Context, title string, rawMarkdow
 	}
 	return summary, nil
 }
+
+// maxInputWords is the maximum number of words sent to the LLM.  The first
+// ~1500 words are more than enough for summary generation and keep token
+// usage reasonable for both cloud APIs and local models.
+const maxInputWords = 1500
 
 // maxSummaryLen is the hard upper limit (in runes) for AI-generated summaries.
 // Summaries exceeding this are truncated at the nearest sentence or word
