@@ -883,9 +883,9 @@ Tania Rascia, Kent C. Dodds, Gwern, etc.).
 - [done] CSS: backlinks cards con hover accent border
 - [done] i18n: keys `backlinks`, `linked_from` en es/en
 
-### 28G — Pendientes sprint 3+
-- [ ] AVIF support en image optimizer
-- [ ] Newsletter form embed (configurable)
-- [ ] Feed XSLT styling (RSS legible en browser)
-- [ ] Prefetch on hover (Speculation Rules API)
-- [ ] Font subsetting (Inter latin-only)
+### 28G — Sprint 3 (done)
+- [done] AVIF support en image optimizer (avifenc, `<picture>` AVIF > WebP > JPEG)
+- [skip] Newsletter form embed — no newsletter actualmente
+- [done] Feed XSLT styling (RSS/Atom legible en browser con Nord theme)
+- [done] Prefetch on hover (Speculation Rules API, eagerness: moderate)
+- [skip] Font subsetting — Inter ya es latin-only subset (23KB woff2)

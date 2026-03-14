@@ -27,6 +27,8 @@ type Options struct {
 	Widths []int
 	// WebP enables WebP variant generation via cwebp (if available).
 	WebP bool
+	// AVIF enables AVIF variant generation via avifenc (if available).
+	AVIF bool
 }
 
 // DefaultOptions returns sensible defaults.
@@ -35,6 +37,7 @@ func DefaultOptions() Options {
 		Quality: 80,
 		Widths:  []int{640, 1200},
 		WebP:    true,
+		AVIF:    true,
 	}
 }
 
@@ -87,6 +90,15 @@ func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*
 			hasWebP = true
 		} else {
 			logger.Info("cwebp not found in PATH, WebP generation disabled")
+		}
+	}
+
+	hasAVIF := false
+	if opts.AVIF {
+		if _, err := exec.LookPath("avifenc"); err == nil {
+			hasAVIF = true
+		} else {
+			logger.Info("avifenc not found in PATH, AVIF generation disabled")
 		}
 	}
 
@@ -168,7 +180,7 @@ func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*
 			go func() {
 				defer wg.Done()
 				for j := range jobCh {
-					res, n, err := optimizeFile(j.path, j.urlPath, opts, hasWebP, logger)
+					res, n, err := optimizeFile(j.path, j.urlPath, opts, hasWebP, hasAVIF, logger)
 					if err != nil {
 						logger.Warn("image optimize failed", "path", j.path, "error", err)
 						continue
@@ -236,7 +248,7 @@ func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*
 func isOptimizable(name string) bool {
 	ext := strings.ToLower(filepath.Ext(name))
 	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp":
+	case ".jpg", ".jpeg", ".png", ".webp", ".avif":
 		return true
 	}
 	return false
@@ -265,7 +277,7 @@ func isVariant(name string) bool {
 
 // optimizeFile generates responsive variants for a single image file.
 // Returns nil result if the image is already a variant or too small.
-func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, logger *slog.Logger) (*Result, int, error) {
+func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, hasAVIF bool, logger *slog.Logger) (*Result, int, error) {
 	if isVariant(filepath.Base(path)) {
 		return nil, 0, nil
 	}
@@ -339,6 +351,21 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, logge
 			}
 		}
 
+		// AVIF variant via avifenc.
+		if hasAVIF {
+			avifName := fmt.Sprintf("%s-%dw.avif", base, w)
+			avifPath := filepath.Join(dir, avifName)
+			avifURL := urlDir(urlPath) + avifName
+
+			if err := writeAVIF(jpgPath, avifPath, opts.Quality); err != nil {
+				logger.Warn("avif conversion failed", "path", jpgPath, "error", err)
+			} else {
+				variants = append(variants, Variant{URLPath: avifURL, Width: w, Format: "avif"})
+				count++
+				logger.Debug("image variant", "src", urlPath, "variant", avifURL, "width", w, "format", "avif")
+			}
+		}
+
 		res.Variants[w] = variants
 	}
 
@@ -358,6 +385,25 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, logge
 			}
 			res.Variants[srcWidth] = append(res.Variants[srcWidth], Variant{
 				URLPath: webpURL, Width: srcWidth, Format: "webp",
+			})
+			count++
+		}
+	}
+
+	// Generate AVIF of the original size (same logic as WebP above).
+	if hasAVIF && (maxWidth == 0 || srcWidth <= maxWidth) {
+		avifName := base + ".avif"
+		avifPath := filepath.Join(dir, avifName)
+		avifURL := urlDir(urlPath) + avifName
+
+		if err := writeAVIF(path, avifPath, opts.Quality); err != nil {
+			logger.Warn("avif conversion of original failed", "path", path, "error", err)
+		} else {
+			if res.Variants[srcWidth] == nil {
+				res.Variants[srcWidth] = []Variant{}
+			}
+			res.Variants[srcWidth] = append(res.Variants[srcWidth], Variant{
+				URLPath: avifURL, Width: srcWidth, Format: "avif",
 			})
 			count++
 		}
@@ -406,6 +452,14 @@ func writeWebP(srcPath string, destPath string, quality int) error {
 	return cmd.Run()
 }
 
+// writeAVIF converts an image to AVIF using the avifenc binary.
+func writeAVIF(srcPath string, destPath string, quality int) error {
+	cmd := exec.Command("avifenc", "-q", fmt.Sprintf("%d", quality), "--speed", "6", srcPath, destPath)
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	return cmd.Run()
+}
+
 // urlDir returns the directory portion of a URL path with a trailing slash.
 func urlDir(urlPath string) string {
 	dir := filepath.ToSlash(filepath.Dir(urlPath))
@@ -435,6 +489,7 @@ func PictureHTML(src string, alt string, loading string, fetchpriority string, r
 	}
 
 	// Collect srcset entries grouped by format.
+	avifSrcset := []string{}
 	webpSrcset := []string{}
 	jpgSrcset := []string{}
 
@@ -445,6 +500,8 @@ func PictureHTML(src string, alt string, loading string, fetchpriority string, r
 		for _, v := range res.Variants[w] {
 			entry := fmt.Sprintf("%s %dw", v.URLPath, v.Width)
 			switch v.Format {
+			case "avif":
+				avifSrcset = append(avifSrcset, entry)
 			case "webp":
 				webpSrcset = append(webpSrcset, entry)
 			case "jpeg", "jpg", "png":
@@ -453,14 +510,19 @@ func PictureHTML(src string, alt string, loading string, fetchpriority string, r
 		}
 	}
 
-	// If we only have WebP of the original (no smaller variants), still
-	// include the original in the JPEG srcset for the fallback.
-	if len(jpgSrcset) == 0 && len(webpSrcset) == 0 {
+	// If no format-specific srcsets at all, fall back to plain <img>.
+	if len(jpgSrcset) == 0 && len(webpSrcset) == 0 && len(avifSrcset) == 0 {
 		return fmt.Sprintf(`<img src="%s" alt="%s" loading="%s"%s />`, src, escAttr(alt), loading, fpAttr)
 	}
 
 	var b strings.Builder
 	b.WriteString("<picture>\n")
+
+	// AVIF first (smallest, best compression, newest format).
+	if len(avifSrcset) > 0 {
+		fmt.Fprintf(&b, `  <source type="image/avif" srcset="%s" />`, strings.Join(avifSrcset, ", "))
+		b.WriteString("\n")
+	}
 
 	if len(webpSrcset) > 0 {
 		fmt.Fprintf(&b, `  <source type="image/webp" srcset="%s" />`, strings.Join(webpSrcset, ", "))

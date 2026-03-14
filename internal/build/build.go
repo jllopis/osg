@@ -301,6 +301,7 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 			Quality: cfg.ImageQuality,
 			Widths:  cfg.ImageWidths,
 			WebP:    true,
+			AVIF:    true,
 		}
 		if imgOpts.Quality <= 0 || imgOpts.Quality > 100 {
 			imgOpts.Quality = 80

@@ -71,6 +71,8 @@ func TestIsOptimizable(t *testing.T) {
 		{"photo.svg", false},
 		{"photo.webp", true},
 		{"photo.WEBP", true},
+		{"photo.avif", true},
+		{"photo.AVIF", true},
 		{"photo.gif", false},
 		{"file.md", false},
 		{"file.html", false},
@@ -181,7 +183,7 @@ func TestOptimizeFile_JPEG(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	opts := Options{Quality: 75, Widths: []int{640, 1200}, WebP: false}
 
-	res, count, err := optimizeFile(imgPath, "/img/hero.jpg", opts, false, logger)
+	res, count, err := optimizeFile(imgPath, "/img/hero.jpg", opts, false, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +231,7 @@ func TestOptimizeFile_SkipsSmallImages(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	opts := Options{Quality: 75, Widths: []int{640, 1200}, WebP: false}
 
-	res, count, err := optimizeFile(imgPath, "/img/small.jpg", opts, false, logger)
+	res, count, err := optimizeFile(imgPath, "/img/small.jpg", opts, false, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +249,7 @@ func TestOptimizeFile_SkipsVariants(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	opts := Options{Quality: 75, Widths: []int{320}, WebP: false}
 
-	res, _, err := optimizeFile(imgPath, "/img/hero-640w.jpg", opts, false, logger)
+	res, _, err := optimizeFile(imgPath, "/img/hero-640w.jpg", opts, false, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +277,7 @@ func TestOptimizeFile_WebP(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
 
-	res, count, err := optimizeFile(webpPath, "/photo.webp", opts, false, logger)
+	res, count, err := optimizeFile(webpPath, "/photo.webp", opts, false, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +310,7 @@ func TestOptimizeFile_PNG(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
 
-	res, count, err := optimizeFile(imgPath, "/chart.png", opts, false, logger)
+	res, count, err := optimizeFile(imgPath, "/chart.png", opts, false, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -465,7 +467,7 @@ func TestOptimizeFile_OnlyOneWidth(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
 
-	res, count, err := optimizeFile(imgPath, "/medium.jpg", opts, false, logger)
+	res, count, err := optimizeFile(imgPath, "/medium.jpg", opts, false, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -494,6 +496,9 @@ func TestDefaultOptions(t *testing.T) {
 	}
 	if !opts.WebP {
 		t.Error("WebP = false, want true")
+	}
+	if !opts.AVIF {
+		t.Error("AVIF = false, want true")
 	}
 }
 
@@ -674,7 +679,7 @@ func TestOptimizeFile_OversizedSkipsFullWebP(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
 	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: true}
 
-	res, _, err := optimizeFile(imgPath, "/big.jpg", opts, true, logger)
+	res, _, err := optimizeFile(imgPath, "/big.jpg", opts, true, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -697,6 +702,57 @@ func TestOptimizeFile_OversizedSkipsFullWebP(t *testing.T) {
 		if _, exists := res.Variants[w]; !exists {
 			t.Errorf("missing variant at width %d", w)
 		}
+	}
+}
+
+func TestPictureHTML_WithAVIF(t *testing.T) {
+	results := map[string]*Result{
+		"/img/hero.jpg": {
+			Original:      "/img/hero.jpg",
+			OriginalWidth: 1600,
+			Variants: map[int][]Variant{
+				640: {
+					{URLPath: "/img/hero-640w.jpg", Width: 640, Format: "jpeg"},
+					{URLPath: "/img/hero-640w.webp", Width: 640, Format: "webp"},
+					{URLPath: "/img/hero-640w.avif", Width: 640, Format: "avif"},
+				},
+				1200: {
+					{URLPath: "/img/hero-1200w.jpg", Width: 1200, Format: "jpeg"},
+					{URLPath: "/img/hero-1200w.webp", Width: 1200, Format: "webp"},
+					{URLPath: "/img/hero-1200w.avif", Width: 1200, Format: "avif"},
+				},
+			},
+		},
+	}
+
+	html := PictureHTML("/img/hero.jpg", "Hero", "eager", "", results)
+
+	if !strings.Contains(html, "<picture>") {
+		t.Error("expected <picture> element")
+	}
+	// AVIF source must come first (best compression).
+	if !strings.Contains(html, `type="image/avif"`) {
+		t.Error("expected avif source")
+	}
+	if !strings.Contains(html, `type="image/webp"`) {
+		t.Error("expected webp source")
+	}
+	if !strings.Contains(html, `type="image/jpeg"`) {
+		t.Error("expected jpeg source")
+	}
+	if !strings.Contains(html, "hero-640w.avif 640w") {
+		t.Error("expected 640w avif srcset entry")
+	}
+
+	// Verify order: AVIF before WebP before JPEG.
+	avifIdx := strings.Index(html, `type="image/avif"`)
+	webpIdx := strings.Index(html, `type="image/webp"`)
+	jpegIdx := strings.Index(html, `type="image/jpeg"`)
+	if avifIdx >= webpIdx {
+		t.Error("AVIF source must come before WebP")
+	}
+	if webpIdx >= jpegIdx {
+		t.Error("WebP source must come before JPEG")
 	}
 }
 

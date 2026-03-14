@@ -86,3 +86,5 @@
 {{ if .config.analytics }}<script defer src="{{ get_url "/js/analytics.js" false true }}"></script>{{ end }}
 {{- /* --- Third-party analytics & custom head injection --- */ -}}
 {{ if .config.analytics_head }}{{ .config.analytics_head }}{{ end }}
+{{- /* --- Prefetch on hover (Speculation Rules API) --- */ -}}
+<script type="speculationrules">{"prefetch":[{"where":{"href_matches":"/*"},"eagerness":"moderate"}]}</script>
