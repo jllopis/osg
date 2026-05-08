@@ -994,7 +994,7 @@ no se invoca `osg ui`.
 - [done] UI para enable/disable de plugins persistiendo en config.yaml (usa `config.UpdatePluginsEnabled` que preserva comentarios)
 - [done] State.Plugins unificado (loaded + on-disk + enabled-but-missing) con badges enabled/disabled/missing
 
-### 30G — Capacidades futuras (in progress)
+### 30G — Capacidades futuras (done)
 - [done] Watcher integrado en `osg ui` como tercer servicio del supervisor
   (reusa `startWatch`/`runWatchLoop` sin reload hub; rebuild automatico
   con debounce; logs en el ring buffer del servicio)
@@ -1004,4 +1004,10 @@ no se invoca `osg ui`.
   - `SiteStats.Scheduled` y `SiteStats.NextScheduled`; card en dashboard
   - Servicio `scheduler` en el supervisor: duerme hasta el siguiente
     `publish_at` (clamp 5min) y dispara `RunBuild` cuando vence
-- [ ] Asset management desde la UI (generacion/optimizacion)
+  - Stateless (no DB): re-escanea frontmatter en cada iteracion
+- [done] Asset management UI (read-only en v1):
+  - Inventario de imagenes en content_dir y static_dir
+  - Cards: total, total size, formats; tabla por formato (count+size)
+  - Tabla de ficheros con filtro client-side (reusa `setupVaultFilter`)
+  - Mutaciones (regenerar variants, convertir formato) deferred:
+    `osg build` ya optimiza, y watcher/scheduler lo disparan

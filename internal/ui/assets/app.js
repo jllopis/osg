@@ -64,6 +64,12 @@
       return (r.getAttribute("data-search") || r.textContent || "").toLowerCase();
     });
 
+    // Read the noun ("pages", "files"…) from the count element's initial
+    // text so each page can label its rows appropriately. Falls back to
+    // "items" if no initial text is present.
+    const initial = (count && count.textContent.trim()) || "";
+    const noun = initial.split(/\s+/).slice(1).join(" ") || "items";
+
     function apply() {
       const q = input.value.trim().toLowerCase();
       let shown = 0;
@@ -74,7 +80,7 @@
       });
       if (count) {
         count.textContent = q === ""
-          ? total + " pages"
+          ? total + " " + noun
           : shown + " of " + total;
       }
       if (empty) empty.hidden = shown !== 0;

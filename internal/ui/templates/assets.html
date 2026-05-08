@@ -1,0 +1,75 @@
+{{define "page"}}
+  <h2>Assets</h2>
+  <p class="subtitle">Image inventory across <code class="mono">{{.ContentDir}}</code> and the static directory. Optimization runs as part of <code class="mono">osg build</code>.</p>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">Total images</div>
+      <div class="value">{{.AssetSummary.Total}}</div>
+    </div>
+    <div class="card">
+      <div class="label">Total size</div>
+      <div class="value">{{humanSize .AssetSummary.TotalSize}}</div>
+    </div>
+    <div class="card">
+      <div class="label">Formats</div>
+      <div class="value">{{len .AssetSummary.ByFormat}}</div>
+    </div>
+  </div>
+
+  {{if .AssetSummary.ByFormat}}
+  <section class="section">
+    <h3>By Format</h3>
+    <table>
+      <thead>
+        <tr><th>Format</th><th class="num">Count</th><th class="num">Size</th></tr>
+      </thead>
+      <tbody>
+        {{range .AssetSummary.ByFormat}}
+        <tr>
+          <td class="mono">{{.Format}}</td>
+          <td class="num">{{.Count}}</td>
+          <td class="num">{{humanSize .Size}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </section>
+  {{end}}
+
+  {{if .Assets}}
+  <section class="section">
+    <h3>Files</h3>
+    <div class="vault-toolbar">
+      <input type="search" class="vault-filter" placeholder="Filter by name or path…"
+             data-vault-filter aria-label="Filter assets" autocomplete="off">
+      <span class="vault-count" data-vault-count>{{len .Assets}} files</span>
+    </div>
+    <table data-vault-table>
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Source</th>
+          <th class="num">Size</th>
+          <th>Format</th>
+          <th>Modified</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Assets}}
+        <tr data-search="{{.Name}} {{.Path}} {{.Source}}">
+          <td><strong>{{.Name}}</strong><br><span class="fg-dim mono">{{.Path}}</span></td>
+          <td><span class="pill {{if eq .Source "static"}}info{{else}}muted{{end}}">{{.Source}}</span></td>
+          <td class="num mono">{{humanSize .Size}}</td>
+          <td class="mono">{{.Format}}</td>
+          <td class="mono">{{.ModTime.Format "2006-01-02"}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    <div class="empty" data-vault-empty hidden>No assets match the filter.</div>
+  </section>
+  {{else}}
+  <div class="empty">No images found in content or static directories.</div>
+  {{end}}
+{{end}}

@@ -12,11 +12,13 @@ import (
 )
 
 type viewData struct {
-	Title    string
-	Active   string
-	Version  string
-	Services []Service
-	Now      time.Time
+	Title        string
+	Active       string
+	Version      string
+	Services     []Service
+	Now          time.Time
+	Assets       []AssetEntry
+	AssetSummary AssetSummary
 	State
 }
 
@@ -111,6 +113,12 @@ func (s *Server) handlePluginToggle(w http.ResponseWriter, r *http.Request) {
 		s.opts.Logger.Info("plugin toggled", "plugin", name, "action", action)
 	}
 	http.Redirect(w, r, "/plugins", http.StatusSeeOther)
+}
+
+func (s *Server) handleAssets(w http.ResponseWriter, r *http.Request) {
+	v := s.buildView("assets", "Assets", r)
+	v.Assets, v.AssetSummary = collectAssets(s.opts.Cfg, s.opts.Logger)
+	s.render(w, "assets", v)
 }
 
 func (s *Server) handleServices(w http.ResponseWriter, r *http.Request) {

@@ -92,6 +92,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/", s.handleDashboard)
 	s.mux.HandleFunc("/vault", s.handleVault)
 	s.mux.HandleFunc("/plugins", s.handlePlugins)
+	s.mux.HandleFunc("/assets", s.handleAssets)
 	s.mux.HandleFunc("/services", s.handleServices)
 	s.mux.HandleFunc("POST /plugins/toggle", s.handlePluginToggle)
 	s.mux.HandleFunc("/services/start", s.handleServiceStart)
@@ -105,7 +106,7 @@ func (s *Server) routes() {
 // which the layout invokes — names are unique per template instance, so we
 // don't have collisions across pages.
 func loadTemplates() (map[string]*template.Template, error) {
-	pages := []string{"dashboard", "vault", "plugins", "services"}
+	pages := []string{"dashboard", "vault", "plugins", "assets", "services"}
 	out := make(map[string]*template.Template, len(pages))
 
 	funcs := template.FuncMap{

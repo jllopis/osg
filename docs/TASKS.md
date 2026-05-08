@@ -591,3 +591,7 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 30G) Build filtra paginas con publish_at futuro (skipped salvo IncludeDrafts)
 [done] (Phase 30G) SiteStats.Scheduled + NextScheduled, card en dashboard
 [done] (Phase 30G) Servicio scheduler en supervisor: duerme hasta publish_at, dispara RunBuild al vencer (clamp 5min)
+
+[done] (Phase 30G) Asset inventory UI: /assets page con cards (total/size/formats), breakdown por formato, tabla filtrable
+[done] (Phase 30G) collectAssets walker sobre content_dir + static_dir; pill content/static por origen
+[done] (Phase 30G) setupVaultFilter parametrizado por noun ("pages"/"files") via initial textContent
