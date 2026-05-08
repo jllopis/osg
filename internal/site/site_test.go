@@ -803,6 +803,63 @@ func writeTestFile(t *testing.T, dir, relPath, content string) string {
 	return p
 }
 
+func TestParseFile_SEODirectives(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---
+title: SEO Post
+osg:
+  robots: "noindex, nofollow"
+  canonical_url: "https://canonical.example/post/"
+  keywords:
+    - go
+    - seo
+---
+Body.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Robots != "noindex, nofollow" {
+		t.Errorf("Robots = %q; want noindex, nofollow", page.Robots)
+	}
+	if page.CanonicalURL != "https://canonical.example/post/" {
+		t.Errorf("CanonicalURL = %q", page.CanonicalURL)
+	}
+	if len(page.Keywords) != 2 || page.Keywords[0] != "go" {
+		t.Errorf("Keywords = %v", page.Keywords)
+	}
+
+	view := page.View()
+	if view["robots"] != "noindex, nofollow" {
+		t.Errorf("view robots = %v", view["robots"])
+	}
+	if view["canonical_url"] != "https://canonical.example/post/" {
+		t.Errorf("view canonical_url = %v", view["canonical_url"])
+	}
+}
+
+func TestParseFile_NoIndexShortcut(t *testing.T) {
+	dir := t.TempDir()
+	fp := writeTestFile(t, dir, "2025/01/01/draft/index.md", `---
+title: Hidden
+osg:
+  noindex: true
+---
+Body.
+`)
+	page, _, err := ParseFile(dir, "http://example.com", fp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !page.NoIndex {
+		t.Error("expected NoIndex true from osg.noindex shortcut")
+	}
+	if page.View()["noindex"] != true {
+		t.Errorf("view noindex should be true, got %v", page.View()["noindex"])
+	}
+}
+
 func TestParseFile_OSGAbstractTakesPrecedence(t *testing.T) {
 	dir := t.TempDir()
 	fp := writeTestFile(t, dir, "2025/01/01/post/index.md", `---

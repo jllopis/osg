@@ -406,6 +406,57 @@ func TestSitemapEntryViews(t *testing.T) {
 	}
 }
 
+func TestSitemapEntryViews_PriorityAndChangefreq(t *testing.T) {
+	ts := time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC)
+	entries := []SitemapEntry{
+		{Permalink: "https://example.com/a/", Updated: ts, Priority: 0.8, ChangeFreq: "monthly"},
+		{Permalink: "https://example.com/b/", Updated: ts},
+	}
+	views := sitemapEntryViews(entries)
+	if views[0]["priority"] != "0.8" {
+		t.Errorf("views[0].priority = %v; want 0.8", views[0]["priority"])
+	}
+	if views[0]["changefreq"] != "monthly" {
+		t.Errorf("views[0].changefreq = %v; want monthly", views[0]["changefreq"])
+	}
+	if _, ok := views[1]["priority"]; ok {
+		t.Errorf("views[1].priority should be omitted when zero")
+	}
+	if _, ok := views[1]["changefreq"]; ok {
+		t.Errorf("views[1].changefreq should be omitted when empty")
+	}
+}
+
+func TestCollectSitemapEntries_ExcludesNoindex(t *testing.T) {
+	cfg := config.Config{BaseURL: "https://example.com"}
+	s := site.New()
+	s.AddPage(&site.Page{Permalink: "https://example.com/p1/", Date: time.Now()})
+	s.AddPage(&site.Page{Permalink: "https://example.com/p2/", Date: time.Now(), NoIndex: true})
+	s.AddPage(&site.Page{Permalink: "https://example.com/p3/", Date: time.Now(), Robots: "noindex, follow"})
+	entries := collectSitemapEntries(cfg, s, nil)
+	for _, e := range entries {
+		if e.Permalink == "https://example.com/p2/" || e.Permalink == "https://example.com/p3/" {
+			t.Errorf("noindex page %s should be excluded from sitemap", e.Permalink)
+		}
+	}
+	// p1 must still be present with default priority/changefreq.
+	found := false
+	for _, e := range entries {
+		if e.Permalink == "https://example.com/p1/" {
+			found = true
+			if e.Priority != 0.8 {
+				t.Errorf("page priority = %v; want 0.8", e.Priority)
+			}
+			if e.ChangeFreq != "monthly" {
+				t.Errorf("page changefreq = %q; want monthly", e.ChangeFreq)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected p1 in sitemap entries")
+	}
+}
+
 // ---------------------------------------------------------------------------
 // feedPages
 // ---------------------------------------------------------------------------

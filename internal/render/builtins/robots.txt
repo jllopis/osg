@@ -1,3 +1,16 @@
 User-agent: *
 Allow: /
+{{- if and .config.robots .config.robots.disallow }}
+{{- range .config.robots.disallow }}
+Disallow: {{ . }}
+{{- end }}
+{{- end }}
+{{- if and .config.robots .config.robots.crawl_delay }}
+Crawl-delay: {{ .config.robots.crawl_delay }}
+{{- end }}
+
 Sitemap: {{ get_url "/sitemap.xml" }}
+{{- if and .config.robots .config.robots.extra }}
+
+{{ .config.robots.extra }}
+{{- end }}

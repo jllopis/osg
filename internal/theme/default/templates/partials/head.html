@@ -7,8 +7,22 @@
 {{ else if .config.logo }}<link rel="icon" href="{{ .config.logo }}" />
 {{ else }}<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 32'%3E%3Cpath d='M18 7C12 7 10 11 10 16c0 6 4 10 11 10s11-4 11-10c0-5-3-8.5-8-9' stroke='%235e81ac' stroke-width='2.2' stroke-linecap='round' fill='none'/%3E%3Cline x1='1' y1='16' x2='44' y2='16' stroke='%235e81ac' stroke-width='1.8' stroke-linecap='round'/%3E%3Cpolygon points='44,16 39,12.5 39,19.5' fill='%235e81ac'/%3E%3Cline x1='5' y1='16' x2='1.5' y2='12' stroke='%235e81ac' stroke-width='1.4' stroke-linecap='round'/%3E%3Cline x1='5' y1='16' x2='1.5' y2='20' stroke='%235e81ac' stroke-width='1.4' stroke-linecap='round'/%3E%3Cline x1='7.5' y1='16' x2='4' y2='11.5' stroke='%235e81ac' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='7.5' y1='16' x2='4' y2='20.5' stroke='%235e81ac' stroke-width='1.2' stroke-linecap='round'/%3E%3Cline x1='10' y1='16' x2='7' y2='12.5' stroke='%235e81ac' stroke-width='1' stroke-linecap='round'/%3E%3Cline x1='10' y1='16' x2='7' y2='19.5' stroke='%235e81ac' stroke-width='1' stroke-linecap='round'/%3E%3C/svg%3E" type="image/svg+xml" />
 {{ end -}}
-{{- /* --- Canonical URL --- */ -}}
-{{ if and .config.base_url .current_path }}<link rel="canonical" href="{{ .config.base_url }}{{ .current_path }}" />{{ end }}
+{{- /* --- Canonical URL: page override > base_url+current_path --- */ -}}
+{{ if and .page .page.canonical_url }}<link rel="canonical" href="{{ .page.canonical_url }}" />
+{{ else if and .config.base_url .current_path }}<link rel="canonical" href="{{ .config.base_url }}{{ .current_path }}" />{{ end }}
+{{- /* --- Robots directives: page.robots > derived from page.noindex/draft --- */ -}}
+{{ if and .page .page.robots }}<meta name="robots" content="{{ .page.robots }}" />
+{{ else if and .page (or .page.noindex .page.draft) }}<meta name="robots" content="noindex, follow" />{{ end }}
+{{- /* --- Author meta: page > site default --- */ -}}
+{{ if and .page .page.author }}<meta name="author" content="{{ .page.author }}" />
+{{ else if .config.author }}<meta name="author" content="{{ .config.author }}" />{{ end }}
+{{- /* --- Keywords: page-level only (Google ignores, but useful for some tooling) --- */ -}}
+{{ if and .page .page.keywords }}<meta name="keywords" content="{{ range $i, $k := .page.keywords }}{{ if $i }}, {{ end }}{{ $k }}{{ end }}" />{{ end }}
+{{- /* --- Theme color: light/dark variants when configured --- */ -}}
+{{ if and .config.theme_color_light .config.theme_color_dark }}<meta name="theme-color" content="{{ .config.theme_color_light }}" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="{{ .config.theme_color_dark }}" media="(prefers-color-scheme: dark)" />
+{{ else if .config.theme_color_light }}<meta name="theme-color" content="{{ .config.theme_color_light }}" />
+{{ else if .config.theme_color_dark }}<meta name="theme-color" content="{{ .config.theme_color_dark }}" />{{ end }}
 {{- /* --- hreflang alternates for translated pages --- */ -}}
 {{ if and .page .page.translations -}}
 <link rel="alternate" hreflang="{{ .lang }}" href="{{ .page.permalink }}" />
@@ -79,11 +93,17 @@
 <link rel="alternate" type="application/rss+xml" title="{{ .section.title }} — {{ trans "rss_feed" .lang }}" href="{{ get_url (printf "%srss.xml" .section.path) false false }}" />{{ end }}
 {{- /* --- JSON-LD structured data (schema.org) --- */ -}}
 {{ jsonld . -}}
-{{- /* --- Stylesheets --- */ -}}
+{{- /* --- Stylesheets ---
+       style.css is render-blocking (above-the-fold layout depends on it).
+       syntax.css and KaTeX are deferred via the media-swap trick: load with
+       media="print" so the browser does not block render, then onload swap
+       back to "all". The <noscript> fallback covers JS-disabled clients. */ -}}
 <link rel="stylesheet" href="{{ get_url "/style.css" false true }}" />
-<link rel="stylesheet" href="{{ get_url "/css/syntax.css" false true }}" />
+<link rel="stylesheet" href="{{ get_url "/css/syntax.css" false true }}" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="{{ get_url "/css/syntax.css" false true }}" /></noscript>
 {{- /* --- KaTeX (math rendering) --- */ -}}
-{{ if .config.math }}<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css" crossorigin="anonymous" />{{ end }}
+{{ if .config.math }}<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css" crossorigin="anonymous" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.21/dist/katex.min.css" crossorigin="anonymous" /></noscript>{{ end }}
 {{- /* --- First-party analytics (osg built-in) --- */ -}}
 {{ if .config.analytics }}<script defer src="{{ get_url "/js/analytics.js" false true }}"></script>{{ end }}
 {{- /* --- Third-party analytics & custom head injection --- */ -}}

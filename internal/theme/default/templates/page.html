@@ -32,7 +32,7 @@
             </h1>
 
             <div class="meta">
-              {{ if .page.author }}<span class="author">{{ .page.author }}</span><span class="meta-sep">&bull;</span>{{ end }}
+              {{ if .page.author }}<address class="author" rel="author">{{ .page.author }}</address><span class="meta-sep">&bull;</span>{{ end }}
               <time datetime="{{ .page.date.Format "2006-01-02" }}">{{ date_format .page.date (trans "date_format_long" .lang) .lang }}</time>
               {{ if .page.reading_time }}<span class="reading-badge">{{ .page.reading_time }} {{ trans "min_read" .lang }}</span>{{ end }}
               <button class="bookmark-btn bookmark-btn--compact" type="button" aria-pressed="false"

@@ -403,10 +403,52 @@ doctor_profile: dev
 # Displayed at the bottom of every article page. Both fields are optional;
 # the card is hidden when neither is set.
 #
+# author: Default author name used for <meta name="author"> and JSON-LD when a
+#         page does not specify its own author in frontmatter.
+# author_url: URL to the author profile (used in Person schema).
 # author_bio: Short bio text shown next to the avatar.
 # author_avatar: Path or URL to a square photo/avatar (recommended: 144px+).
+# author: "Jane Doe"
+# author_url: "https://example.com/about"
 # author_bio: "Developer and writer. I build things with Go and write about it."
 # author_avatar: "/images/avatar.jpg"
+
+# -----------------------------------------------------------------------------
+# SEO: theme-color, organization, robots
+# -----------------------------------------------------------------------------
+# theme_color_light / theme_color_dark: Color for mobile browser UI (address bar,
+#   task switcher). Hex values; emitted as <meta name="theme-color"> with
+#   prefers-color-scheme media queries when both are set.
+# organization: schema.org Organization emitted on the homepage. When name is
+#   empty no organization JSON-LD is generated.
+#     name:    Legal/brand name of the publisher.
+#     url:     Canonical URL of the organization (defaults to base_url).
+#     logo:    Absolute URL of the logo image (recommended ≥112×112).
+#     same_as: Profile URLs that uniquely identify the organization
+#              (LinkedIn, X, GitHub, Wikidata, etc.).
+# robots: Customize the generated robots.txt.
+#     disallow:    List of URL paths to disallow (under User-agent: *).
+#     crawl_delay: Optional Crawl-delay value in seconds (0 = omit).
+#     extra:       Raw text appended verbatim (multi-line, additional User-agent
+#                  blocks, comments, etc.).
+#
+# theme_color_light: "#eceff4"
+# theme_color_dark: "#2e3440"
+# organization:
+#   name: "Acme Publishing"
+#   url: "https://acme.example"
+#   logo: "https://acme.example/logo.png"
+#   same_as:
+#     - "https://github.com/acme"
+#     - "https://x.com/acme"
+# robots:
+#   disallow:
+#     - /drafts/
+#     - /private/
+#   crawl_delay: 0
+#   extra: |
+#     User-agent: GPTBot
+#     Disallow: /
 
 # -----------------------------------------------------------------------------
 # Social links, copyright & license

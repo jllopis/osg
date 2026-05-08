@@ -550,3 +550,22 @@ Formato: [todo|doing|done] Tarea
 
 [done] (Phase 26B) `osg audit`: analizar public/ para problemas (HTML, a11y, performance)
 [done] (Phase 26B) Reporte con severidad y sugerencias, integrable en CI (--json, exit code)
+
+[done] (Phase 29A) Frontmatter SEO: osg.robots / osg.noindex / osg.canonical_url / osg.keywords
+[done] (Phase 29A) head.html: meta robots, canonical override, meta author, meta keywords, theme-color light/dark
+[done] (Phase 29A) Config: author, author_url, theme_color_light, theme_color_dark
+[done] (Phase 29A) Sitemap excluye paginas con noindex true o robots="noindex"
+
+[done] (Phase 29B) SitemapEntry con Priority/ChangeFreq + defaults por tipo (home 1.0/daily, post 0.8/monthly, section 0.7/weekly, taxonomy 0.5/weekly)
+[done] (Phase 29B) builtins/sitemap.xml emite priority y changefreq cuando estan presentes
+
+[done] (Phase 29C) Config organization: {name, url, logo, same_as}
+[done] (Phase 29C) buildOrganizationSchema + Organization JSON-LD en home
+[done] (Phase 29C) BlogPosting usa Organization config como publisher; author cae a config.author/author_url
+
+[done] (Phase 29D) Config robots: {disallow[], crawl_delay, extra}
+[done] (Phase 29D) builtins/robots.txt configurable (Disallow, Crawl-delay, extra)
+
+[done] (Phase 29E) page.html: byline en `<address class="author" rel="author">`
+[done] (Phase 29E) head.html: syntax.css y KaTeX en media=print + onload swap (no render-blocking)
+[done] (Phase 29E) Noscript fallback para clientes sin JS

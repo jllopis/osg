@@ -966,10 +966,13 @@ picture {
 }
 
 /* -- Author & meta separator -- */
+/* Element is <address> for SEO/semantics; reset its default italic. */
 .author {
   font-family: var(--font-sans);
+  font-style: normal;
   font-weight: 700;
   color: var(--ink);
+  display: inline;
 }
 
 .meta-sep {

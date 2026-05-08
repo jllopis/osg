@@ -50,6 +50,10 @@ type Page struct {
 	ReadingTime  int
 	Series       string
 	SeriesOrder  int
+	Robots       string
+	NoIndex      bool
+	CanonicalURL string
+	Keywords     []string
 	Taxonomies   map[string][]string
 	Extra        map[string]any
 	Translations []Translation
@@ -396,6 +400,39 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		pageAuthor = pickString(fm, "author")
 	}
 
+	// Resolve SEO directives: osg.* > top-level
+	pageRobots := ""
+	if osg != nil {
+		pageRobots = pickString(osg, "robots")
+	}
+	if pageRobots == "" {
+		pageRobots = pickString(fm, "robots")
+	}
+
+	pageNoIndex := false
+	if osg != nil {
+		pageNoIndex = pickBool(osg, "noindex")
+	}
+	if !pageNoIndex {
+		pageNoIndex = pickBool(fm, "noindex")
+	}
+
+	pageCanonical := ""
+	if osg != nil {
+		pageCanonical = pickString(osg, "canonical_url", "canonical")
+	}
+	if pageCanonical == "" {
+		pageCanonical = pickString(fm, "canonical_url", "canonical")
+	}
+
+	var pageKeywords []string
+	if osg != nil {
+		pageKeywords = toStringSlice(osg["keywords"])
+	}
+	if len(pageKeywords) == 0 {
+		pageKeywords = toStringSlice(fm["keywords"])
+	}
+
 	page := &Page{
 		Title:       title,
 		MenuTitle:   pickString(fm, "menu_title"),
@@ -412,12 +449,16 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		Summary:     pageSummary,
 		Content:     contentHTML,
 		RawContent:  string(body),
-		Series:      pickString(fm, "series"),
-		SeriesOrder: pickInt(fm, "series_order"),
-		Template:    pickString(fm, "template"),
-		Lang:        pickString(fm, "lang", "language"),
-		Taxonomies:  pickTaxonomies(fm),
-		Extra:       fm,
+		Series:       pickString(fm, "series"),
+		SeriesOrder:  pickInt(fm, "series_order"),
+		Template:     pickString(fm, "template"),
+		Lang:         pickString(fm, "lang", "language"),
+		Robots:       pageRobots,
+		NoIndex:      pageNoIndex,
+		CanonicalURL: pageCanonical,
+		Keywords:     pageKeywords,
+		Taxonomies:   pickTaxonomies(fm),
+		Extra:        fm,
 	}
 
 	// Store featured in Extra so Section.View() can find it
@@ -469,6 +510,10 @@ func (p *Page) View() map[string]any {
 		"reading_time":      p.ReadingTime,
 		"series":            p.Series,
 		"series_order":      p.SeriesOrder,
+		"robots":            p.Robots,
+		"noindex":           p.NoIndex,
+		"canonical_url":     p.CanonicalURL,
+		"keywords":          p.Keywords,
 		"taxonomies":        p.Taxonomies,
 		"extra":             p.Extra,
 		"lang":              p.Lang,

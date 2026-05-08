@@ -648,6 +648,9 @@ func jsonldFunc(ctx Context) func(map[string]any) template.HTML {
 		baseURL, _ := cfg["base_url"].(string)
 		siteTitle, _ := cfg["site_title"].(string)
 		siteDesc, _ := cfg["site_description"].(string)
+		siteAuthor, _ := cfg["author"].(string)
+		siteAuthorURL, _ := cfg["author_url"].(string)
+		org, _ := cfg["organization"].(map[string]any)
 
 		var schemas []map[string]any
 
@@ -660,7 +663,7 @@ func jsonldFunc(ctx Context) func(map[string]any) template.HTML {
 			if sec, ok := data["section"].(map[string]any); ok {
 				sectionName, _ = sec["title"].(string)
 			}
-			article := buildArticleSchema(pageData, baseURL, siteTitle, lang, sectionName)
+			article := buildArticleSchema(pageData, baseURL, siteTitle, lang, sectionName, siteAuthor, siteAuthorURL, org)
 			if article != nil {
 				schemas = append(schemas, article)
 			}
@@ -669,7 +672,7 @@ func jsonldFunc(ctx Context) func(map[string]any) template.HTML {
 				schemas = append(schemas, bc)
 			}
 		} else {
-			// Index / section → WebSite schema.
+			// Index / section → WebSite schema (+ Organization on home).
 			currentPath, _ := data["current_path"].(string)
 			if currentPath == "/" || currentPath == "" {
 				siteLang := lang
@@ -679,6 +682,9 @@ func jsonldFunc(ctx Context) func(map[string]any) template.HTML {
 				ws := buildWebSiteSchema(baseURL, siteTitle, siteDesc, siteLang)
 				if ws != nil {
 					schemas = append(schemas, ws)
+				}
+				if orgSchema := buildOrganizationSchema(org, baseURL); orgSchema != nil {
+					schemas = append(schemas, orgSchema)
 				}
 			}
 		}
@@ -702,7 +708,10 @@ func jsonldFunc(ctx Context) func(map[string]any) template.HTML {
 }
 
 // buildArticleSchema creates a schema.org Article (BlogPosting) JSON-LD object.
-func buildArticleSchema(page map[string]any, baseURL, siteTitle, lang, sectionName string) map[string]any {
+// siteAuthor/siteAuthorURL are config fallbacks used when the page does not
+// specify its own author. org is the schema.org Organization config used as
+// publisher when present (otherwise siteTitle is used).
+func buildArticleSchema(page map[string]any, baseURL, siteTitle, lang, sectionName, siteAuthor, siteAuthorURL string, org map[string]any) map[string]any {
 	title, _ := page["title"].(string)
 	if title == "" {
 		return nil
@@ -742,18 +751,30 @@ func buildArticleSchema(page map[string]any, baseURL, siteTitle, lang, sectionNa
 		article["dateModified"] = updated.Format(time.RFC3339)
 	}
 
-	if author, ok := page["author"].(string); ok && author != "" {
-		article["author"] = map[string]any{
+	authorName, _ := page["author"].(string)
+	if authorName == "" {
+		authorName = siteAuthor
+	}
+	if authorName != "" {
+		person := map[string]any{
 			"@type": "Person",
-			"name":  author,
+			"name":  authorName,
 		}
+		if siteAuthorURL != "" {
+			person["url"] = siteAuthorURL
+		}
+		article["author"] = person
 	}
 
 	if wordCount, ok := page["word_count"].(int); ok && wordCount > 0 {
 		article["wordCount"] = wordCount
 	}
 
-	if siteTitle != "" {
+	if publisher := buildOrganizationSchema(org, baseURL); publisher != nil {
+		// Strip @context for nested usage; only top-level schemas need it.
+		delete(publisher, "@context")
+		article["publisher"] = publisher
+	} else if siteTitle != "" {
 		article["publisher"] = map[string]any{
 			"@type": "Organization",
 			"name":  siteTitle,
@@ -807,6 +828,60 @@ func buildWebSiteSchema(baseURL, siteTitle, siteDesc, lang string) map[string]an
 	}
 
 	return ws
+}
+
+// buildOrganizationSchema creates a schema.org Organization JSON-LD object
+// from a config-derived map (name, url, logo, same_as). Returns nil when the
+// organization name is empty. Used as both a top-level schema on the home
+// page and as the publisher inside Article schemas.
+func buildOrganizationSchema(org map[string]any, baseURL string) map[string]any {
+	if org == nil {
+		return nil
+	}
+	name, _ := org["name"].(string)
+	if strings.TrimSpace(name) == "" {
+		return nil
+	}
+
+	out := map[string]any{
+		"@context": "https://schema.org",
+		"@type":    "Organization",
+		"name":     name,
+	}
+
+	url, _ := org["url"].(string)
+	if url == "" {
+		url = baseURL
+	}
+	if url != "" {
+		out["url"] = url
+	}
+
+	if logo, _ := org["logo"].(string); logo != "" {
+		if !strings.HasPrefix(logo, "http") && baseURL != "" {
+			logo = strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(logo, "/")
+		}
+		out["logo"] = logo
+	}
+
+	switch sa := org["same_as"].(type) {
+	case []string:
+		if len(sa) > 0 {
+			out["sameAs"] = sa
+		}
+	case []any:
+		var same []string
+		for _, v := range sa {
+			if s, ok := v.(string); ok && s != "" {
+				same = append(same, s)
+			}
+		}
+		if len(same) > 0 {
+			out["sameAs"] = same
+		}
+	}
+
+	return out
 }
 
 // buildBreadcrumbSchema creates a BreadcrumbList for a page based on its path.

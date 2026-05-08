@@ -20,7 +20,7 @@ func TestBuildArticleSchema(t *testing.T) {
 		"taxonomies": map[string][]string{"tags": {"go", "web"}},
 	}
 
-	schema := buildArticleSchema(page, "https://example.com", "My Site", "en", "Blog")
+	schema := buildArticleSchema(page, "https://example.com", "My Site", "en", "Blog", "", "", nil)
 	if schema == nil {
 		t.Fatal("expected non-nil schema")
 	}
@@ -76,7 +76,7 @@ func TestBuildArticleSchema(t *testing.T) {
 
 func TestBuildArticleSchema_EmptyTitle(t *testing.T) {
 	page := map[string]any{"title": ""}
-	schema := buildArticleSchema(page, "https://example.com", "Site", "", "")
+	schema := buildArticleSchema(page, "https://example.com", "Site", "", "", "", "", nil)
 	if schema != nil {
 		t.Error("expected nil for empty title")
 	}
@@ -84,7 +84,7 @@ func TestBuildArticleSchema_EmptyTitle(t *testing.T) {
 
 func TestBuildArticleSchema_MinimalFields(t *testing.T) {
 	page := map[string]any{"title": "Minimal"}
-	schema := buildArticleSchema(page, "", "", "", "")
+	schema := buildArticleSchema(page, "", "", "", "", "", "", nil)
 	if schema == nil {
 		t.Fatal("expected non-nil schema")
 	}
@@ -102,7 +102,7 @@ func TestBuildArticleSchema_ExternalImage(t *testing.T) {
 		"title": "Post",
 		"image": "https://cdn.example.com/photo.jpg",
 	}
-	schema := buildArticleSchema(page, "https://example.com", "", "", "")
+	schema := buildArticleSchema(page, "https://example.com", "", "", "", "", "", nil)
 	// External image should be left as-is.
 	if schema["image"] != "https://cdn.example.com/photo.jpg" {
 		t.Errorf("expected external URL preserved, got %s", schema["image"])
@@ -265,6 +265,96 @@ func TestJsonldFunc_NoConfig(t *testing.T) {
 	result := fn(map[string]any{})
 	if result != "" {
 		t.Errorf("expected empty output for no config, got %s", result)
+	}
+}
+
+func TestBuildOrganizationSchema(t *testing.T) {
+	org := map[string]any{
+		"name":    "Acme Inc",
+		"url":     "https://acme.example",
+		"logo":    "/logo.png",
+		"same_as": []string{"https://x.com/acme", "https://github.com/acme"},
+	}
+
+	schema := buildOrganizationSchema(org, "https://acme.example")
+	if schema == nil {
+		t.Fatal("expected non-nil schema")
+	}
+	if schema["@type"] != "Organization" {
+		t.Errorf("expected Organization, got %v", schema["@type"])
+	}
+	if schema["name"] != "Acme Inc" {
+		t.Errorf("expected name Acme Inc, got %v", schema["name"])
+	}
+	// Logo should be made absolute.
+	if schema["logo"] != "https://acme.example/logo.png" {
+		t.Errorf("expected absolute logo URL, got %v", schema["logo"])
+	}
+	same, _ := schema["sameAs"].([]string)
+	if len(same) != 2 {
+		t.Errorf("expected 2 sameAs entries, got %d", len(same))
+	}
+}
+
+func TestBuildOrganizationSchema_EmptyName(t *testing.T) {
+	if buildOrganizationSchema(map[string]any{"name": ""}, "https://example.com") != nil {
+		t.Error("expected nil when organization name is empty")
+	}
+	if buildOrganizationSchema(nil, "https://example.com") != nil {
+		t.Error("expected nil when org map is nil")
+	}
+}
+
+func TestBuildArticleSchema_AuthorFallbackAndPublisher(t *testing.T) {
+	page := map[string]any{
+		"title": "Post",
+	}
+	org := map[string]any{
+		"name": "Acme",
+		"url":  "https://acme.example",
+	}
+	// Page has no author; falls back to siteAuthor with siteAuthorURL.
+	schema := buildArticleSchema(page, "https://acme.example", "Acme Site", "en", "", "Jane Doe", "https://acme.example/about", org)
+	if schema == nil {
+		t.Fatal("expected non-nil schema")
+	}
+	author, _ := schema["author"].(map[string]any)
+	if author == nil || author["name"] != "Jane Doe" {
+		t.Errorf("expected fallback author Jane Doe, got %v", schema["author"])
+	}
+	if author["url"] != "https://acme.example/about" {
+		t.Errorf("expected author url, got %v", author["url"])
+	}
+	pub, _ := schema["publisher"].(map[string]any)
+	if pub == nil || pub["name"] != "Acme" {
+		t.Errorf("expected organization publisher Acme, got %v", schema["publisher"])
+	}
+	// Nested publisher should not carry @context.
+	if _, has := pub["@context"]; has {
+		t.Error("nested publisher should not include @context")
+	}
+}
+
+func TestJsonldFunc_HomeWithOrganization(t *testing.T) {
+	fn := jsonldFunc(Context{})
+	data := map[string]any{
+		"config": map[string]any{
+			"base_url":   "https://acme.example",
+			"site_title": "Acme",
+			"organization": map[string]any{
+				"name": "Acme Inc",
+				"url":  "https://acme.example",
+				"logo": "/logo.png",
+			},
+		},
+		"current_path": "/",
+	}
+	out := string(fn(data))
+	if !strings.Contains(out, `"@type":"WebSite"`) {
+		t.Error("expected WebSite schema on home")
+	}
+	if !strings.Contains(out, `"@type":"Organization"`) {
+		t.Error("expected Organization schema on home")
 	}
 }
 

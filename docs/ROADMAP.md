@@ -889,3 +889,53 @@ Tania Rascia, Kent C. Dodds, Gwern, etc.).
 - [done] Feed XSLT styling (RSS/Atom legible en browser con Nord theme)
 - [done] Prefetch on hover (Speculation Rules API, eagerness: moderate)
 - [skip] Font subsetting — Inter ya es latin-only subset (23KB woff2)
+
+## Phase 29 — SEO polish (done)
+
+Segundo sprint de SEO sobre la base de Phase 20. Cubre directivas robots,
+señales de crawl budget en sitemap, schema Organization, byline semántico y
+reduccion de CSS render-blocking.
+
+### 29A — Robots, canonical, keywords y meta seo (done)
+- [done] Frontmatter `osg.robots` (cadena libre, ej. "noindex, nofollow")
+- [done] Frontmatter `osg.noindex` (booleano, atajo para "noindex, follow")
+- [done] Frontmatter `osg.canonical_url` (override de la URL canonica)
+- [done] Frontmatter `osg.keywords` (lista; emite `<meta name="keywords">`)
+- [done] head.html: `<meta name="robots">` derivado (page > draft > omitido)
+- [done] head.html: canonical override desde frontmatter
+- [done] Config `author` y `author_url` (defaults para `<meta name="author">` y Person schema)
+- [done] Config `theme_color_light` / `theme_color_dark` con media queries de prefers-color-scheme
+- [done] Sitemap excluye paginas con `noindex: true` o `robots` que contiene "noindex"
+- [done] Tests: SEO directives y noindex shortcut en site/, robots/canonical en head
+
+### 29B — Sitemap priority + changefreq (done)
+- [done] `SitemapEntry` con `Priority` (float64) y `ChangeFreq` (string)
+- [done] Defaults por tipo: home 1.0/daily, articulos 0.8/monthly, secciones 0.7/weekly, taxonomias 0.5/weekly
+- [done] `builtins/sitemap.xml`: emite `<priority>` y `<changefreq>` solo cuando estan presentes
+- [done] Tests: priority/changefreq en sitemapEntryViews + exclusion noindex
+
+### 29C — Organization JSON-LD + Person enriquecido (done)
+- [done] Config `organization: {name, url, logo, same_as}` (alias schema.org Organization)
+- [done] `buildOrganizationSchema` en funcs.go (logo absoluto, sameAs[], @context solo top-level)
+- [done] jsonldFunc emite Organization en home (junto a WebSite)
+- [done] BlogPosting publisher usa Organization config cuando esta disponible (siteTitle como fallback)
+- [done] BlogPosting author cae a `config.author` + `config.author_url` cuando la pagina no tiene author propio
+- [done] Tests: TestBuildOrganizationSchema, TestBuildArticleSchema_AuthorFallbackAndPublisher, TestJsonldFunc_HomeWithOrganization
+
+### 29D — Robots.txt configurable (done)
+- [done] Config `robots: {disallow[], crawl_delay, extra}`
+- [done] `builtins/robots.txt`: Disallow paths bajo User-agent: \*, Crawl-delay opcional, raw `extra` apendido (multi-User-agent, comentarios)
+- [done] Comportamiento por defecto sin cambios (Allow: / + Sitemap)
+
+### 29E — Address tag + critical CSS reduccion (done)
+- [done] page.html: byline en `<address class="author" rel="author">` (semantica HTML5 + microformato)
+- [done] CSS: reset de `font-style: italic` heredado de `<address>`
+- [done] head.html: `syntax.css` y KaTeX cargados con `media="print"` + onload swap (no render-blocking)
+- [done] `<noscript>` fallback a `<link rel="stylesheet">` para clientes sin JS
+- [done] style.css se mantiene render-blocking (above-the-fold depende de el)
+
+### 29F — Documentacion (done)
+- [done] config.yaml.example: secciones SEO, theme-color, organization, robots
+- [done] DefaultConfigYAML mirror en config.go
+- [done] ROADMAP.md: Phase 29 con subtareas
+- [done] TASKS.md: entrada Phase 29

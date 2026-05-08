@@ -1149,8 +1149,14 @@ func configView(cfg config.Config) map[string]any {
 		"nav_taxonomy":       cfg.NavTaxonomy,
 		"multilingual":       cfg.IsMultilingual(),
 		"languages":          languagesView(cfg),
+		"author":             cfg.Author,
 		"author_bio":         cfg.AuthorBio,
 		"author_avatar":      cfg.AuthorAvatar,
+		"author_url":         cfg.AuthorURL,
+		"theme_color_light":  cfg.ThemeColorLight,
+		"theme_color_dark":   cfg.ThemeColorDark,
+		"organization":       organizationView(cfg.Organization),
+		"robots":             robotsView(cfg.Robots),
 		"social":             cfg.Social,
 		"copyright":          strings.ReplaceAll(cfg.Copyright, "{year}", fmt.Sprintf("%d", time.Now().Year())),
 		"license":            template.HTML(inlineMarkdownLinks(cfg.License)),
@@ -1214,6 +1220,26 @@ func commentsProvidersView(ccfg config.CommentsConfig) []map[string]any {
 		})
 	}
 	return providers
+}
+
+func organizationView(org config.OrganizationConfig) map[string]any {
+	if strings.TrimSpace(org.Name) == "" {
+		return nil
+	}
+	return map[string]any{
+		"name":    org.Name,
+		"url":     org.URL,
+		"logo":    org.Logo,
+		"same_as": org.SameAs,
+	}
+}
+
+func robotsView(r config.RobotsConfig) map[string]any {
+	return map[string]any{
+		"disallow":    r.Disallow,
+		"crawl_delay": r.CrawlDelay,
+		"extra":       r.Extra,
+	}
 }
 
 func languagesView(cfg config.Config) []map[string]any {
@@ -1684,9 +1710,11 @@ func outputFilePath(publicDir string, sitePath string, filename string) string {
 }
 
 type SitemapEntry struct {
-	Permalink string
-	Updated   time.Time
-	Extra     map[string]any
+	Permalink  string
+	Updated    time.Time
+	Priority   float64
+	ChangeFreq string
+	Extra      map[string]any
 }
 
 const maxSitemapEntries = 50000
@@ -1767,11 +1795,18 @@ func renderSitemap(ctx context.Context, renderer *render.Renderer, cfg config.Co
 func sitemapEntryViews(entries []SitemapEntry) []map[string]any {
 	out := make([]map[string]any, 0, len(entries))
 	for _, entry := range entries {
-		out = append(out, map[string]any{
+		view := map[string]any{
 			"permalink": entry.Permalink,
 			"updated":   entry.Updated.Format(time.RFC3339),
 			"extra":     entry.Extra,
-		})
+		}
+		if entry.Priority > 0 {
+			view["priority"] = fmt.Sprintf("%.1f", entry.Priority)
+		}
+		if entry.ChangeFreq != "" {
+			view["changefreq"] = entry.ChangeFreq
+		}
+		out = append(out, view)
 	}
 	return out
 }
@@ -1827,26 +1862,38 @@ func renderBookmarks(renderer *render.Renderer, cfg config.Config, baseCtx map[s
 func collectSitemapEntries(cfg config.Config, siteIndex *site.Site, indices map[string]*taxonomy.Index) []SitemapEntry {
 	entries := map[string]SitemapEntry{}
 
-	addEntry := func(permalink string, updated time.Time) {
-		if strings.TrimSpace(permalink) == "" {
+	upsert := func(entry SitemapEntry) {
+		if strings.TrimSpace(entry.Permalink) == "" {
 			return
 		}
-		existing, ok := entries[permalink]
-		if !ok || updated.After(existing.Updated) {
-			entries[permalink] = SitemapEntry{
-				Permalink: permalink,
-				Updated:   updated,
-			}
+		existing, ok := entries[entry.Permalink]
+		if !ok || entry.Updated.After(existing.Updated) {
+			entries[entry.Permalink] = entry
 		}
 	}
 
+	addEntry := func(permalink string, updated time.Time, priority float64, changefreq string) {
+		upsert(SitemapEntry{
+			Permalink:  permalink,
+			Updated:    updated,
+			Priority:   priority,
+			ChangeFreq: changefreq,
+		})
+	}
+
 	for _, page := range siteIndex.Pages {
-		if page.Draft {
+		if page.Draft || page.NoIndex {
+			continue
+		}
+		// Skip pages whose explicit robots directive forbids indexing.
+		if page.Robots != "" && strings.Contains(strings.ToLower(page.Robots), "noindex") {
 			continue
 		}
 		entry := SitemapEntry{
-			Permalink: page.Permalink,
-			Updated:   page.Date,
+			Permalink:  page.Permalink,
+			Updated:    page.Date,
+			Priority:   0.8,
+			ChangeFreq: "monthly",
 		}
 		// Include hreflang alternates for translated pages.
 		if len(page.Translations) > 0 {
@@ -1860,16 +1907,17 @@ func collectSitemapEntries(cfg config.Config, siteIndex *site.Site, indices map[
 			}
 			entry.Extra = map[string]any{"alternates": alternates}
 		}
-		if strings.TrimSpace(entry.Permalink) != "" {
-			existing, ok := entries[entry.Permalink]
-			if !ok || entry.Updated.After(existing.Updated) {
-				entries[entry.Permalink] = entry
-			}
-		}
+		upsert(entry)
 	}
 
 	for _, section := range siteIndex.Sections {
-		addEntry(section.Permalink, sectionUpdated(section))
+		priority := 0.7
+		changefreq := "weekly"
+		if section.IsRoot {
+			priority = 1.0
+			changefreq = "daily"
+		}
+		addEntry(section.Permalink, sectionUpdated(section), priority, changefreq)
 	}
 
 	for _, taxCfg := range cfg.Taxonomies {
@@ -1882,17 +1930,17 @@ func collectSitemapEntries(cfg config.Config, siteIndex *site.Site, indices map[
 		}
 
 		listPath := ensureTrailingSlash(path.Join("/", taxCfg.Name))
-		addEntry(buildURL(cfg.BaseURL, listPath), taxonomyIndexUpdated(index))
+		addEntry(buildURL(cfg.BaseURL, listPath), taxonomyIndexUpdated(index), 0.5, "weekly")
 
 		for _, term := range index.TermsSorted() {
 			paginators := taxonomy.BuildPaginator(term.Pages, taxCfg.PaginateBy, term.Path, taxCfg.PaginatePath)
 			if len(paginators) == 0 {
-				addEntry(term.Permalink, latestUpdated(term.Pages))
+				addEntry(term.Permalink, latestUpdated(term.Pages), 0.5, "weekly")
 				continue
 			}
 			for i := range paginators {
 				pagePath := taxonomyPagePath(term.Path, taxCfg.PaginatePath, i)
-				addEntry(buildURL(cfg.BaseURL, pagePath), latestUpdated(term.Pages))
+				addEntry(buildURL(cfg.BaseURL, pagePath), latestUpdated(term.Pages), 0.5, "weekly")
 			}
 		}
 	}

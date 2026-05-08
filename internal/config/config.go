@@ -99,8 +99,14 @@ type Config struct {
 	DefaultEditor      string                    `koanf:"default_editor" yaml:"default_editor"`
 	NewNotesDir        string                    `koanf:"new_notes_dir" yaml:"new_notes_dir"`
 	DoctorProfile      string                    `koanf:"doctor_profile" yaml:"doctor_profile"`
+	Author             string                    `koanf:"author" yaml:"author"`
 	AuthorBio          string                    `koanf:"author_bio" yaml:"author_bio"`
 	AuthorAvatar       string                    `koanf:"author_avatar" yaml:"author_avatar"`
+	AuthorURL          string                    `koanf:"author_url" yaml:"author_url"`
+	ThemeColorLight    string                    `koanf:"theme_color_light" yaml:"theme_color_light"`
+	ThemeColorDark     string                    `koanf:"theme_color_dark" yaml:"theme_color_dark"`
+	Organization       OrganizationConfig        `koanf:"organization" yaml:"organization"`
+	Robots             RobotsConfig              `koanf:"robots" yaml:"robots"`
 	Social             map[string]string         `koanf:"social" yaml:"social"`
 	Copyright          string                    `koanf:"copyright" yaml:"copyright"`
 	License            string                    `koanf:"license" yaml:"license"`
@@ -114,6 +120,24 @@ type Config struct {
 	AnalyticsProviders []AnalyticsProviderConfig `koanf:"analytics_providers" yaml:"analytics_providers"`
 	HeadExtra          string                    `koanf:"head_extra" yaml:"head_extra"`
 	BodyExtra          string                    `koanf:"body_extra" yaml:"body_extra"`
+}
+
+// OrganizationConfig describes the publishing organization for schema.org
+// Organization JSON-LD on the homepage. When Name is empty no schema is emitted.
+type OrganizationConfig struct {
+	Name   string   `koanf:"name" yaml:"name"`
+	URL    string   `koanf:"url" yaml:"url"`
+	Logo   string   `koanf:"logo" yaml:"logo"`
+	SameAs []string `koanf:"same_as" yaml:"same_as"`
+}
+
+// RobotsConfig holds configurable directives for the generated robots.txt.
+// Disallow paths are emitted under the wildcard User-agent. Extra is appended
+// verbatim to the file (e.g. additional User-agent rules).
+type RobotsConfig struct {
+	Disallow   []string `koanf:"disallow" yaml:"disallow"`
+	CrawlDelay int      `koanf:"crawl_delay" yaml:"crawl_delay"`
+	Extra      string   `koanf:"extra" yaml:"extra"`
 }
 
 // AnalyticsProviderConfig describes a third-party analytics provider.
@@ -735,6 +759,30 @@ tui_log_modifier: shift
 # -----------------------------------------------------------------------------
 # doctor_profile: Profile for "osg doctor" checks ("dev" or "prod").
 doctor_profile: dev
+
+# -----------------------------------------------------------------------------
+# SEO: theme-color, organization, robots
+# -----------------------------------------------------------------------------
+# theme_color_light / theme_color_dark: <meta name="theme-color"> for mobile
+#   browser UI. When both are set, prefers-color-scheme variants are emitted.
+# author / author_url: site-wide author defaults used by <meta name="author">
+#   and the Person schema in JSON-LD when a page does not specify its own.
+# organization: schema.org Organization emitted on the homepage when name is
+#   set (publisher of the site for knowledge-graph signals).
+# robots: customize generated robots.txt (Disallow paths, Crawl-delay, raw extra).
+# author: ""
+# author_url: ""
+# theme_color_light: ""
+# theme_color_dark: ""
+# organization:
+#   name: ""
+#   url: ""
+#   logo: ""
+#   same_as: []
+# robots:
+#   disallow: []
+#   crawl_delay: 0
+#   extra: ""
 
 # -----------------------------------------------------------------------------
 # Social links, copyright & license
