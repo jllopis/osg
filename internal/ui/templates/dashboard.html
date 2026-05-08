@@ -79,21 +79,26 @@
     {{if .Plugins}}
     <table>
       <thead>
-        <tr><th>Name</th><th>Version</th><th>Author</th><th>Hooks</th></tr>
+        <tr><th>Name</th><th>Status</th><th>Version</th><th>Author</th><th>Hooks</th></tr>
       </thead>
       <tbody>
         {{range .Plugins}}
         <tr>
-          <td><strong>{{.Name}}</strong>{{if .Description}}<br><span class="fg-dim mono">{{.Description}}</span>{{end}}</td>
-          <td class="mono">{{or .Version "—"}}</td>
-          <td>{{or .Author "—"}}</td>
-          <td>{{range $i, $h := .Hooks}}{{if $i}} {{end}}<span class="pill info">{{$h}}</span>{{end}}</td>
+          <td><strong>{{.Name}}</strong>{{if and .Metadata .Metadata.Description}}<br><span class="fg-dim mono">{{.Metadata.Description}}</span>{{end}}</td>
+          <td>
+            {{if and .Enabled .Loaded}}<span class="pill ok">enabled</span>
+            {{else if .Enabled}}<span class="pill err">missing</span>
+            {{else}}<span class="pill muted">disabled</span>{{end}}
+          </td>
+          <td class="mono">{{if .Metadata}}{{or .Metadata.Version "—"}}{{else}}—{{end}}</td>
+          <td>{{if .Metadata}}{{or .Metadata.Author "—"}}{{else}}—{{end}}</td>
+          <td>{{if .Metadata}}{{range $i, $h := .Metadata.Hooks}}{{if $i}} {{end}}<span class="pill info">{{$h}}</span>{{end}}{{end}}</td>
         </tr>
         {{end}}
       </tbody>
     </table>
     {{else}}
-    <div class="empty">No plugins loaded.</div>
+    <div class="empty">No plugins discovered.</div>
     {{end}}
   </section>
 

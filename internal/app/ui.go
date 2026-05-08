@@ -41,6 +41,7 @@ func RunUI(ctx context.Context, opts CLIOptions) error {
 		Addr:       addr,
 		Version:    Version,
 		Cfg:        cfg,
+		ConfigPath: opts.ConfigPath,
 		Logger:     logger,
 		Supervisor: supervisor,
 	})

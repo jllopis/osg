@@ -939,3 +939,62 @@ reduccion de CSS render-blocking.
 - [done] DefaultConfigYAML mirror en config.go
 - [done] ROADMAP.md: Phase 29 con subtareas
 - [done] TASKS.md: entrada Phase 29
+
+## Phase 30 — Web UI dashboard (`osg ui`) (done)
+
+Interfaz grafica local complementaria al CLI/TUI, cohesionada con el binario
+y sin dependencias externas. Loopback-only por defecto; sin auth en v1.
+Rationale: ofrecer al autor una vision profesional del estado del Vault, los
+plugins y los servicios (serve, api), con orquestacion start/stop desde el
+navegador y logs en vivo. El CLI sigue funcionando exactamente igual cuando
+no se invoca `osg ui`.
+
+### 30A — Esqueleto del comando y bind loopback (done)
+- [done] Subcomando `osg ui` (Kong) con flag `--addr`
+- [done] `internal/app/ui.go`: `RunUI` + `normalizeLoopbackAddr` (rechaza
+  0.0.0.0/IP publica; `:1314` se normaliza a `127.0.0.1:1314`)
+- [done] `config.UI{Addr}` con default `:1314` y normalizacion en `Load`
+- [done] Tests unitarios del validador de loopback
+
+### 30B — Dashboard SSR con datos reales (done)
+- [done] Paquete `internal/ui/`: server, handlers, templates, assets
+- [done] `//go:embed templates assets` (mismo patron que el tema default)
+- [done] `html/template` SSR; sin SPA, sin toolchain Node, sin dependencias
+- [done] CSS Nord palette + dark/light toggle (consistente con el tema)
+- [done] Paginas: `/` (dashboard), `/vault`, `/plugins`, `/services`
+- [done] Reutiliza `build.ComputeStats`, `plugin.Manager.Metadata`, `site.ParseFile`
+
+### 30C — Supervisor de servicios (done)
+- [done] `Supervisor` ejecuta `serve`/`api` como goroutines (no exec.Cmd)
+- [done] Estados idle/starting/running/stopping/error con `LastError`
+- [done] Start: ventana de 200ms para detectar fallos inmediatos (puerto
+  ocupado) y devolverlos sincronicamente; Stop: cancel + wait con timeout 5s
+- [done] StopAll en shutdown del dashboard (sin goroutine leaks)
+- [done] Ring buffer de 500 lineas por servicio (io.MultiWriter a stderr)
+- [done] Tests: lifecycle Start/Stop/error, StopAll, unknown service
+
+### 30D — Logs en vivo (SSE) (done)
+- [done] `ringBuffer.Subscribe(ctx)` con replay de historial + entrega live
+- [done] Endpoint `GET /services/{name}/logs` (Go 1.22+ path patterns)
+- [done] SSE: `event: log\ndata: <linea>\n\n` + heartbeat cada 15s
+- [done] Frontend (vanilla JS): EventSource lazy en `<details>` toggle,
+  auto-scroll si esta cerca del fondo, trim a 2000 lineas DOM
+- [done] Test: subscribe history replay + live updates
+
+### 30E — Documentacion (done)
+- [done] config.yaml.example: seccion `ui:` con `addr`
+- [done] DefaultConfigYAML mirror en config.go
+- [done] ROADMAP.md: Phase 30
+
+### 30F — Pulido v1 (done)
+- [done] Auto-refresh de `/services` con polling JSON cada 2s (uptime live sin F5)
+- [done] Endpoint GET /services.json (state, started_at, uptime, last_error)
+- [done] Favicon SVG embebido + redirect /favicon.ico → /assets/favicon.svg
+- [done] Filtro/busqueda en `/vault` (substring sobre title+path+section)
+- [done] UI para enable/disable de plugins persistiendo en config.yaml (usa `config.UpdatePluginsEnabled` que preserva comentarios)
+- [done] State.Plugins unificado (loaded + on-disk + enabled-but-missing) con badges enabled/disabled/missing
+
+### 30G — Capacidades futuras (pending)
+- [ ] Integrar watcher en `osg ui` (auto-rebuild al cambiar el Vault)
+- [ ] Scheduler interno para `publish-on-date`
+- [ ] Asset management desde la UI (generacion/optimizacion)

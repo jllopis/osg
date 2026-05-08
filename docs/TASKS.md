@@ -569,3 +569,18 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 29E) page.html: byline en `<address class="author" rel="author">`
 [done] (Phase 29E) head.html: syntax.css y KaTeX en media=print + onload swap (no render-blocking)
 [done] (Phase 29E) Noscript fallback para clientes sin JS
+
+[done] (Phase 30A) Subcomando `osg ui` con bind loopback enforced (rechaza non-loopback, normaliza :1314)
+[done] (Phase 30A) Config UI{Addr} con default :1314 y normalizacion en Load
+[done] (Phase 30B) Paquete internal/ui SSR con go:embed (templates + assets), CSS Nord, light/dark toggle
+[done] (Phase 30B) Paginas: dashboard (stats + plugins + monthly bars), vault, plugins, services
+[done] (Phase 30C) Supervisor goroutine-based: Start/Stop/StopAll, ring buffer 500 lineas, ventana 200ms para errores inmediatos
+[done] (Phase 30D) SSE GET /services/{name}/logs con replay de historial + heartbeat 15s
+[done] (Phase 30D) Frontend EventSource lazy on details toggle (auto-scroll, trim a 2000 lineas)
+[done] (Phase 30E) config.yaml.example y DefaultConfigYAML: seccion ui:
+
+[done] (Phase 30F) Auto-refresh /services via polling /services.json cada 2s (uptime live)
+[done] (Phase 30F) Favicon SVG embebido + redirect /favicon.ico
+[done] (Phase 30F) Filtro client-side en /vault (substring title+path+section, contador shown/total)
+[done] (Phase 30F) Plugin enable/disable runtime persistido en config.yaml (config.UpdatePluginsEnabled preserva comentarios)
+[done] (Phase 30F) PluginEntry unificado (loaded + on-disk + missing) con badges enabled/disabled/missing

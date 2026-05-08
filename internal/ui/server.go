@@ -18,6 +18,7 @@ type ServerOptions struct {
 	Addr       string
 	Version    string
 	Cfg        config.Config
+	ConfigPath string
 	Logger     *slog.Logger
 	Supervisor *Supervisor
 }
@@ -85,12 +86,17 @@ func (s *Server) routes() {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte("ok"))
 	})
+	s.mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/assets/favicon.svg", http.StatusFound)
+	})
 	s.mux.HandleFunc("/", s.handleDashboard)
 	s.mux.HandleFunc("/vault", s.handleVault)
 	s.mux.HandleFunc("/plugins", s.handlePlugins)
 	s.mux.HandleFunc("/services", s.handleServices)
+	s.mux.HandleFunc("POST /plugins/toggle", s.handlePluginToggle)
 	s.mux.HandleFunc("/services/start", s.handleServiceStart)
 	s.mux.HandleFunc("/services/stop", s.handleServiceStop)
+	s.mux.HandleFunc("GET /services.json", s.handleServicesJSON)
 	s.mux.HandleFunc("GET /services/{name}/logs", s.handleServiceLogs)
 }
 

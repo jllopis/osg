@@ -874,6 +874,17 @@ logging:
 #       - fuente
 #       - template
 # -----------------------------------------------------------------------------
+# UI dashboard (osg ui)
+# -----------------------------------------------------------------------------
+# Local web dashboard for the author. Surfaces vault/build state, plugin
+# metadata, and lets you start/stop the serve and api services from a
+# single browser tab. Loopback-only by default — non-loopback bind addresses
+# are rejected.
+#
+# ui:
+#   addr: ":1314"        # Bind address. Bare ":port" is normalised to
+#                        # 127.0.0.1:port. Override with --addr at the CLI.
+# -----------------------------------------------------------------------------
 # Interactions (views, likes/dislikes)
 # -----------------------------------------------------------------------------
 # Enable page view counting and like/dislike buttons at the bottom of posts.

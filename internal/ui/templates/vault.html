@@ -3,7 +3,12 @@
   <p class="subtitle">Pages discovered in the content directory.</p>
 
   {{if .Pages}}
-  <table>
+  <div class="vault-toolbar">
+    <input type="search" class="vault-filter" placeholder="Filter by title, path or section…"
+           data-vault-filter aria-label="Filter pages" autocomplete="off">
+    <span class="vault-count" data-vault-count>{{len .Pages}} pages</span>
+  </div>
+  <table data-vault-table>
     <thead>
       <tr>
         <th>Title</th>
@@ -14,7 +19,7 @@
     </thead>
     <tbody>
       {{range .Pages}}
-      <tr>
+      <tr data-search="{{.Title}} {{.Path}} {{.Section}}">
         <td>{{.Title}}<br><span class="fg-dim mono">{{.Path}}</span></td>
         <td>{{.Section}}</td>
         <td class="mono">{{if .Date}}{{.Date.Format "2006-01-02"}}{{else}}—{{end}}</td>
@@ -23,6 +28,7 @@
       {{end}}
     </tbody>
   </table>
+  <div class="empty" data-vault-empty hidden>No pages match the filter.</div>
   {{else}}
   <div class="empty">No pages found in {{.ContentDir}}.</div>
   {{end}}

@@ -1,31 +1,51 @@
 {{define "page"}}
   <h2>Plugins</h2>
-  <p class="subtitle">WASM plugins loaded by the runtime.</p>
+  <p class="subtitle">WASM plugins discovered in the plugins directory. Toggling persists to <code class="mono">config.yaml</code>.</p>
 
   {{if .Plugins}}
   <table>
     <thead>
       <tr>
         <th>Name</th>
+        <th>Status</th>
         <th>Version</th>
         <th>Author</th>
         <th>Description</th>
         <th>Hooks</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
       {{range .Plugins}}
       <tr>
         <td><strong>{{.Name}}</strong></td>
-        <td class="mono">{{or .Version "—"}}</td>
-        <td>{{or .Author "—"}}</td>
-        <td>{{or .Description "—"}}</td>
-        <td>{{range $i, $h := .Hooks}}{{if $i}} {{end}}<span class="pill info">{{$h}}</span>{{end}}</td>
+        <td>
+          {{if and .Enabled .Loaded}}<span class="pill ok">enabled</span>
+          {{else if .Enabled}}<span class="pill err">missing</span>
+          {{else}}<span class="pill muted">disabled</span>{{end}}
+        </td>
+        <td class="mono">{{if .Metadata}}{{or .Metadata.Version "—"}}{{else}}—{{end}}</td>
+        <td>{{if .Metadata}}{{or .Metadata.Author "—"}}{{else}}—{{end}}</td>
+        <td>{{if .Metadata}}{{or .Metadata.Description "—"}}{{else}}<span class="fg-dim">not loaded</span>{{end}}</td>
+        <td>{{if .Metadata}}{{range $i, $h := .Metadata.Hooks}}{{if $i}} {{end}}<span class="pill info">{{$h}}</span>{{end}}{{end}}</td>
+        <td>
+          <form method="post" action="/plugins/toggle">
+            <input type="hidden" name="name" value="{{.Name}}">
+            {{if .Enabled}}
+              <button type="submit" class="btn btn-stop">Disable</button>
+            {{else}}
+              <button type="submit" class="btn btn-start">Enable</button>
+            {{end}}
+          </form>
+        </td>
       </tr>
       {{end}}
     </tbody>
   </table>
   {{else}}
-  <div class="empty">No plugins loaded. Configure them under <code>plugins_enabled</code> in your config.</div>
+  <div class="empty">
+    No plugins discovered. Drop <code class="mono">.wasm</code> files into the plugins directory,
+    or run <code class="mono">osg plugin install</code>.
+  </div>
   {{end}}
 {{end}}

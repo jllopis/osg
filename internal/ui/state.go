@@ -3,6 +3,8 @@ package ui
 import (
 	"context"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -31,10 +33,20 @@ type MonthlyBar struct {
 	Width int // percentage (0..100)
 }
 
+// PluginEntry is the unified view used by the /plugins page: every name
+// found either in plugins_dir or in plugins_enabled, with metadata if it
+// loaded successfully.
+type PluginEntry struct {
+	Name     string
+	Enabled  bool               // present in cfg.PluginsEnabled
+	Loaded   bool               // metadata is non-zero (load succeeded)
+	Metadata *plugin.PluginMeta // nil if not loaded
+}
+
 // State is the snapshot of OSG state surfaced to the UI templates.
 type State struct {
 	Stats      *build.SiteStats
-	Plugins    []plugin.PluginMeta
+	Plugins    []PluginEntry
 	Pages      []PageView
 	Monthly    []MonthlyBar
 	ContentDir string
@@ -57,18 +69,73 @@ func Collect(ctx context.Context, cfg config.Config, logger *slog.Logger) State 
 
 	st.Pages = collectPages(cfg, logger)
 
+	st.Plugins = collectPlugins(ctx, cfg, logger)
+	return st
+}
+
+// collectPlugins returns the unified plugin list (loaded + on-disk +
+// enabled-but-missing) so the UI can show a complete picture.
+func collectPlugins(ctx context.Context, cfg config.Config, logger *slog.Logger) []PluginEntry {
+	enabledSet := make(map[string]bool, len(cfg.PluginsEnabled))
+	for _, name := range cfg.PluginsEnabled {
+		enabledSet[strings.TrimSuffix(strings.TrimSpace(name), ".wasm")] = true
+	}
+
+	// Discover .wasm files on disk so disabled plugins appear too.
+	available := map[string]bool{}
+	if cfg.PluginsDir != "" {
+		entries, err := os.ReadDir(cfg.PluginsDir)
+		if err == nil {
+			for _, e := range entries {
+				if e.IsDir() || !strings.HasSuffix(strings.ToLower(e.Name()), ".wasm") {
+					continue
+				}
+				available[strings.TrimSuffix(filepath.Base(e.Name()), filepath.Ext(e.Name()))] = true
+			}
+		}
+	}
+
+	// Load enabled plugins to capture metadata.
+	loadedMeta := map[string]plugin.PluginMeta{}
 	mgr, err := plugin.Load(ctx, cfg.PluginsDir, cfg.PluginsEnabled, cfg.PluginTimeout, logger)
 	if err != nil {
 		if logger != nil {
 			logger.Warn("plugin load failed", "error", err)
 		}
 	} else {
-		st.Plugins = mgr.Metadata()
-		// Best-effort close to release the wazero runtime.
+		for _, m := range mgr.Metadata() {
+			loadedMeta[m.Name] = m
+		}
 		_ = mgr.Close(ctx)
 	}
 
-	return st
+	// Union of names across all sources.
+	names := map[string]bool{}
+	for n := range enabledSet {
+		names[n] = true
+	}
+	for n := range available {
+		names[n] = true
+	}
+	for n := range loadedMeta {
+		names[n] = true
+	}
+
+	out := make([]PluginEntry, 0, len(names))
+	for name := range names {
+		entry := PluginEntry{
+			Name:    name,
+			Enabled: enabledSet[name],
+		}
+		if m, ok := loadedMeta[name]; ok {
+			meta := m
+			entry.Metadata = &meta
+			entry.Loaded = true
+		}
+		out = append(out, entry)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
 }
 
 func collectPages(cfg config.Config, logger *slog.Logger) []PageView {
