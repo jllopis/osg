@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"osg/internal/config"
 	"osg/internal/site"
@@ -16,11 +17,13 @@ import (
 type SiteStats struct {
 	TotalPosts       int
 	Drafts           int
+	Scheduled        int
 	Published        int
 	Sections         int
 	Images           int
 	OutputSize       int64
 	OutputFiles      int
+	NextScheduled    time.Time // earliest future PublishAt across all pages
 	SectionBreakdown []SectionStats
 	Monthly          []MonthlyStats
 }
@@ -73,10 +76,17 @@ func ComputeStats(cfg config.Config) (*SiteStats, error) {
 	sectionMap := map[string]*SectionStats{}
 	monthMap := map[string]int{}
 
+	now := time.Now()
 	for _, p := range siteIndex.Pages {
-		if p.Draft {
+		switch {
+		case p.Draft:
 			stats.Drafts++
-		} else {
+		case !p.PublishAt.IsZero() && p.PublishAt.After(now):
+			stats.Scheduled++
+			if stats.NextScheduled.IsZero() || p.PublishAt.Before(stats.NextScheduled) {
+				stats.NextScheduled = p.PublishAt
+			}
+		default:
 			stats.Published++
 		}
 

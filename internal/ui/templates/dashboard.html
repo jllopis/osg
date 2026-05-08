@@ -16,6 +16,10 @@
       <div class="value">{{.Stats.Drafts}}<span class="sub">pending</span></div>
     </div>
     <div class="card">
+      <div class="label">Scheduled</div>
+      <div class="value">{{.Stats.Scheduled}}<span class="sub">{{if not .Stats.NextScheduled.IsZero}}next {{.Stats.NextScheduled.Format "2006-01-02"}}{{else}}—{{end}}</span></div>
+    </div>
+    <div class="card">
       <div class="label">Sections</div>
       <div class="value">{{.Stats.Sections}}</div>
     </div>

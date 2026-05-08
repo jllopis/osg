@@ -998,5 +998,10 @@ no se invoca `osg ui`.
 - [done] Watcher integrado en `osg ui` como tercer servicio del supervisor
   (reusa `startWatch`/`runWatchLoop` sin reload hub; rebuild automatico
   con debounce; logs en el ring buffer del servicio)
-- [ ] Scheduler interno para `publish-on-date`
+- [done] Scheduler interno para publish-on-date:
+  - Frontmatter `osg.publish_at` (RFC3339 o `YYYY-MM-DD`); reusa `date.Parse`
+  - `Page.IsScheduled()` y filtro en build (saltado salvo `IncludeDrafts`)
+  - `SiteStats.Scheduled` y `SiteStats.NextScheduled`; card en dashboard
+  - Servicio `scheduler` en el supervisor: duerme hasta el siguiente
+    `publish_at` (clamp 5min) y dispara `RunBuild` cuando vence
 - [ ] Asset management desde la UI (generacion/optimizacion)

@@ -586,3 +586,8 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 30F) PluginEntry unificado (loaded + on-disk + missing) con badges enabled/disabled/missing
 
 [done] (Phase 30G) Watcher como servicio del supervisor: app.RunWatcher reusa startWatch/runWatchLoop (hub=nil), rebuild automatico con debounce
+
+[done] (Phase 30G) Frontmatter osg.publish_at (RFC3339 o YYYY-MM-DD) + Page.IsScheduled()
+[done] (Phase 30G) Build filtra paginas con publish_at futuro (skipped salvo IncludeDrafts)
+[done] (Phase 30G) SiteStats.Scheduled + NextScheduled, card en dashboard
+[done] (Phase 30G) Servicio scheduler en supervisor: duerme hasta publish_at, dispara RunBuild al vencer (clamp 5min)

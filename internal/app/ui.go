@@ -99,6 +99,17 @@ func buildServiceMetas(parent CLIOptions, cfg config.Config) []ui.ServiceMeta {
 				return RunWatcher(ctx, o)
 			},
 		},
+		{
+			Name:        "scheduler",
+			Description: "Rebuilds when a future publish_at date becomes due",
+			Addr:        "(timer)",
+			Runner: func(ctx context.Context, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				return RunScheduler(ctx, o)
+			},
+		},
 	}
 }
 

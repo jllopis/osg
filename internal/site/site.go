@@ -36,6 +36,7 @@ type Page struct {
 	SourcePath   string
 	Date         time.Time
 	Updated      time.Time
+	PublishAt    time.Time // Future-dated publish time; zero means publish immediately.
 	Draft        bool
 	Menu         bool
 	Author       string
@@ -433,6 +434,11 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		pageKeywords = toStringSlice(fm["keywords"])
 	}
 
+	pagePublishAt := pickTime(osg, "publish_at")
+	if pagePublishAt.IsZero() {
+		pagePublishAt = pickTime(fm, "publish_at")
+	}
+
 	page := &Page{
 		Title:        title,
 		MenuTitle:    pickString(fm, "menu_title"),
@@ -441,6 +447,7 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		Permalink:    permalink,
 		SourcePath:   filePath,
 		Date:         fileDate,
+		PublishAt:    pagePublishAt,
 		Draft:        pickBool(fm, "draft"),
 		Menu:         pickBool(fm, "menu"),
 		Author:       pageAuthor,
@@ -478,6 +485,13 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 	return page, nil, nil
 }
 
+// IsScheduled returns true when PublishAt is set and still in the future
+// at the moment of the call. Schedulers and build pipelines use this to
+// hide a page until its release date passes.
+func (p *Page) IsScheduled() bool {
+	return !p.PublishAt.IsZero() && p.PublishAt.After(time.Now())
+}
+
 func (p *Page) View() map[string]any {
 	var translations []map[string]any
 	for _, t := range p.Translations {
@@ -497,6 +511,7 @@ func (p *Page) View() map[string]any {
 		"permalink":         p.Permalink,
 		"date":              p.Date,
 		"updated":           p.Updated,
+		"publish_at":        p.PublishAt,
 		"draft":             p.Draft,
 		"menu":              p.Menu,
 		"author":            p.Author,
@@ -674,6 +689,23 @@ func pickString(fm map[string]any, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// pickTime parses a frontmatter value as a date/time using the same
+// layout list as date.Derive. Returns the zero time when not found or
+// unparseable.
+func pickTime(fm map[string]any, key string) time.Time {
+	if fm == nil {
+		return time.Time{}
+	}
+	val, ok := fm[key]
+	if !ok {
+		return time.Time{}
+	}
+	if t, ok := date.Parse(val); ok {
+		return t
+	}
+	return time.Time{}
 }
 
 func pickBool(fm map[string]any, key string) bool {

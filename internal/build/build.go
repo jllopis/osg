@@ -245,6 +245,13 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 				stats.Skipped++
 				continue
 			}
+			// Future-dated posts are excluded from public builds. Drafts
+			// mode (or include_drafts) shows them anyway so authors can
+			// preview before the release date.
+			if res.page.IsScheduled() && !cfg.IncludeDrafts {
+				stats.Skipped++
+				continue
+			}
 			// Default empty Lang to the site's default language.
 			if res.page.Lang == "" {
 				res.page.Lang = cfg.DefaultLanguage
