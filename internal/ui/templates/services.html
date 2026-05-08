@@ -1,0 +1,61 @@
+{{define "page"}}
+  <h2>Services</h2>
+  <p class="subtitle">Manage local OSG services. Logs are captured into a 500-line ring buffer per service.</p>
+
+  {{if .Services}}
+  <div class="cards services">
+    {{range .Services}}
+    <div class="card service">
+      <div class="service-head">
+        <div>
+          <div class="service-name">{{.Name}}</div>
+          <div class="service-desc">{{.Description}}</div>
+        </div>
+        {{if eq (printf "%s" .State) "running"}}
+          <span class="pill ok">running</span>
+        {{else if eq (printf "%s" .State) "starting"}}
+          <span class="pill info">starting</span>
+        {{else if eq (printf "%s" .State) "stopping"}}
+          <span class="pill warn">stopping</span>
+        {{else if eq (printf "%s" .State) "error"}}
+          <span class="pill err">error</span>
+        {{else}}
+          <span class="pill muted">idle</span>
+        {{end}}
+      </div>
+      <dl class="service-meta">
+        <dt>Address</dt><dd class="mono">{{.Addr}}</dd>
+        {{if eq (printf "%s" .State) "running"}}
+        <dt>Uptime</dt><dd class="mono">{{uptime .StartedAt $.Now}}</dd>
+        {{end}}
+        {{if .LastError}}
+        <dt>Last error</dt><dd class="mono err-text">{{.LastError}}</dd>
+        {{end}}
+      </dl>
+      <form class="service-actions" method="post" action="/services/{{if or (eq (printf "%s" .State) "running") (eq (printf "%s" .State) "starting")}}stop{{else}}start{{end}}">
+        <input type="hidden" name="name" value="{{.Name}}">
+        {{if or (eq (printf "%s" .State) "running") (eq (printf "%s" .State) "starting")}}
+          <button type="submit" class="btn btn-stop">Stop</button>
+        {{else}}
+          <button type="submit" class="btn btn-start">Start</button>
+        {{end}}
+      </form>
+      {{if .LogTail}}
+      <details class="service-logs" data-service-logs="{{.Name}}">
+        <summary>Live logs (open to stream)</summary>
+        <pre class="logs">{{range .LogTail}}{{.}}
+{{end}}</pre>
+      </details>
+      {{else}}
+      <details class="service-logs" data-service-logs="{{.Name}}">
+        <summary>Live logs (open to stream)</summary>
+        <pre class="logs"></pre>
+      </details>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+  {{else}}
+  <div class="empty">No services registered.</div>
+  {{end}}
+{{end}}

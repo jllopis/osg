@@ -1,0 +1,159 @@
+package ui
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"html/template"
+	"io/fs"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"osg/internal/config"
+)
+
+// ServerOptions configures a dashboard server instance.
+type ServerOptions struct {
+	Addr       string
+	Version    string
+	Cfg        config.Config
+	Logger     *slog.Logger
+	Supervisor *Supervisor
+}
+
+// Server is the OSG UI dashboard server.
+type Server struct {
+	opts      ServerOptions
+	templates map[string]*template.Template
+	mux       *http.ServeMux
+}
+
+// NewServer prepares the dashboard server: parses templates and registers
+// routes. Returns an error if templates fail to compile.
+func NewServer(opts ServerOptions) (*Server, error) {
+	if opts.Logger == nil {
+		opts.Logger = slog.Default()
+	}
+	tpls, err := loadTemplates()
+	if err != nil {
+		return nil, err
+	}
+	s := &Server{opts: opts, templates: tpls, mux: http.NewServeMux()}
+	s.routes()
+	return s, nil
+}
+
+// Run starts the HTTP server and blocks until ctx is cancelled or the
+// server returns. Performs graceful shutdown with a 3s timeout.
+func (s *Server) Run(ctx context.Context) error {
+	server := &http.Server{
+		Addr:              s.opts.Addr,
+		Handler:           s.mux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	errCh := make(chan error, 1)
+	go func() { errCh <- server.ListenAndServe() }()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		_ = server.Shutdown(shutdownCtx)
+		if s.opts.Supervisor != nil {
+			s.opts.Supervisor.StopAll()
+		}
+		if err := <-errCh; err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+	case err := <-errCh:
+		if s.opts.Supervisor != nil {
+			s.opts.Supervisor.StopAll()
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Server) routes() {
+	assetsSub, _ := fs.Sub(assetsFS, "assets")
+	s.mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assetsSub))))
+	s.mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte("ok"))
+	})
+	s.mux.HandleFunc("/", s.handleDashboard)
+	s.mux.HandleFunc("/vault", s.handleVault)
+	s.mux.HandleFunc("/plugins", s.handlePlugins)
+	s.mux.HandleFunc("/services", s.handleServices)
+	s.mux.HandleFunc("/services/start", s.handleServiceStart)
+	s.mux.HandleFunc("/services/stop", s.handleServiceStop)
+	s.mux.HandleFunc("GET /services/{name}/logs", s.handleServiceLogs)
+}
+
+// loadTemplates parses each page template against the layout into its own
+// *template.Template keyed by page name. Each page defines a "page" block
+// which the layout invokes — names are unique per template instance, so we
+// don't have collisions across pages.
+func loadTemplates() (map[string]*template.Template, error) {
+	pages := []string{"dashboard", "vault", "plugins", "services"}
+	out := make(map[string]*template.Template, len(pages))
+
+	funcs := template.FuncMap{
+		"humanSize": humanSize,
+		"uptime":    uptimeStr,
+	}
+
+	for _, name := range pages {
+		t := template.New(name).Funcs(funcs)
+		t, err := t.ParseFS(templatesFS, "templates/layout.html", "templates/"+name+".html")
+		if err != nil {
+			return nil, fmt.Errorf("parse template %s: %w", name, err)
+		}
+		out[name] = t
+	}
+	return out, nil
+}
+
+func uptimeStr(start, now time.Time) string {
+	if start.IsZero() {
+		return "—"
+	}
+	d := now.Sub(start)
+	if d < time.Second {
+		return "<1s"
+	}
+	switch {
+	case d < time.Minute:
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	case d < time.Hour:
+		m := int(d.Minutes())
+		s := int(d.Seconds()) % 60
+		return fmt.Sprintf("%dm %ds", m, s)
+	default:
+		h := int(d.Hours())
+		m := int(d.Minutes()) % 60
+		return fmt.Sprintf("%dh %dm", h, m)
+	}
+}
+
+func humanSize(n int64) string {
+	const (
+		kb = 1024
+		mb = kb * 1024
+		gb = mb * 1024
+	)
+	switch {
+	case n >= gb:
+		return fmt.Sprintf("%.1f GB", float64(n)/gb)
+	case n >= mb:
+		return fmt.Sprintf("%.1f MB", float64(n)/mb)
+	case n >= kb:
+		return fmt.Sprintf("%.1f KB", float64(n)/kb)
+	default:
+		return fmt.Sprintf("%d B", n)
+	}
+}

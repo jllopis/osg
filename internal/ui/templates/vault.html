@@ -1,0 +1,29 @@
+{{define "page"}}
+  <h2>Vault</h2>
+  <p class="subtitle">Pages discovered in the content directory.</p>
+
+  {{if .Pages}}
+  <table>
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Section</th>
+        <th>Date</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Pages}}
+      <tr>
+        <td>{{.Title}}<br><span class="fg-dim mono">{{.Path}}</span></td>
+        <td>{{.Section}}</td>
+        <td class="mono">{{if .Date}}{{.Date.Format "2006-01-02"}}{{else}}—{{end}}</td>
+        <td>{{if .Draft}}<span class="pill warn">draft</span>{{else}}<span class="pill ok">published</span>{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">No pages found in {{.ContentDir}}.</div>
+  {{end}}
+{{end}}

@@ -20,6 +20,7 @@ type CLIOptions struct {
 	ServeDebounce    *int
 	ServeAPI         bool
 	TUI              bool
+	UIAddr           string
 	LogWriter        io.Writer
 	ForceAISummaries bool
 	SkipAI           bool

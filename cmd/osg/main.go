@@ -32,6 +32,7 @@ type CLI struct {
 	New           NewCmd        `cmd:"" help:"Create a new post in the vault"`
 	Preview       PreviewCmd    `cmd:"" help:"Preview a single markdown file in the browser"`
 	TUI           struct{}      `cmd:"" help:"Launch TUI"`
+	UI            UICmd         `cmd:"" help:"Launch web UI dashboard (loopback only)"`
 	Theme         ThemeCmd      `cmd:"" help:"Theme tools"`
 	Plugin        PluginCmd     `cmd:"" help:"Plugin tools"`
 	Import        ImportCmd     `cmd:"" help:"Import content from another platform"`
@@ -70,6 +71,10 @@ type ServeCmd struct {
 
 type APICmd struct {
 	Listen string `help:"Address to listen on (host:port)" default:""`
+}
+
+type UICmd struct {
+	Addr string `help:"Address to bind the dashboard (loopback only). Default :1314" default:""`
 }
 
 type NewCmd struct {
@@ -198,6 +203,7 @@ func main() {
 		ServeWatch:       cli.Serve.Watch,
 		ServeReload:      cli.Serve.LiveReload,
 		ServeDebounce:    cli.Serve.DebounceMs,
+		UIAddr:           cli.UI.Addr,
 		ForceAISummaries: cli.Build.ForceAISummaries,
 		Profile:          cli.Build.Profile,
 		LogWriter:        logWriter,
@@ -269,6 +275,8 @@ func main() {
 		runErr = app.RunAPI(context.Background(), opts, apiOpts)
 	case command == "tui":
 		runErr = app.RunTUI(context.Background(), opts)
+	case command == "ui":
+		runErr = app.RunUI(context.Background(), opts)
 	case command == "check":
 		checkOpts := app.CheckOptions{
 			Links:       cli.Check.Links,
@@ -345,7 +353,7 @@ func hasHelpFlag(args []string) bool {
 }
 
 func printCompletion(shell string) {
-	commands := "init update-content build deploy serve api new preview tui theme plugin import check audit doctor version completion"
+	commands := "init update-content build deploy serve api new preview tui ui theme plugin import check audit doctor version completion"
 
 	switch shell {
 	case "bash":

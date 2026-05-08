@@ -115,6 +115,7 @@ type Config struct {
 	Taxonomies         []TaxonomyConfig          `koanf:"taxonomies" yaml:"taxonomies"`
 	Deploy             DeployConfig              `koanf:"deploy" yaml:"deploy"`
 	Interactions       InteractionsConfig        `koanf:"interactions" yaml:"interactions"`
+	UI                 UIConfig                  `koanf:"ui" yaml:"ui"`
 	Webhooks           []WebhookConfig           `koanf:"webhooks" yaml:"webhooks"`
 	Analytics          bool                      `koanf:"analytics" yaml:"analytics"`
 	AnalyticsProviders []AnalyticsProviderConfig `koanf:"analytics_providers" yaml:"analytics_providers"`
@@ -218,6 +219,13 @@ type CommentsConfig struct {
 	Providers []AuthProviderConfig `koanf:"providers" yaml:"providers"`
 }
 
+// UIConfig holds settings for the `osg ui` web dashboard. The dashboard
+// is intended for local use only; defaults to loopback with no auth.
+type UIConfig struct {
+	// Addr is the bind address for the dashboard (default ":1314").
+	Addr string `koanf:"addr" yaml:"addr"`
+}
+
 // AuthProviderConfig describes a single OAuth2 provider.
 type AuthProviderConfig struct {
 	// Provider is the provider name: "github", "google".
@@ -280,6 +288,9 @@ func Default() Config {
 		Logging: LoggingConfig{
 			Level:  "info",
 			Format: "json",
+		},
+		UI: UIConfig{
+			Addr: ":1314",
 		},
 		Interactions: InteractionsConfig{
 			Enabled:        false,
@@ -452,6 +463,12 @@ func Load(path string) (Config, error) {
 		default:
 			return cfg, fmt.Errorf("analytics_providers[%d].provider %q: must be cloudflare, google, plausible, or fathom", i, ap.Provider)
 		}
+	}
+
+	// Normalise UI config.
+	cfg.UI.Addr = strings.TrimSpace(cfg.UI.Addr)
+	if cfg.UI.Addr == "" {
+		cfg.UI.Addr = ":1314"
 	}
 
 	// Normalise and validate tui_log_modifier.

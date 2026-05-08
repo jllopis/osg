@@ -1,0 +1,31 @@
+{{define "page"}}
+  <h2>Plugins</h2>
+  <p class="subtitle">WASM plugins loaded by the runtime.</p>
+
+  {{if .Plugins}}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Version</th>
+        <th>Author</th>
+        <th>Description</th>
+        <th>Hooks</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Plugins}}
+      <tr>
+        <td><strong>{{.Name}}</strong></td>
+        <td class="mono">{{or .Version "—"}}</td>
+        <td>{{or .Author "—"}}</td>
+        <td>{{or .Description "—"}}</td>
+        <td>{{range $i, $h := .Hooks}}{{if $i}} {{end}}<span class="pill info">{{$h}}</span>{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">No plugins loaded. Configure them under <code>plugins_enabled</code> in your config.</div>
+  {{end}}
+{{end}}

@@ -1,0 +1,34 @@
+{{define "layout"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} — OSG</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>OSG</h1>
+        <span class="tag">ui</span>
+      </div>
+      <nav>
+        <a href="/" class="{{if eq .Active "dashboard"}}active{{end}}">Dashboard</a>
+        <a href="/vault" class="{{if eq .Active "vault"}}active{{end}}">Vault</a>
+        <a href="/plugins" class="{{if eq .Active "plugins"}}active{{end}}">Plugins</a>
+        <a href="/services" class="{{if eq .Active "services"}}active{{end}}">Services</a>
+      </nav>
+      <div class="footer">
+        <span>v{{.Version}}</span>
+        <button class="toggle" data-theme-toggle title="Toggle theme">Auto</button>
+      </div>
+    </aside>
+    <main class="main">
+      {{template "page" .}}
+    </main>
+  </div>
+</body>
+</html>
+{{end}}

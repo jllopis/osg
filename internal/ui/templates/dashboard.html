@@ -1,0 +1,104 @@
+{{define "page"}}
+  <h2>Dashboard</h2>
+  <p class="subtitle">Overview of the current vault and build state.</p>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">Posts</div>
+      <div class="value">{{.Stats.TotalPosts}}</div>
+    </div>
+    <div class="card">
+      <div class="label">Published</div>
+      <div class="value">{{.Stats.Published}}<span class="sub">live</span></div>
+    </div>
+    <div class="card">
+      <div class="label">Drafts</div>
+      <div class="value">{{.Stats.Drafts}}<span class="sub">pending</span></div>
+    </div>
+    <div class="card">
+      <div class="label">Sections</div>
+      <div class="value">{{.Stats.Sections}}</div>
+    </div>
+    <div class="card">
+      <div class="label">Images</div>
+      <div class="value">{{.Stats.Images}}</div>
+    </div>
+    <div class="card">
+      <div class="label">Output</div>
+      {{if gt .Stats.OutputFiles 0}}
+        <div class="value">{{.Stats.OutputFiles}}<span class="sub">{{humanSize .Stats.OutputSize}}</span></div>
+      {{else}}
+        <div class="value"><span class="sub">not built</span></div>
+      {{end}}
+    </div>
+  </div>
+
+  {{if .Stats.SectionBreakdown}}
+  <section class="section">
+    <h3>By Section</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Section</th>
+          <th class="num">Posts</th>
+          <th class="num">No Tags</th>
+          <th class="num">No Image</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Stats.SectionBreakdown}}
+        <tr>
+          <td>{{.Name}}</td>
+          <td class="num">{{.Posts}}</td>
+          <td class="num">{{if gt .NoTags 0}}<span class="pill warn">{{.NoTags}}</span>{{else}}<span class="fg-dim">·</span>{{end}}</td>
+          <td class="num">{{if gt .NoImage 0}}<span class="pill warn">{{.NoImage}}</span>{{else}}<span class="fg-dim">·</span>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </section>
+  {{end}}
+
+  {{if .Monthly}}
+  <section class="section">
+    <h3>Publication History</h3>
+    <div class="bars">
+      {{range .Monthly}}
+      <div class="bar-row">
+        <span class="month">{{.Month}}</span>
+        <span class="bar"><span style="width: {{.Width}}%"></span></span>
+        <span class="count">{{.Count}}</span>
+      </div>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+
+  <section class="section">
+    <h3>Plugins ({{len .Plugins}})</h3>
+    {{if .Plugins}}
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Version</th><th>Author</th><th>Hooks</th></tr>
+      </thead>
+      <tbody>
+        {{range .Plugins}}
+        <tr>
+          <td><strong>{{.Name}}</strong>{{if .Description}}<br><span class="fg-dim mono">{{.Description}}</span>{{end}}</td>
+          <td class="mono">{{or .Version "—"}}</td>
+          <td>{{or .Author "—"}}</td>
+          <td>{{range $i, $h := .Hooks}}{{if $i}} {{end}}<span class="pill info">{{$h}}</span>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{else}}
+    <div class="empty">No plugins loaded.</div>
+    {{end}}
+  </section>
+
+  <section class="section">
+    <h3>Services</h3>
+    <div class="empty">Service supervisor coming in Etapa 3 (start/stop serve &amp; api from this UI).</div>
+  </section>
+{{end}}
