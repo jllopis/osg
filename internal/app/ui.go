@@ -88,6 +88,17 @@ func buildServiceMetas(parent CLIOptions, cfg config.Config) []ui.ServiceMeta {
 				return RunAPI(ctx, o, APIOptions{Listen: apiAddr})
 			},
 		},
+		{
+			Name:        "watcher",
+			Description: "Watches the vault and rebuilds on changes (no preview server)",
+			Addr:        "(filesystem)",
+			Runner: func(ctx context.Context, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				return RunWatcher(ctx, o)
+			},
+		},
 	}
 }
 

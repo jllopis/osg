@@ -994,7 +994,9 @@ no se invoca `osg ui`.
 - [done] UI para enable/disable de plugins persistiendo en config.yaml (usa `config.UpdatePluginsEnabled` que preserva comentarios)
 - [done] State.Plugins unificado (loaded + on-disk + enabled-but-missing) con badges enabled/disabled/missing
 
-### 30G — Capacidades futuras (pending)
-- [ ] Integrar watcher en `osg ui` (auto-rebuild al cambiar el Vault)
+### 30G — Capacidades futuras (in progress)
+- [done] Watcher integrado en `osg ui` como tercer servicio del supervisor
+  (reusa `startWatch`/`runWatchLoop` sin reload hub; rebuild automatico
+  con debounce; logs en el ring buffer del servicio)
 - [ ] Scheduler interno para `publish-on-date`
 - [ ] Asset management desde la UI (generacion/optimizacion)

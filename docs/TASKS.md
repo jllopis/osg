@@ -584,3 +584,5 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 30F) Filtro client-side en /vault (substring title+path+section, contador shown/total)
 [done] (Phase 30F) Plugin enable/disable runtime persistido en config.yaml (config.UpdatePluginsEnabled preserva comentarios)
 [done] (Phase 30F) PluginEntry unificado (loaded + on-disk + missing) con badges enabled/disabled/missing
+
+[done] (Phase 30G) Watcher como servicio del supervisor: app.RunWatcher reusa startWatch/runWatchLoop (hub=nil), rebuild automatico con debounce
