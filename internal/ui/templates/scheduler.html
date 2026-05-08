@@ -1,0 +1,52 @@
+{{define "page"}}
+  <h2>Scheduler</h2>
+  <p class="subtitle">Audit log of automatic rebuilds triggered by <code class="mono">osg.publish_at</code> dates becoming due. Stored in <code class="mono">.osg/scheduler.db</code>.</p>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">Currently scheduled</div>
+      <div class="value">{{.Stats.Scheduled}}</div>
+    </div>
+    <div class="card">
+      <div class="label">Next release</div>
+      <div class="value">{{if not .Stats.NextScheduled.IsZero}}{{.Stats.NextScheduled.Format "2006-01-02"}}<span class="sub">{{.Stats.NextScheduled.Format "15:04"}}</span>{{else}}<span class="sub">none</span>{{end}}</div>
+    </div>
+    <div class="card">
+      <div class="label">Past triggers</div>
+      <div class="value">{{len .SchedulerRuns}}</div>
+    </div>
+  </div>
+
+  {{if .SchedulerRuns}}
+  <section class="section">
+    <h3>Recent runs</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Due at</th>
+          <th>Ran at</th>
+          <th>Status</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .SchedulerRuns}}
+        <tr>
+          <td class="mono">{{.DueAt.Local.Format "2006-01-02 15:04:05"}}</td>
+          <td class="mono">{{.RanAt.Local.Format "2006-01-02 15:04:05"}}</td>
+          <td>
+            {{if eq .Status "ok"}}<span class="pill ok">ok</span>
+            {{else}}<span class="pill err">error</span>{{end}}
+          </td>
+          <td>{{if .Error}}<span class="err-text mono">{{.Error}}</span>{{else}}<span class="fg-dim">—</span>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </section>
+  {{else}}
+  <div class="empty">
+    No scheduler runs yet. Set an <code class="mono">osg.publish_at</code> date in a post's frontmatter and start the scheduler service from <a href="/services">Services</a>.
+  </div>
+  {{end}}
+{{end}}

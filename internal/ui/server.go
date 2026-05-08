@@ -15,12 +15,34 @@ import (
 
 // ServerOptions configures a dashboard server instance.
 type ServerOptions struct {
-	Addr       string
-	Version    string
-	Cfg        config.Config
-	ConfigPath string
-	Logger     *slog.Logger
-	Supervisor *Supervisor
+	Addr           string
+	Version        string
+	Cfg            config.Config
+	ConfigPath     string
+	Logger         *slog.Logger
+	Supervisor     *Supervisor
+	SchedulerStore SchedulerHistory
+	// BuildFn is invoked by the manual "Rebuild now" button. It should
+	// be a thin wrapper around app.RunBuild bound to the dashboard's
+	// CLIOptions. When nil, the button is hidden.
+	BuildFn func(ctx context.Context) error
+}
+
+// SchedulerHistory is the read interface the dashboard needs from the
+// scheduler audit store. Keeping it small avoids a hard dependency on
+// the concrete SQLite store from the ui package.
+type SchedulerHistory interface {
+	Recent(limit int) ([]SchedulerRun, error)
+}
+
+// SchedulerRun is the template-friendly view of a scheduler.Run. The
+// duplicate type lets the ui package render history without importing
+// the scheduler package directly (avoids a cycle for tests).
+type SchedulerRun struct {
+	DueAt  time.Time
+	RanAt  time.Time
+	Status string
+	Error  string
 }
 
 // Server is the OSG UI dashboard server.
@@ -28,6 +50,7 @@ type Server struct {
 	opts      ServerOptions
 	templates map[string]*template.Template
 	mux       *http.ServeMux
+	rebuilder *rebuildState
 }
 
 // NewServer prepares the dashboard server: parses templates and registers
@@ -40,7 +63,12 @@ func NewServer(opts ServerOptions) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{opts: opts, templates: tpls, mux: http.NewServeMux()}
+	s := &Server{
+		opts:      opts,
+		templates: tpls,
+		mux:       http.NewServeMux(),
+		rebuilder: newRebuildState(opts.BuildFn),
+	}
 	s.routes()
 	return s, nil
 }
@@ -93,6 +121,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/vault", s.handleVault)
 	s.mux.HandleFunc("/plugins", s.handlePlugins)
 	s.mux.HandleFunc("/assets", s.handleAssets)
+	s.mux.HandleFunc("/scheduler", s.handleScheduler)
+	s.mux.HandleFunc("POST /rebuild", s.handleRebuild)
+	s.mux.HandleFunc("GET /rebuild.json", s.handleRebuildJSON)
 	s.mux.HandleFunc("/services", s.handleServices)
 	s.mux.HandleFunc("POST /plugins/toggle", s.handlePluginToggle)
 	s.mux.HandleFunc("/services/start", s.handleServiceStart)
@@ -106,7 +137,7 @@ func (s *Server) routes() {
 // which the layout invokes — names are unique per template instance, so we
 // don't have collisions across pages.
 func loadTemplates() (map[string]*template.Template, error) {
-	pages := []string{"dashboard", "vault", "plugins", "assets", "services"}
+	pages := []string{"dashboard", "vault", "plugins", "assets", "scheduler", "services"}
 	out := make(map[string]*template.Template, len(pages))
 
 	funcs := template.FuncMap{

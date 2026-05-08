@@ -49,7 +49,44 @@
     setupServiceLogs();
     setupServicesPolling();
     setupVaultFilter();
+    setupRebuildBar();
   });
+
+  function setupRebuildBar() {
+    const bar = document.querySelector("[data-rebuild-bar]");
+    if (!bar) return;
+    const button = bar.querySelector("[data-rebuild-button]");
+    const status = bar.querySelector("[data-rebuild-status]");
+
+    function update() {
+      fetch("/rebuild.json", { headers: { Accept: "application/json" } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data) return;
+          if (data.running) {
+            if (button) {
+              button.disabled = true;
+              button.textContent = "Rebuilding…";
+            }
+            if (status) status.textContent = "in progress";
+          } else {
+            if (button) {
+              button.disabled = false;
+              button.textContent = "Rebuild now";
+            }
+            if (status && data.last_ran) {
+              const t = new Date(data.last_ran).toLocaleTimeString();
+              const ms = data.duration_ms || 0;
+              const err = data.last_error ? " — error" : "";
+              status.textContent = "last ran " + t + " (" + ms + "ms)" + err;
+            }
+          }
+        })
+        .catch(function () {});
+    }
+
+    setInterval(update, 1500);
+  }
 
   function setupVaultFilter() {
     const input = document.querySelector("[data-vault-filter]");

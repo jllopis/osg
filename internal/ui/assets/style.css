@@ -340,6 +340,21 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   color: var(--fg-muted);
 }
 
+/* Rebuild bar (assets page) */
+.rebuild-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 1.25rem;
+}
+.rebuild-bar form { margin: 0; }
+.rebuild-bar .rebuild-status { font-size: 0.8rem; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
 /* Vault filter toolbar */
 .vault-toolbar {
   display: flex;

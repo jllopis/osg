@@ -189,6 +189,27 @@ func (s *Supervisor) Stop(name string) error {
 	return nil
 }
 
+// Restart stops a running service and starts it again, so callers that
+// mutate config (e.g. plugin enable/disable) can have the change picked
+// up by long-lived services. No-op if the service isn't running.
+func (s *Supervisor) Restart(name string) error {
+	s.mu.Lock()
+	svc, ok := s.services[name]
+	if !ok {
+		s.mu.Unlock()
+		return fmt.Errorf("unknown service: %s", name)
+	}
+	wasRunning := svc.State == StateRunning || svc.State == StateStarting
+	s.mu.Unlock()
+	if !wasRunning {
+		return nil
+	}
+	if err := s.Stop(name); err != nil {
+		return fmt.Errorf("stop %s: %w", name, err)
+	}
+	return s.Start(name)
+}
+
 // Logs returns a subscription channel for the named service's log
 // stream. The current buffered content is delivered first, then live
 // updates flow until ctx is cancelled. Returns nil if name is unknown.

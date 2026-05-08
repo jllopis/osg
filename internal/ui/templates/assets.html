@@ -2,6 +2,22 @@
   <h2>Assets</h2>
   <p class="subtitle">Image inventory across <code class="mono">{{.ContentDir}}</code> and the static directory. Optimization runs as part of <code class="mono">osg build</code>.</p>
 
+  {{if .Rebuild.Available}}
+  <div class="rebuild-bar" data-rebuild-bar>
+    <form method="post" action="/rebuild" data-rebuild-form>
+      <button type="submit" class="btn btn-start" data-rebuild-button {{if .Rebuild.Running}}disabled{{end}}>
+        {{if .Rebuild.Running}}Rebuilding…{{else}}Rebuild now{{end}}
+      </button>
+    </form>
+    <span class="rebuild-status mono fg-dim" data-rebuild-status>
+      {{if .Rebuild.Running}}in progress
+      {{else if not .Rebuild.LastRan.IsZero}}last ran {{.Rebuild.LastRan.Local.Format "15:04:05"}} ({{.Rebuild.Duration}}){{if .Rebuild.LastError}} — error{{end}}
+      {{else}}never{{end}}
+    </span>
+    {{if .Rebuild.LastError}}<span class="err-text mono">{{.Rebuild.LastError}}</span>{{end}}
+  </div>
+  {{end}}
+
   <div class="cards">
     <div class="card">
       <div class="label">Total images</div>

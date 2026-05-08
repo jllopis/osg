@@ -595,3 +595,8 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 30G) Asset inventory UI: /assets page con cards (total/size/formats), breakdown por formato, tabla filtrable
 [done] (Phase 30G) collectAssets walker sobre content_dir + static_dir; pill content/static por origen
 [done] (Phase 30G) setupVaultFilter parametrizado por noun ("pages"/"files") via initial textContent
+
+[done] (Phase 30H) Audit log SQLite del scheduler (.osg/scheduler.db) y pagina /scheduler con runs
+[done] (Phase 30H) Supervisor.Restart wirea plugin toggle a reinicio de serve/watcher/scheduler running
+[done] (Phase 30H) Boton "Rebuild now" en /assets: POST /rebuild + /rebuild.json polling
+[done] (Phase 30H) HTMX 2.0.4 vendorado en internal/ui/assets/htmx.min.js (no migracion, disponible para futuro)

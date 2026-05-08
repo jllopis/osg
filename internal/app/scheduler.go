@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
+	"path/filepath"
 	"time"
 
 	"osg/internal/build"
 	"osg/internal/config"
 	"osg/internal/logging"
+	"osg/internal/scheduler"
 )
 
 // schedulerFallback is the maximum sleep between checks when no
@@ -27,6 +29,15 @@ const schedulerFallback = 5 * time.Minute
 func RunScheduler(ctx context.Context, opts CLIOptions) error {
 	logger := logging.NewWithWriter(loadLoggingCfg(opts.ConfigPath), opts.Verbose, opts.LogWriter)
 	logger.Info("scheduler starting")
+
+	store, err := scheduler.NewStore(SchedulerDBPath(opts.ConfigPath))
+	if err != nil {
+		// Non-fatal: scheduler still works without an audit trail.
+		logger.Warn("scheduler audit store unavailable", "error", err)
+	}
+	if store != nil {
+		defer func() { _ = store.Close() }()
+	}
 
 	for {
 		cfg, err := config.Load(opts.ConfigPath)
@@ -78,11 +89,31 @@ func RunScheduler(ctx context.Context, opts CLIOptions) error {
 			)
 			o := opts
 			o.SkipAI = true
+			run := scheduler.Run{DueAt: next, RanAt: time.Now(), Status: "ok"}
 			if err := RunBuild(ctx, o); err != nil {
 				logger.Warn("scheduler build failed", "error", err)
+				run.Status = "error"
+				run.Error = err.Error()
+			}
+			run.RanAt = time.Now()
+			if store != nil {
+				if recErr := store.Record(run); recErr != nil {
+					logger.Warn("scheduler audit record failed", "error", recErr)
+				}
 			}
 		}
 	}
+}
+
+// SchedulerDBPath returns the path of the scheduler audit database. It
+// lives next to other OSG state under .osg/, derived from the config
+// path's directory.
+func SchedulerDBPath(configPath string) string {
+	dir := filepath.Dir(configPath)
+	if dir == "" || dir == "." {
+		return ".osg/scheduler.db"
+	}
+	return filepath.Join(dir, ".osg", "scheduler.db")
 }
 
 // sleep blocks for d or until ctx is cancelled. Returns false if the

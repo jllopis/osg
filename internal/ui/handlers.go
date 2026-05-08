@@ -12,13 +12,15 @@ import (
 )
 
 type viewData struct {
-	Title        string
-	Active       string
-	Version      string
-	Services     []Service
-	Now          time.Time
-	Assets       []AssetEntry
-	AssetSummary AssetSummary
+	Title         string
+	Active        string
+	Version       string
+	Services      []Service
+	Now           time.Time
+	Assets        []AssetEntry
+	AssetSummary  AssetSummary
+	SchedulerRuns []SchedulerRun
+	Rebuild       RebuildSnapshot
 	State
 }
 
@@ -112,13 +114,69 @@ func (s *Server) handlePluginToggle(w http.ResponseWriter, r *http.Request) {
 		}
 		s.opts.Logger.Info("plugin toggled", "plugin", name, "action", action)
 	}
+
+	// Restart the supervised services that load plugins so the new
+	// plugins_enabled list takes effect. Idle services pick up the
+	// change naturally on next start; only currently-running ones need
+	// a recycle. The api service does not load plugins, so skip it.
+	if s.opts.Supervisor != nil {
+		for _, svcName := range []string{"serve", "watcher", "scheduler"} {
+			if err := s.opts.Supervisor.Restart(svcName); err != nil && s.opts.Logger != nil {
+				s.opts.Logger.Warn("plugin toggle restart failed", "service", svcName, "error", err)
+			}
+		}
+	}
+
 	http.Redirect(w, r, "/plugins", http.StatusSeeOther)
+}
+
+func (s *Server) handleScheduler(w http.ResponseWriter, r *http.Request) {
+	v := s.buildView("scheduler", "Scheduler", r)
+	if s.opts.SchedulerStore != nil {
+		runs, err := s.opts.SchedulerStore.Recent(50)
+		if err != nil && s.opts.Logger != nil {
+			s.opts.Logger.Warn("scheduler history fetch failed", "error", err)
+		}
+		v.SchedulerRuns = runs
+	}
+	s.render(w, "scheduler", v)
 }
 
 func (s *Server) handleAssets(w http.ResponseWriter, r *http.Request) {
 	v := s.buildView("assets", "Assets", r)
 	v.Assets, v.AssetSummary = collectAssets(s.opts.Cfg, s.opts.Logger)
+	v.Rebuild = s.rebuilder.Snapshot()
 	s.render(w, "assets", v)
+}
+
+// handleRebuild kicks off an ad-hoc rebuild via the optional BuildFn.
+// Returns 303 to /assets so the user immediately sees the "running"
+// state; the page polls /rebuild.json to update.
+func (s *Server) handleRebuild(w http.ResponseWriter, r *http.Request) {
+	if err := s.rebuilder.Trigger(); err != nil {
+		if s.opts.Logger != nil {
+			s.opts.Logger.Warn("rebuild trigger failed", "error", err)
+		}
+	}
+	http.Redirect(w, r, "/assets", http.StatusSeeOther)
+}
+
+// handleRebuildJSON returns the current rebuild state for client-side
+// polling. The /assets page calls this every couple of seconds while a
+// rebuild is in flight.
+func (s *Server) handleRebuildJSON(w http.ResponseWriter, r *http.Request) {
+	snap := s.rebuilder.Snapshot()
+	out := map[string]any{
+		"available": snap.Available,
+		"running":   snap.Running,
+	}
+	if !snap.LastRan.IsZero() {
+		out["last_ran"] = snap.LastRan.Format(time.RFC3339)
+		out["duration_ms"] = snap.Duration.Milliseconds()
+		out["last_error"] = snap.LastError
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 func (s *Server) handleServices(w http.ResponseWriter, r *http.Request) {

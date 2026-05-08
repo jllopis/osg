@@ -6,6 +6,7 @@
   <title>{{.Title}} — OSG</title>
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/htmx.min.js" defer></script>
   <script src="/assets/app.js" defer></script>
 </head>
 <body>
@@ -20,6 +21,7 @@
         <a href="/vault" class="{{if eq .Active "vault"}}active{{end}}">Vault</a>
         <a href="/plugins" class="{{if eq .Active "plugins"}}active{{end}}">Plugins</a>
         <a href="/assets" class="{{if eq .Active "assets"}}active{{end}}">Assets</a>
+        <a href="/scheduler" class="{{if eq .Active "scheduler"}}active{{end}}">Scheduler</a>
         <a href="/services" class="{{if eq .Active "services"}}active{{end}}">Services</a>
       </nav>
       <div class="footer">

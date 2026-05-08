@@ -9,8 +9,32 @@ import (
 
 	"osg/internal/config"
 	"osg/internal/logging"
+	"osg/internal/scheduler"
 	"osg/internal/ui"
 )
+
+// schedulerHistoryAdapter bridges scheduler.Store (concrete type) to the
+// minimal ui.SchedulerHistory interface, mapping scheduler.Run values to
+// the duplicate ui.SchedulerRun struct so the ui package stays free of
+// the database/sql dependency.
+type schedulerHistoryAdapter struct{ s *scheduler.Store }
+
+func (a schedulerHistoryAdapter) Recent(limit int) ([]ui.SchedulerRun, error) {
+	rows, err := a.s.Recent(limit)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ui.SchedulerRun, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, ui.SchedulerRun{
+			DueAt:  r.DueAt,
+			RanAt:  r.RanAt,
+			Status: r.Status,
+			Error:  r.Error,
+		})
+	}
+	return out, nil
+}
 
 // RunUI starts the local web dashboard (`osg ui`). The dashboard is
 // loopback-only: any non-loopback bind address is rejected.
@@ -37,13 +61,33 @@ func RunUI(ctx context.Context, opts CLIOptions) error {
 
 	supervisor := ui.NewSupervisor(buildServiceMetas(opts, cfg))
 
+	// Open the scheduler audit store for the dashboard's read path. The
+	// scheduler service opens its own handle for writes; SQLite WAL mode
+	// coordinates the two safely.
+	var history ui.SchedulerHistory
+	if store, err := scheduler.NewStore(SchedulerDBPath(opts.ConfigPath)); err != nil {
+		logger.Warn("scheduler audit store unavailable", "error", err)
+	} else {
+		defer func() { _ = store.Close() }()
+		history = schedulerHistoryAdapter{s: store}
+	}
+
+	parentOpts := opts
 	srv, err := ui.NewServer(ui.ServerOptions{
-		Addr:       addr,
-		Version:    Version,
-		Cfg:        cfg,
-		ConfigPath: opts.ConfigPath,
-		Logger:     logger,
-		Supervisor: supervisor,
+		Addr:           addr,
+		Version:        Version,
+		Cfg:            cfg,
+		ConfigPath:     opts.ConfigPath,
+		Logger:         logger,
+		Supervisor:     supervisor,
+		SchedulerStore: history,
+		BuildFn: func(ctx context.Context) error {
+			o := parentOpts
+			o.SkipAI = true
+			o.LogWriter = nil
+			o.Progress = nil
+			return RunBuild(ctx, o)
+		},
 	})
 	if err != nil {
 		return err

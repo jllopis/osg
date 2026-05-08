@@ -994,6 +994,21 @@ no se invoca `osg ui`.
 - [done] UI para enable/disable de plugins persistiendo en config.yaml (usa `config.UpdatePluginsEnabled` que preserva comentarios)
 - [done] State.Plugins unificado (loaded + on-disk + enabled-but-missing) con badges enabled/disabled/missing
 
+### 30H — Pulido v2 (done)
+- [done] Audit log persistente del scheduler en `.osg/scheduler.db`
+  (SQLite via `modernc.org/sqlite`, paquete `internal/scheduler`,
+  pagina `/scheduler` con tabla de runs, columnas due_at/ran_at/status/error)
+- [done] Auto-reload de servicios al togglear plugins:
+  `Supervisor.Restart` reinicia serve/watcher/scheduler que estuviesen
+  en estado running tras `UpdatePluginsEnabled`
+- [done] Boton "Rebuild now" en `/assets`:
+  POST `/rebuild` dispara `RunBuild` en goroutine (rebuilder con mutex,
+  uno a la vez), `/rebuild.json` para polling, JS actualiza estado del
+  boton + status mono
+- [done] HTMX 2.0.4 vendorado en `internal/ui/assets/htmx.min.js` y
+  cargado en el layout. No migro interacciones existentes (funcionan);
+  queda disponible para fragments parciales futuros
+
 ### 30G — Capacidades futuras (done)
 - [done] Watcher integrado en `osg ui` como tercer servicio del supervisor
   (reusa `startWatch`/`runWatchLoop` sin reload hub; rebuild automatico
