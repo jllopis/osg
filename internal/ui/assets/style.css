@@ -400,6 +400,83 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .btn-link:hover { color: var(--fg); }
 .btn-link + .btn-link, .btn-link + form { margin-left: 0.5rem; }
 
+/* Vault list as cards. Each card collapses into a `<summary>` line
+   that the user can expand to see the stored summary plus the row's
+   actions: Editar, Resumir (regenerate AI), Eliminar (drop cache). */
+.vault-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.vault-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  overflow: hidden;
+}
+.vault-card[data-search] { transition: background 0.15s; }
+.vault-card-details { padding: 0; }
+.vault-card-summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.6rem 0.85rem;
+  user-select: none;
+}
+.vault-card-summary::-webkit-details-marker { display: none; }
+.vault-card-summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1em;
+  margin-right: 0.25rem;
+  color: var(--fg-dim);
+  transition: transform 0.15s;
+}
+.vault-card-details[open] > .vault-card-summary::before { transform: rotate(90deg); }
+.vault-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.vault-card-title { font-weight: 600; flex: 1; min-width: 0; }
+.vault-card-meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: var(--fg-dim);
+}
+.vault-card-path {
+  font-size: 0.75rem;
+  color: var(--fg-dim);
+  margin-left: 1.25rem;
+  margin-top: 0.15rem;
+}
+.vault-card-body {
+  padding: 0.75rem 1rem 1rem 1.6rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+.vault-card-block + .vault-card-block { margin-top: 0.75rem; }
+.vault-card-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-dim);
+  margin-bottom: 0.25rem;
+}
+.vault-card-text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.vault-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
 /* Per-page summary editor at /vault/page. The page-meta dl shows
    read-only metadata; page-summary-current frames the value the
    site is currently using; the form below holds the override. */

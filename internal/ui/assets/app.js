@@ -53,7 +53,66 @@
     setupDrawer();
     setupOperationsPolling();
     setupConfirmDialogs();
+    setupSummarySuggest();
   });
+
+  // setupSummarySuggest wires the "Sugerencia IA" button on the
+  // page editor: POST /summary/suggest with the page's source,
+  // place the LLM-generated text into the textarea, and report
+  // status in the feedback line. The button stays disabled while
+  // the request is in flight to prevent double-fires.
+  function setupSummarySuggest() {
+    const btn = document.querySelector("[data-summary-suggest]");
+    if (!btn) return;
+    const form = btn.closest("[data-summary-form]");
+    if (!form) return;
+    const textarea = form.querySelector("[data-summary-textarea]");
+    const feedback = form.querySelector("[data-summary-feedback]");
+    const source = form.getAttribute("data-source") || "";
+
+    function setFeedback(msg, isError) {
+      if (!feedback) return;
+      feedback.textContent = msg;
+      feedback.hidden = msg === "";
+      feedback.classList.toggle("err-text", !!isError);
+    }
+
+    btn.addEventListener("click", function () {
+      btn.disabled = true;
+      // Preserve innerHTML (which includes the inline SVG icon) so
+      // the busy label can be swapped in and back without rebuilding
+      // the icon.
+      const original = btn.innerHTML;
+      btn.innerHTML = "Pensando…";
+      setFeedback("", false);
+
+      const body = new URLSearchParams();
+      body.set("source", source);
+
+      fetch("/summary/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, data: j }; }); })
+        .then(function (res) {
+          if (!res.ok || !res.data || !res.data.suggestion) {
+            const msg = (res.data && res.data.error) || "Suggestion failed";
+            setFeedback("AI suggestion failed: " + msg, true);
+            return;
+          }
+          if (textarea) textarea.value = res.data.suggestion;
+          setFeedback("Suggestion inserted — review, edit if needed and Save.", false);
+        })
+        .catch(function (err) {
+          setFeedback("AI suggestion failed: " + err, true);
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.innerHTML = original;
+        });
+    });
+  }
 
   // setupConfirmDialogs intercepts submit on any form with [data-confirm]
   // and shows a native <dialog> modal. Submission is blocked until the
@@ -423,7 +482,13 @@
     const empty = document.querySelector("[data-vault-empty]");
     if (!input || !table) return;
 
-    const rows = Array.from(table.querySelectorAll("tbody tr"));
+    // Match either tbody rows (legacy table layout) or any descendant
+    // with a data-search attribute (current /vault card layout). The
+    // data-search attribute itself is the source of truth.
+    let rows = Array.from(table.querySelectorAll("tbody tr"));
+    if (rows.length === 0) {
+      rows = Array.from(table.querySelectorAll("[data-search]"));
+    }
     const total = rows.length;
     const haystacks = rows.map(function (r) {
       return (r.getAttribute("data-search") || r.textContent || "").toLowerCase();

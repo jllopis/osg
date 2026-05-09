@@ -1215,3 +1215,43 @@ desde la UI sin tener que tocar el cache a mano.
   modal existente; deploy implica build automaticamente
 - [done] Link "edit" por fila en `/vault` apunta al editor
 
+### 33D — Migracion del cache de resumenes a SQLite (done)
+- [done] `internal/build/summary_store.go`: tabla
+  `summaries(hash PK, summary, provider, model, created_at)`
+  en `.osg/cache/summaries.db` (modernc.org/sqlite + WAL, mismo
+  patron que `internal/operations.Store`)
+- [done] La build sigue cargando todo a un map en memoria al
+  arrancar (1 SELECT) y haciendo upsert por fila al terminar
+- [done] Operaciones de un solo registro en la UI
+  (`LookupAISummary`, `InvalidateAISummary`,
+  `UpsertAISummary`) van directas al store sin cargar el map
+- [done] Sin migracion: el JSON queda en disco como reliquia, el
+  nuevo codigo lo ignora (el usuario regenera bajo demanda)
+- [done] Tests reescritos para SQLite (round-trip, store vacio,
+  dirs anidados, nil cache, invalidate, lookup)
+
+### 33E — Lista de pages como cards + acciones in situ (done)
+- [done] `/vault` deja de ser tabla y pasa a ser lista de cards
+  (`<details>` por fila): header con titulo + section + fecha +
+  status pill + pill semantica del summary
+  (`override` / `ai-cached` / `no summary`)
+- [done] Body desplegable con bloques "Override (osg.summary)" y
+  "AI cache" (los que aplican) y un footer con tres acciones:
+  **Editar** abre `/vault/page`, **Resumir** llama al LLM ahora
+  mismo y guarda en `summaries.db`, **Eliminar** dropea la
+  entrada del cache
+- [done] `POST /summary/regenerate`: kairos provider one-shot,
+  honra `cfg.AI.Timeout`, persiste via
+  `build.UpsertAISummary` y redirige a `/vault`
+- [done] Boton "Sugerencia IA" en `/vault/page`: `POST
+  /summary/suggest` devuelve `{suggestion}` en JSON y la JS
+  rellena la textarea sin guardar (el usuario revisa y pulsa
+  Save). Boton se deshabilita mientras la llamada esta en vuelo
+- [done] Iconos nuevos en el sprite: `icon-edit`, `icon-trash`,
+  `icon-sparkles`
+- [done] `setupVaultFilter` ahora cae a `[data-search]` cuando
+  no hay `tbody tr` (sirve cards igual que la tabla anterior)
+- [done] `PageView` extendido con `Summary` / `HasOverride` /
+  `AICached` / `HasAICached`; `state.collectPages` carga el
+  cache una sola vez via `build.LoadAISummaries`
+

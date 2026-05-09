@@ -16,35 +16,72 @@
            data-vault-filter aria-label="Filter pages" autocomplete="off">
     <span class="vault-count" data-vault-count>{{len .Pages}} pages</span>
   </div>
-  <table data-vault-table>
-    <thead>
-      <tr>
-        <th>Title</th>
-        <th>Section</th>
-        <th>Date</th>
-        <th>Status</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {{range .Pages}}
-      <tr data-search="{{.Title}} {{.Path}} {{.Section}}">
-        <td>{{.Title}}<br><span class="fg-dim mono">{{.Path}}</span></td>
-        <td>{{.Section}}</td>
-        <td class="mono">{{if .Date}}{{.Date.Format "2006-01-02"}}{{else}}—{{end}}</td>
-        <td>{{if .Draft}}<span class="pill warn">draft</span>{{else}}<span class="pill ok">published</span>{{end}}</td>
-        <td>
-          <a class="btn-link" href="/vault/page?source={{.Source}}" title="Edit summary, rebuild and deploy">edit</a>
-          <form method="post" action="/summary/invalidate" style="display:inline"
-                data-confirm="Drop the AI summary cache for this page? The next build will re-call the LLM.">
-            <input type="hidden" name="source" value="{{.Source}}">
-            <button type="submit" class="btn-link" title="Drop the AI summary cache so the next build regenerates it">re-summarize</button>
-          </form>
-        </td>
-      </tr>
-      {{end}}
-    </tbody>
-  </table>
+
+  <div class="vault-list" data-vault-table>
+    {{range .Pages}}
+    <article class="vault-card" data-search="{{.Title}} {{.Path}} {{.Section}}">
+      <details class="vault-card-details">
+        <summary class="vault-card-summary">
+          <div class="vault-card-head">
+            <div class="vault-card-title">{{.Title}}</div>
+            <div class="vault-card-meta">
+              <span class="mono">{{.Section}}</span>
+              {{if .Date}}<span class="mono">{{.Date.Format "2006-01-02"}}</span>{{end}}
+              {{if .Draft}}<span class="pill warn">draft</span>{{else}}<span class="pill ok">published</span>{{end}}
+              {{if .HasOverride}}<span class="pill info" title="osg.summary set in frontmatter">override</span>
+              {{else if .HasAICached}}<span class="pill muted" title="Cached AI summary will be used at next build">ai-cached</span>
+              {{else}}<span class="pill muted" title="No summary yet — auto-extract on next build">no summary</span>{{end}}
+            </div>
+          </div>
+          <div class="vault-card-path mono">{{.Path}}</div>
+        </summary>
+
+        <div class="vault-card-body">
+          {{if .HasOverride}}
+            <div class="vault-card-block">
+              <div class="vault-card-label">Override (osg.summary)</div>
+              <div class="vault-card-text">{{.Summary}}</div>
+            </div>
+          {{end}}
+          {{if .HasAICached}}
+            <div class="vault-card-block">
+              <div class="vault-card-label">AI cache</div>
+              <div class="vault-card-text">{{.AICached}}</div>
+            </div>
+          {{end}}
+          {{if and (not .HasOverride) (not .HasAICached)}}
+            <div class="vault-card-block">
+              <div class="vault-card-text fg-dim">No summary stored yet — the next build will auto-extract one from the body.</div>
+            </div>
+          {{end}}
+
+          <div class="vault-card-actions">
+            <a class="btn btn-run" href="/vault/page?source={{.Source}}">
+              <svg class="btn-icon"><use href="/assets/icons.svg#icon-edit"/></svg>
+              Editar
+            </a>
+            <form method="post" action="/summary/regenerate" style="display:inline"
+                  data-confirm="Re-generate the AI summary for this page now? This calls the LLM and replaces the cached value.">
+              <input type="hidden" name="source" value="{{.Source}}">
+              <button type="submit" class="btn btn-flow">
+                <svg class="btn-icon"><use href="/assets/icons.svg#icon-update"/></svg>
+                Resumir
+              </button>
+            </form>
+            <form method="post" action="/summary/invalidate" style="display:inline"
+                  data-confirm="Drop the AI summary cache for this page? The next build will re-call the LLM.">
+              <input type="hidden" name="source" value="{{.Source}}">
+              <button type="submit" class="btn btn-stop">
+                <svg class="btn-icon"><use href="/assets/icons.svg#icon-trash"/></svg>
+                Eliminar
+              </button>
+            </form>
+          </div>
+        </div>
+      </details>
+    </article>
+    {{end}}
+  </div>
   <div class="empty" data-vault-empty hidden>No pages match the filter.</div>
   {{else}}
   <div class="empty">No pages found in {{.ContentDir}}.</div>

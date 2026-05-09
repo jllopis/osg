@@ -137,6 +137,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /operations.json", s.handleOperationsJSON)
 	s.mux.HandleFunc("POST /summary/invalidate", s.handleSummaryInvalidate)
 	s.mux.HandleFunc("POST /summary/save", s.handleSummarySave)
+	s.mux.HandleFunc("POST /summary/regenerate", s.handleSummaryRegenerate)
+	s.mux.HandleFunc("POST /summary/suggest", s.handleSummarySuggest)
 	s.mux.HandleFunc("GET /vault/page", s.handleVaultPage)
 }
 

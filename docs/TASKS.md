@@ -658,3 +658,15 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 33C) Pagina /vault/page?source=… con editor osg.summary + currently-used + AI-cache reference
 [done] (Phase 33C) POST /summary/save: write atomico (tmp+rename), opcional build, opcional build+deploy via Runner.RunFlow; deploy implica build
 [done] (Phase 33C) Link "edit" en /vault apunta al editor
+
+[done] (Phase 33D) build.summaryStore (modernc/sqlite + WAL): tabla summaries(hash PK, summary, provider, model, created_at) en .osg/cache/summaries.db
+[done] (Phase 33D) build sigue usando AICache in-memory como shim; LoadAll al arrancar, Upsert al terminar
+[done] (Phase 33D) build.LookupAISummary / InvalidateAISummary / UpsertAISummary / LoadAISummaries (helpers publicos para la UI)
+[done] (Phase 33D) Tests SQLite-only, sin migracion del JSON anterior
+
+[done] (Phase 33E) /vault como lista de cards con <details> por fila; pill semantica override/ai-cached/no-summary
+[done] (Phase 33E) Tres acciones por card: Editar (-> /vault/page), Resumir (LLM on demand + upsert), Eliminar (drop cache)
+[done] (Phase 33E) POST /summary/regenerate: kairos provider one-shot, persiste y redirige
+[done] (Phase 33E) POST /summary/suggest: devuelve {suggestion} JSON; boton "Sugerencia IA" en el editor lo inyecta en la textarea (preview, sin guardar)
+[done] (Phase 33E) Iconos icon-edit / icon-trash / icon-sparkles en el sprite
+[done] (Phase 33E) setupVaultFilter compatibilidad con cards (cae a [data-search] si no hay tbody tr)

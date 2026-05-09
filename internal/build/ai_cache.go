@@ -112,6 +112,57 @@ func InvalidateAISummary(cfg config.Config, hash string, logger *slog.Logger) (b
 	return removed, nil
 }
 
+// LoadAISummaries returns a snapshot of every cached entry as a map
+// hash → summary. Used by the UI when rendering a page list so it can
+// look up cached values without opening the SQLite handle once per
+// page. Logs and returns an empty map on any failure (keeping the
+// page list responsive even if the store is missing or corrupt).
+func LoadAISummaries(cfg config.Config, logger *slog.Logger) map[string]string {
+	store, err := openSummaryStore(cfg)
+	if err != nil {
+		if logger != nil {
+			logger.Warn("open summary store failed", "error", err)
+		}
+		return map[string]string{}
+	}
+	defer func() { _ = store.Close() }()
+	rows, err := store.LoadAll()
+	if err != nil {
+		if logger != nil {
+			logger.Warn("load summaries failed", "error", err)
+		}
+		return map[string]string{}
+	}
+	out := make(map[string]string, len(rows))
+	for h, e := range rows {
+		out[h] = e.Summary
+	}
+	return out
+}
+
+// UpsertAISummary writes (or replaces) a single cached entry. Used
+// by the UI's "regenerate now" action to persist a freshly generated
+// summary without going through the build pipeline.
+func UpsertAISummary(cfg config.Config, hash, summary, provider, model string, logger *slog.Logger) error {
+	store, err := openSummaryStore(cfg)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = store.Close() }()
+	if err := store.Upsert(hash, AICacheEntry{
+		Summary:     summary,
+		Provider:    provider,
+		Model:       model,
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+	}); err != nil {
+		return err
+	}
+	if logger != nil {
+		logger.Info("ai summary upserted", "hash", hash, "provider", provider, "model", model)
+	}
+	return nil
+}
+
 // LookupAISummary returns the cached AI summary for the given content
 // hash, or "" with ok=false when no entry exists. Read-only — used by
 // the UI to preview the cached value next to the editor.

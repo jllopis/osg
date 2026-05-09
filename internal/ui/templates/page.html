@@ -35,14 +35,18 @@
     </div>
     {{end}}
 
-    <form method="post" action="/summary/save" class="page-edit-form">
+    <form method="post" action="/summary/save" class="page-edit-form" data-summary-form data-source="{{.Source}}">
       <input type="hidden" name="source" value="{{.Source}}">
       <label class="op-field" for="summary">
         <span class="op-field-label">osg.summary</span>
-        <textarea id="summary" name="summary" rows="5" placeholder="Write a 2-3 sentence summary used as the post excerpt.">{{.OverrideSummary}}</textarea>
+        <textarea id="summary" name="summary" rows="5" placeholder="Write a 2-3 sentence summary used as the post excerpt." data-summary-textarea>{{.OverrideSummary}}</textarea>
         <span class="op-field-help">Leave empty to drop the override and let the next build regenerate the summary (AI cache → extract).</span>
       </label>
       <div class="page-edit-actions">
+        <button type="button" class="btn btn-flow" data-summary-suggest title="Ask the LLM to draft a summary and fill the textarea — no save until you click Save">
+          <svg class="btn-icon"><use href="/assets/icons.svg#icon-sparkles"/></svg>
+          Sugerencia IA
+        </button>
         <button type="submit" class="btn btn-run">Save</button>
         <button type="submit" class="btn btn-run" name="build" value="1">Save &amp; rebuild</button>
         <button type="submit" class="btn btn-flow"
@@ -51,6 +55,7 @@
           Save, build &amp; deploy
         </button>
       </div>
+      <div class="page-edit-feedback fg-dim" data-summary-feedback hidden></div>
     </form>
   </section>
 {{else}}

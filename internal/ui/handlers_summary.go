@@ -1,15 +1,19 @@
 package ui
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"osg/internal/build"
 	"osg/internal/frontmatter"
 	"osg/internal/site"
+	"osg/internal/summary"
 )
 
 // resolveVaultSource validates a user-supplied path that should point
@@ -212,6 +216,108 @@ func (s *Server) handleSummarySave(w http.ResponseWriter, r *http.Request) {
 		dest = "/actions"
 	}
 	http.Redirect(w, r, dest, http.StatusSeeOther)
+}
+
+// generateSummaryNow opens a fresh kairos provider and runs a single
+// blocking Summarize call against the page at abs. The returned
+// string is the same one the build pipeline would have produced — it
+// is shared by the regenerate (persists the result) and suggest
+// (preview only) handlers. Honours cfg.AI.Timeout.
+func (s *Server) generateSummaryNow(ctx context.Context, abs string) (page *site.Page, summaryText string, hash string, err error) {
+	if !strings.EqualFold(s.opts.Cfg.SummaryStrategy, "ai") && s.opts.Cfg.AI.Provider == "" {
+		return nil, "", "", fmt.Errorf("AI summary provider not configured")
+	}
+	page, _, err = site.ParseFile(s.opts.Cfg.ContentDir, s.opts.Cfg.BaseURL, abs)
+	if err != nil || page == nil {
+		return nil, "", "", fmt.Errorf("parse page: %w", err)
+	}
+	aiCfg := summary.AIConfig{
+		Provider:     s.opts.Cfg.AI.Provider,
+		Model:        s.opts.Cfg.AI.Model,
+		APIKey:       s.opts.Cfg.AI.APIKey,
+		BaseURL:      s.opts.Cfg.AI.BaseURL,
+		SystemPrompt: s.opts.Cfg.AI.SystemPrompt,
+		Language:     s.opts.Cfg.DefaultLanguage,
+	}
+	provider, err := summary.NewKairosProvider(ctx, aiCfg)
+	if err != nil {
+		return nil, "", "", fmt.Errorf("init AI provider: %w", err)
+	}
+	timeout := time.Duration(s.opts.Cfg.AI.Timeout) * time.Second
+	if timeout <= 0 {
+		timeout = 30 * time.Second
+	}
+	callCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	text, err := provider.Summarize(callCtx, page.Title, page.RawContent)
+	if err != nil {
+		return nil, "", "", err
+	}
+	return page, text, build.ContentHash(page.RawContent), nil
+}
+
+// handleSummaryRegenerate runs a single AI call for the named page,
+// stores the result in the summary cache, and redirects back to the
+// vault. Synchronous because the user is waiting for the row to
+// refresh; the kairos retry policy bounds the worst-case latency.
+func (s *Server) handleSummaryRegenerate(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	rel, abs, err := s.resolveVaultSource(r.PostFormValue("source"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, text, hash, err := s.generateSummaryNow(r.Context(), abs)
+	if err != nil {
+		if s.opts.Logger != nil {
+			s.opts.Logger.Warn("summary regenerate failed", "source", rel, "error", err)
+		}
+		http.Error(w, "regenerate failed: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+	if err := build.UpsertAISummary(s.opts.Cfg, hash, text, s.opts.Cfg.AI.Provider, s.opts.Cfg.AI.Model, s.opts.Logger); err != nil {
+		http.Error(w, "store summary: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if s.opts.Logger != nil {
+		s.opts.Logger.Info("ai summary regenerated", "source", rel, "hash", hash, "chars", len(text))
+	}
+	dest := r.Header.Get("Referer")
+	if dest == "" {
+		dest = "/vault"
+	}
+	http.Redirect(w, r, dest, http.StatusSeeOther)
+}
+
+// handleSummarySuggest returns the AI-generated summary for the page
+// as JSON without persisting it. Used by the editor's "AI Suggestion"
+// button to fill the textarea so the user can review before saving.
+func (s *Server) handleSummarySuggest(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid form: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	source := r.PostFormValue("source")
+	if source == "" {
+		source = r.URL.Query().Get("source")
+	}
+	_, abs, err := s.resolveVaultSource(source)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, text, _, err := s.generateSummaryNow(r.Context(), abs)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusBadGateway)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(map[string]string{"suggestion": text})
 }
 
 // overrideAction labels what the save did for log output. Useful when
