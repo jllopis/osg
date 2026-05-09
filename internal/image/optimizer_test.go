@@ -644,6 +644,35 @@ func TestDownsizeIfNeeded_JPEG(t *testing.T) {
 	}
 }
 
+func TestDownsizeIfNeeded_PNG(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "screenshot.png")
+	createTestPNG(t, path, 4000, 2000)
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+
+	ok := downsizeIfNeeded(path, 1920, 80, false, logger)
+	if !ok {
+		t.Fatal("expected downsizeIfNeeded to return true for oversized PNG")
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, format, err := image.DecodeConfig(f)
+	_ = f.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if format != "png" {
+		t.Errorf("downsized file format = %q, want png (extension must stay)", format)
+	}
+	if cfg.Width != 1920 {
+		t.Errorf("after downsize: width = %d, want 1920", cfg.Width)
+	}
+}
+
 func TestDownsizeIfNeeded_AlreadySmall(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "small.jpg")

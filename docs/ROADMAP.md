@@ -1156,3 +1156,12 @@ optimizacion de imagenes ya no requiere instalar nada en el sistema.
   `quality - 5` (clamp 50): solo lo consumen navegadores antiguos,
   RSS readers y crawlers — no compensa el ancho de banda extra
 
+### 32C — Downsize del original PNG (done)
+- [done] `downsizeIfNeeded` acepta `.png` ademas de jpg/jpeg/webp:
+  capturas de pantalla y diagramas vectorizados se quedaban con
+  dimensiones gigantes en `public/` aunque las variantes responsive
+  ya se generaban
+- [done] Re-encode lossless con `png.BestCompression` (PNG no tiene
+  knob de calidad). Mantiene la extension `.png` para no romper
+  referencias en el HTML
+

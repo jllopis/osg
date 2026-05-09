@@ -644,3 +644,4 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 32A) writeWebP/writeAVIF toman image.Image directo; sin temp JPEG; tests sin skip por cwebp/avifenc
 [done] (Phase 32B) Drop JPEG variants en <picture>: srcset de JPEG eran codigo muerto (todo browser que entiende picture entiende WebP)
 [done] (Phase 32B) Original downsizeado guardado con quality-5 (clamp 50): solo navegadores antiguos / RSS / crawlers
+[done] (Phase 32C) downsizeIfNeeded acepta .png: re-encodea a PNG (lossless, png.BestCompression) tras resize a max width

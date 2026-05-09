@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"image/png"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -445,6 +446,19 @@ func writeJPEG(path string, img image.Image, quality int) error {
 	return jpeg.Encode(f, img, &jpeg.Options{Quality: quality})
 }
 
+// writePNG encodes an image as PNG using BestCompression. PNG is
+// lossless so there is no quality knob; the only saving comes from
+// the resize done by the caller.
+func writePNG(path string, img image.Image) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	enc := &png.Encoder{CompressionLevel: png.BestCompression}
+	return enc.Encode(f, img)
+}
+
 // writeWebP encodes the given image to WebP using the embedded
 // libwebp (gen2brain/webp -> wazero). Method 4 is the library's
 // default quality/speed trade-off; we keep it.
@@ -593,7 +607,7 @@ func downsizeIfNeeded(path string, maxWidth int, quality int, hasWebP bool, logg
 	}
 
 	ext := strings.ToLower(filepath.Ext(path))
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".webp" {
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".webp" && ext != ".png" {
 		return false
 	}
 
@@ -632,6 +646,11 @@ func downsizeIfNeeded(path string, maxWidth int, quality int, hasWebP bool, logg
 			return false
 		}
 		if err := writeWebP(path, resized, quality); err != nil {
+			logger.Warn("downsize original failed", "path", path, "error", err)
+			return false
+		}
+	case ".png":
+		if err := writePNG(path, resized); err != nil {
 			logger.Warn("downsize original failed", "path", path, "error", err)
 			return false
 		}
