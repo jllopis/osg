@@ -78,13 +78,18 @@ func ComputeStats(cfg config.Config) (*SiteStats, error) {
 
 	now := time.Now()
 	for _, p := range siteIndex.Pages {
+		// A page belongs to the scheduler bucket when:
+		//   - non-draft with a future publish_at  → "scheduled future"
+		//   - draft with any publish_at           → "scheduled" (overdue
+		//                                           if publish_at is past)
+		// Past publish_at on a non-draft just means "already published";
+		// it does not need scheduler attention. NextScheduled tracks the
+		// earliest publish_at across the bucket so the scheduler service
+		// either sleeps until then or fires immediately when overdue.
+		hasFuture := !p.PublishAt.IsZero() && p.PublishAt.After(now)
+		hasDueDraft := !p.PublishAt.IsZero() && p.Draft
 		switch {
-		// Scheduled-with-future-date wins over draft so a draft that
-		// has been scheduled to auto-publish counts toward Scheduled
-		// (and updates NextScheduled). Without this swap the scheduler
-		// service couldn't see the post: ComputeStats would classify
-		// it as a plain draft and NextScheduled would never advance.
-		case !p.PublishAt.IsZero() && p.PublishAt.After(now):
+		case hasFuture || hasDueDraft:
 			stats.Scheduled++
 			if stats.NextScheduled.IsZero() || p.PublishAt.Before(stats.NextScheduled) {
 				stats.NextScheduled = p.PublishAt

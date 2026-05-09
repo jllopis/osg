@@ -453,7 +453,7 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		SourcePath:   filePath,
 		Date:         fileDate,
 		PublishAt:    pagePublishAt,
-		Draft:        pickBool(fm, "draft"),
+		Draft:        isDraftFromFrontmatter(fm),
 		Menu:         pickBool(fm, "menu"),
 		Author:       pageAuthor,
 		Image:        pageImage,
@@ -691,6 +691,20 @@ func pickString(fm map[string]any, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// isDraftFromFrontmatter folds the two ways a post can be flagged as
+// draft: the top-level Hugo-style `draft: true` field and OSG's own
+// `osg.publish: draft` (or top-level `publish: draft`). Without this
+// merge a post written with `osg.publish: draft` would slip past
+// page.Draft and the whole draft pipeline (build skip, deferred
+// publications, scheduler classification) would treat it as live.
+func isDraftFromFrontmatter(fm map[string]any) bool {
+	if pickBool(fm, "draft") {
+		return true
+	}
+	_, isDraft := publish.ShouldPublish(fm)
+	return isDraft
 }
 
 // pickTime parses a frontmatter value as a date/time using the same

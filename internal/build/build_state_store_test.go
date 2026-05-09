@@ -1,6 +1,8 @@
 package build
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -125,5 +127,97 @@ func TestLoadDeferredPaths_ReadsRows(t *testing.T) {
 	}
 	if paths[0] != "/a/" || paths[1] != "/b/" {
 		t.Errorf("unexpected paths: %v", paths)
+	}
+}
+
+func TestComputeStats_DueDraftCountsAsScheduled(t *testing.T) {
+	dir := t.TempDir()
+	contentDir := filepath.Join(dir, "content")
+	if err := os.MkdirAll(filepath.Join(contentDir, "2026/05/10/cordura"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// publish_at in the past, still flagged draft → should count as
+	// Scheduled (overdue) so the /scheduler page surfaces it and
+	// NextScheduled advances for the scheduler service to fire.
+	body := `---
+title: Cordura
+osg:
+  publish: draft
+  publish_at: 2024-01-01 00:00
+---
+body
+`
+	if err := os.WriteFile(filepath.Join(contentDir, "2026/05/10/cordura/index.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{ContentDir: contentDir, BaseURL: "https://example.com"}
+	stats, err := ComputeStats(cfg)
+	if err != nil {
+		t.Fatalf("ComputeStats: %v", err)
+	}
+	if stats.Scheduled != 1 {
+		t.Errorf("Scheduled = %d, want 1 for past-dated draft", stats.Scheduled)
+	}
+	if stats.NextScheduled.IsZero() {
+		t.Error("NextScheduled should be set so the scheduler service fires immediately")
+	}
+}
+
+func TestComputeStats_FutureDraftCountsAsScheduled(t *testing.T) {
+	dir := t.TempDir()
+	contentDir := filepath.Join(dir, "content")
+	if err := os.MkdirAll(filepath.Join(contentDir, "post"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := `---
+title: Future
+osg:
+  publish: draft
+  publish_at: 2099-01-01 00:00
+---
+body
+`
+	if err := os.WriteFile(filepath.Join(contentDir, "post/index.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{ContentDir: contentDir, BaseURL: "https://example.com"}
+	stats, err := ComputeStats(cfg)
+	if err != nil {
+		t.Fatalf("ComputeStats: %v", err)
+	}
+	if stats.Scheduled != 1 {
+		t.Errorf("Scheduled = %d, want 1 for future-dated draft", stats.Scheduled)
+	}
+	if stats.Drafts != 0 {
+		t.Errorf("Drafts = %d, want 0 (future date wins over draft classification)", stats.Drafts)
+	}
+}
+
+func TestComputeStats_PlainDraftStaysAsDraft(t *testing.T) {
+	dir := t.TempDir()
+	contentDir := filepath.Join(dir, "content")
+	if err := os.MkdirAll(filepath.Join(contentDir, "post"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := `---
+title: Plain
+osg:
+  publish: draft
+---
+body
+`
+	if err := os.WriteFile(filepath.Join(contentDir, "post/index.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{ContentDir: contentDir, BaseURL: "https://example.com"}
+	stats, err := ComputeStats(cfg)
+	if err != nil {
+		t.Fatalf("ComputeStats: %v", err)
+	}
+	if stats.Drafts != 1 {
+		t.Errorf("Drafts = %d, want 1 for draft without publish_at", stats.Drafts)
+	}
+	if stats.Scheduled != 0 {
+		t.Errorf("Scheduled = %d, want 0 for draft without publish_at", stats.Scheduled)
 	}
 }
