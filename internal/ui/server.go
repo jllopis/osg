@@ -108,10 +108,14 @@ func (s *Server) routes() {
 		http.Redirect(w, r, "/assets/favicon.svg", http.StatusFound)
 	})
 	s.mux.HandleFunc("/", s.handleDashboard)
+	s.mux.HandleFunc("/actions", s.handleActions)
+	s.mux.HandleFunc("/history", s.handleHistory)
 	s.mux.HandleFunc("/vault", s.handleVault)
 	s.mux.HandleFunc("/plugins", s.handlePlugins)
 	s.mux.HandleFunc("/assets", s.handleAssets)
 	s.mux.HandleFunc("/scheduler", s.handleScheduler)
+	s.mux.HandleFunc("GET /operations/{name}/drawer", s.handleOperationDrawer)
+	s.mux.HandleFunc("GET /history/{id}/drawer", s.handleHistoryDrawer)
 	s.mux.HandleFunc("POST /rebuild", s.handleRebuild)
 	s.mux.HandleFunc("GET /rebuild.json", s.handleRebuildJSON)
 	s.mux.HandleFunc("/services", s.handleServices)
@@ -128,13 +132,21 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /operations.json", s.handleOperationsJSON)
 }
 
-// loadTemplates parses each page template against the layout into its own
-// *template.Template keyed by page name. Each page defines a "page" block
-// which the layout invokes — names are unique per template instance, so we
-// don't have collisions across pages.
+// loadTemplates parses each page template against the layout and the
+// shared partial set, keyed by page name. Page templates can therefore
+// invoke any `{{template "<partial>.html" .}}` without per-page parsing.
+//
+// The "fragments" key in the result map is special: it is parsed
+// without the layout so individual partials (e.g. drawer.html) can be
+// rendered directly into HTMX targets.
 func loadTemplates() (map[string]*template.Template, error) {
-	pages := []string{"dashboard", "vault", "plugins", "assets", "scheduler", "services"}
-	out := make(map[string]*template.Template, len(pages))
+	pages := []string{"dashboard", "actions", "history", "vault", "plugins", "assets", "scheduler", "services"}
+	partials := []string{
+		"templates/partials/quick-button.html",
+		"templates/partials/operation-card.html",
+		"templates/partials/drawer.html",
+	}
+	out := make(map[string]*template.Template, len(pages)+1)
 
 	funcs := template.FuncMap{
 		"humanSize": humanSize,
@@ -142,13 +154,26 @@ func loadTemplates() (map[string]*template.Template, error) {
 	}
 
 	for _, name := range pages {
+		files := append([]string{
+			"templates/layout.html",
+			"templates/" + name + ".html",
+		}, partials...)
 		t := template.New(name).Funcs(funcs)
-		t, err := t.ParseFS(templatesFS, "templates/layout.html", "templates/"+name+".html")
+		t, err := t.ParseFS(templatesFS, files...)
 		if err != nil {
 			return nil, fmt.Errorf("parse template %s: %w", name, err)
 		}
 		out[name] = t
 	}
+
+	// Fragment tree: only the partials, no layout. Used to render drawer
+	// content into HTMX targets.
+	fragments := template.New("fragments").Funcs(funcs)
+	fragments, err := fragments.ParseFS(templatesFS, partials...)
+	if err != nil {
+		return nil, fmt.Errorf("parse fragments: %w", err)
+	}
+	out["fragments"] = fragments
 	return out, nil
 }
 

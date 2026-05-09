@@ -9,7 +9,11 @@
   <script src="/assets/htmx.min.js" defer></script>
   <script src="/assets/app.js" defer></script>
 </head>
-<body>
+<body hx-ext="">
+  {{/* Icons live in /assets/icons.svg as a <symbol> sprite. <use> tags
+       reference them cross-document; the browser caches the sprite
+       after the first request. */}}
+
   <div class="layout">
     <aside class="sidebar">
       <div class="brand">
@@ -18,6 +22,8 @@
       </div>
       <nav>
         <a href="/" class="{{if eq .Active "dashboard"}}active{{end}}">Dashboard</a>
+        <a href="/actions" class="{{if eq .Active "actions"}}active{{end}}">Actions</a>
+        <a href="/history" class="{{if eq .Active "history"}}active{{end}}">History</a>
         <a href="/vault" class="{{if eq .Active "vault"}}active{{end}}">Vault</a>
         <a href="/plugins" class="{{if eq .Active "plugins"}}active{{end}}">Plugins</a>
         <a href="/assets" class="{{if eq .Active "assets"}}active{{end}}">Assets</a>
@@ -33,6 +39,14 @@
       {{template "page" .}}
     </main>
   </div>
+
+  {{/* Right-side drawer scaffold. The body is filled via HTMX from
+       /operations/{name}/drawer or /history/{id}/drawer; an empty
+       state lives below for the no-content case. */}}
+  <div id="drawer-backdrop" class="drawer-backdrop" data-drawer-close></div>
+  <aside id="drawer" class="drawer" aria-hidden="true">
+    <div class="drawer-empty">no run selected</div>
+  </aside>
 </body>
 </html>
 {{end}}

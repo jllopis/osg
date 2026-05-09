@@ -1,0 +1,22 @@
+{{define "page"}}
+  <h2>Actions</h2>
+  <p class="subtitle">One-click access to every OSG command. Each card runs the corresponding CLI invocation in a goroutine; logs flow live to the drawer.</p>
+
+  {{/* Quick-action banner: the two most-frequent commands surfaced as
+       prominent buttons. Their state is mirrored from the runner so a
+       running build / deploy is visible from anywhere. */}}
+  {{with .QuickBuild}}
+  <section class="quick-actions">
+    {{template "quick-button.html" .}}
+    {{template "quick-button.html" $.QuickDeploy}}
+  </section>
+  {{end}}
+
+  <section class="action-cards" data-operations-poll>
+    {{range .Operations}}
+      {{if and (ne .Name "build") (ne .Name "deploy")}}
+        {{template "operation-card.html" .}}
+      {{end}}
+    {{end}}
+  </section>
+{{end}}

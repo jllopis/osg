@@ -1,0 +1,66 @@
+{{/* Drawer body. The outer <aside id="drawer"> lives in layout.html;
+     handlers swap this fragment into it via HTMX. Argument: a
+     DrawerView. */}}
+<header class="drawer-head">
+  <svg class="drawer-icon" aria-hidden="true"><use href="/assets/icons.svg#icon-{{.IconName}}"/></svg>
+  <div class="drawer-title">
+    <div class="drawer-name">{{.Name}}</div>
+    <div class="drawer-sub mono">{{.Subtitle}}</div>
+  </div>
+  <span class="status-pill {{.PillClass}}">{{.StatusLabel}}</span>
+  <button type="button" class="drawer-close" data-drawer-close aria-label="Close drawer">
+    <svg><use href="/assets/icons.svg#icon-close"/></svg>
+  </button>
+</header>
+
+<nav class="drawer-tabs" role="tablist">
+  <button class="drawer-tab is-active" data-drawer-tab="output" role="tab">Output</button>
+  <button class="drawer-tab" data-drawer-tab="params" role="tab">Params</button>
+  <button class="drawer-tab" data-drawer-tab="details" role="tab">Details</button>
+</nav>
+
+<section class="drawer-pane is-active" data-drawer-pane="output">
+  {{if .CanStream}}
+  <pre class="drawer-logs" data-drawer-logs="{{.Name}}">{{range .LogTail}}{{.}}
+{{end}}</pre>
+  <p class="fg-dim mono">live · streaming from /operations/{{.Name}}/logs</p>
+  {{else if .LogTail}}
+  <pre class="drawer-logs">{{range .LogTail}}{{.}}
+{{end}}</pre>
+  <p class="fg-dim mono">snapshot · logs from past runs are not retained</p>
+  {{else}}
+  <p class="fg-dim">No log data captured for this run.</p>
+  {{end}}
+</section>
+
+<section class="drawer-pane" data-drawer-pane="params">
+  {{if .ParamsJSON}}
+  <pre class="drawer-params">{{.ParamsJSON}}</pre>
+  {{else}}
+  <p class="fg-dim">No parameters supplied.</p>
+  {{end}}
+</section>
+
+<section class="drawer-pane" data-drawer-pane="details">
+  <dl class="drawer-meta">
+    <dt>Operation</dt><dd>{{.Name}} <span class="kind-pill kind-{{.Kind}}">{{.Kind}}</span></dd>
+    <dt>Status</dt><dd>{{.StatusLabel}}</dd>
+    {{if .StartedAt}}<dt>Started</dt><dd class="mono">{{.StartedAt}}</dd>{{end}}
+    {{if .EndedAt}}<dt>Ended</dt><dd class="mono">{{.EndedAt}}</dd>{{end}}
+    {{if .DurationLabel}}<dt>Duration</dt><dd class="mono">{{.DurationLabel}}</dd>{{end}}
+    {{if .Error}}<dt>Error</dt><dd class="mono err-text">{{.Error}}</dd>{{end}}
+  </dl>
+</section>
+
+<footer class="drawer-actions">
+  {{if .CanRerun}}
+  <form method="post" action="/operations/{{.Name}}/run">
+    <button type="submit" class="btn btn-run"><svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Re-run</button>
+  </form>
+  {{end}}
+  {{if .CanStop}}
+  <form method="post" action="/operations/{{.Name}}/stop">
+    <button type="submit" class="btn btn-stop"><svg class="btn-icon"><use href="/assets/icons.svg#icon-stop"/></svg> Stop</button>
+  </form>
+  {{end}}
+</footer>

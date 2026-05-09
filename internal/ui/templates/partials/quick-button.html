@@ -1,0 +1,24 @@
+{{/* Quick-action button: large card with icon + name + description and
+     a primary Run CTA. Used in the /actions banner and on the
+     dashboard. Argument: an OperationView. */}}
+<div class="quick-button" data-operation="{{.Name}}">
+  <div class="quick-button-head">
+    <svg class="quick-button-icon" aria-hidden="true"><use href="/assets/icons.svg#icon-{{.IconName}}"/></svg>
+    <div>
+      <div class="quick-button-name">{{.Name}}</div>
+      <div class="quick-button-desc">{{.Description}}</div>
+    </div>
+  </div>
+  <div class="quick-button-actions">
+    <span class="status-pill {{.PillClass}}" data-state-pill>{{.StateLabel}}</span>
+    {{if .Running}}
+    <form method="post" action="/operations/{{.Name}}/stop">
+      <button type="submit" class="btn btn-stop"><svg class="btn-icon"><use href="/assets/icons.svg#icon-stop"/></svg> Stop</button>
+    </form>
+    {{else}}
+    <form method="post" action="/operations/{{.Name}}/run">
+      <button type="submit" class="btn btn-run"><svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Run</button>
+    </form>
+    {{end}}
+  </div>
+</div>

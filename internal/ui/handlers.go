@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +23,11 @@ type viewData struct {
 	AssetSummary  AssetSummary
 	SchedulerRuns []SchedulerRun
 	Rebuild       RebuildSnapshot
+	Operations    []OperationView
+	QuickBuild    OperationView
+	QuickDeploy   OperationView
+	HistoryRuns   []HistoryRow
+	HistoryFilter HistoryFilter
 	State
 }
 
@@ -57,7 +63,72 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	s.render(w, "dashboard", s.buildView("dashboard", "Dashboard", r))
+	v := s.buildView("dashboard", "Dashboard", r)
+	v.Operations = operationsViewFromRunner(s.opts.Runner)
+	v.QuickBuild = findOperationView(v.Operations, "build")
+	v.QuickDeploy = findOperationView(v.Operations, "deploy")
+	s.render(w, "dashboard", v)
+}
+
+func (s *Server) handleActions(w http.ResponseWriter, r *http.Request) {
+	v := s.buildView("actions", "Actions", r)
+	v.Operations = operationsViewFromRunner(s.opts.Runner)
+	v.QuickBuild = findOperationView(v.Operations, "build")
+	v.QuickDeploy = findOperationView(v.Operations, "deploy")
+	s.render(w, "actions", v)
+}
+
+func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
+	v := s.buildView("history", "History", r)
+	if s.opts.Runner != nil {
+		filter, view := historyFilterFromQuery(r.URL.Query())
+		rows, err := s.opts.Runner.History(filter)
+		if err != nil && s.opts.Logger != nil {
+			s.opts.Logger.Warn("history query failed", "error", err)
+		}
+		v.HistoryRuns = historyRowsFromRuns(rows)
+		v.HistoryFilter = view
+	}
+	s.render(w, "history", v)
+}
+
+func (s *Server) handleOperationDrawer(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	view, ok := drawerViewForOperation(s.opts.Runner, name)
+	if !ok {
+		http.Error(w, "operation not found", http.StatusNotFound)
+		return
+	}
+	s.renderFragment(w, "drawer.html", view)
+}
+
+func (s *Server) handleHistoryDrawer(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+	view, ok := drawerViewForHistory(s.opts.Runner, id)
+	if !ok {
+		http.Error(w, "run not found", http.StatusNotFound)
+		return
+	}
+	s.renderFragment(w, "drawer.html", view)
+}
+
+// renderFragment writes a single partial template (no layout). Used by
+// HTMX endpoints that swap content into the drawer or other targets.
+func (s *Server) renderFragment(w http.ResponseWriter, name string, data any) {
+	tpl, ok := s.templates["fragments"]
+	if !ok {
+		http.Error(w, "fragments not loaded", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tpl.ExecuteTemplate(w, name, data); err != nil && s.opts.Logger != nil {
+		s.opts.Logger.Error("render fragment failed", "name", name, "error", err)
+	}
 }
 
 func (s *Server) handleVault(w http.ResponseWriter, r *http.Request) {

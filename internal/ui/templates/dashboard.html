@@ -2,6 +2,13 @@
   <h2>Dashboard</h2>
   <p class="subtitle">Overview of the current vault and build state.</p>
 
+  {{with .QuickBuild}}
+  <section class="quick-actions">
+    {{template "quick-button.html" .}}
+    {{template "quick-button.html" $.QuickDeploy}}
+  </section>
+  {{end}}
+
   <div class="cards">
     <div class="card">
       <div class="label">Posts</div>

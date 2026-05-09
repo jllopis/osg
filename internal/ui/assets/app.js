@@ -50,7 +50,128 @@
     setupServicesPolling();
     setupVaultFilter();
     setupRebuildBar();
+    setupDrawer();
+    setupOperationsPolling();
   });
+
+  // Drawer: opens on htmx:afterSwap when target is #drawer; closes on
+  // backdrop click, Esc key, or any element with [data-drawer-close].
+  // Tab switching is plain CSS class toggling — no router needed.
+  function setupDrawer() {
+    const drawer = document.getElementById("drawer");
+    const backdrop = document.getElementById("drawer-backdrop");
+    if (!drawer || !backdrop) return;
+
+    function open() {
+      drawer.classList.add("is-open");
+      backdrop.classList.add("is-open");
+      drawer.setAttribute("aria-hidden", "false");
+      // Default-active tab: first one.
+      activateTab(drawer, "output");
+      streamDrawerLogsIfNeeded(drawer);
+    }
+    function close() {
+      drawer.classList.remove("is-open");
+      backdrop.classList.remove("is-open");
+      drawer.setAttribute("aria-hidden", "true");
+      stopDrawerStream();
+    }
+
+    document.body.addEventListener("htmx:afterSwap", function (e) {
+      if (e.detail && e.detail.target && e.detail.target.id === "drawer") {
+        open();
+      }
+    });
+    document.addEventListener("click", function (e) {
+      const t = e.target;
+      if (!t) return;
+      if (t.matches && (t.matches("[data-drawer-close]") || t.closest("[data-drawer-close]"))) {
+        close();
+        return;
+      }
+      const tab = t.closest && t.closest("[data-drawer-tab]");
+      if (tab && drawer.contains(tab)) {
+        activateTab(drawer, tab.getAttribute("data-drawer-tab"));
+      }
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && drawer.classList.contains("is-open")) close();
+    });
+  }
+
+  function activateTab(drawer, name) {
+    drawer.querySelectorAll("[data-drawer-tab]").forEach(function (b) {
+      b.classList.toggle("is-active", b.getAttribute("data-drawer-tab") === name);
+    });
+    drawer.querySelectorAll("[data-drawer-pane]").forEach(function (p) {
+      p.classList.toggle("is-active", p.getAttribute("data-drawer-pane") === name);
+    });
+  }
+
+  let drawerEventSource = null;
+  function streamDrawerLogsIfNeeded(drawer) {
+    stopDrawerStream();
+    const pre = drawer.querySelector("[data-drawer-logs]");
+    if (!pre) return;
+    const name = pre.getAttribute("data-drawer-logs");
+    if (!name) return;
+    drawerEventSource = new EventSource("/operations/" + encodeURIComponent(name) + "/logs");
+    drawerEventSource.addEventListener("log", function (ev) {
+      const nearBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 20;
+      pre.textContent += ev.data + "\n";
+      if (nearBottom) pre.scrollTop = pre.scrollHeight;
+    });
+    drawerEventSource.onerror = function () {
+      // Browser will retry; if it doesn't reconnect that's fine — drawer
+      // shows the buffered tail until the user closes it.
+    };
+  }
+  function stopDrawerStream() {
+    if (drawerEventSource) {
+      drawerEventSource.close();
+      drawerEventSource = null;
+    }
+  }
+
+  // Polls /operations.json for the /actions page so cards keep their
+  // pill state and uptime in sync without a full reload.
+  function setupOperationsPolling() {
+    const root = document.querySelector("[data-operations-poll]");
+    if (!root) return;
+
+    const pillClass = {
+      running: "status-pill is-running",
+      starting: "status-pill is-running",
+      idle: "status-pill is-idle",
+      error: "status-pill is-error",
+      cancelled: "status-pill is-warn",
+      stopping: "status-pill is-warn",
+    };
+
+    function update() {
+      fetch("/operations.json", { headers: { Accept: "application/json" } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data || !Array.isArray(data.operations)) return;
+          data.operations.forEach(function (op) {
+            const card = root.querySelector('[data-operation="' + cssEscape(op.name) + '"]');
+            if (!card) return;
+            const pill = card.querySelector("[data-state-pill]");
+            if (pill) {
+              pill.textContent = op.state;
+              pill.className = pillClass[op.state] || "status-pill is-idle";
+            }
+          });
+        })
+        .catch(function () {});
+    }
+    function cssEscape(s) {
+      if (window.CSS && CSS.escape) return CSS.escape(s);
+      return String(s).replace(/["\\]/g, "\\$&");
+    }
+    update();
+    setInterval(update, 2500);
+  }
 
   function setupRebuildBar() {
     const bar = document.querySelector("[data-rebuild-bar]");

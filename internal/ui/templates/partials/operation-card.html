@@ -1,0 +1,44 @@
+{{/* OperationView card. Used on /actions for every defined operation.
+     Header: icon + name + description; pill state; meta line with last
+     run summary; footer with Run/Stop button + History link. */}}
+<article class="op-card" data-operation="{{.Name}}">
+  <header class="op-card-head">
+    <svg class="op-card-icon" aria-hidden="true"><use href="/assets/icons.svg#icon-{{.IconName}}"/></svg>
+    <div class="op-card-title">
+      <div class="op-card-name">{{.Name}}</div>
+      <div class="op-card-desc">{{.Description}}</div>
+    </div>
+    <span class="status-pill {{.PillClass}}" data-state-pill>{{.StateLabel}}</span>
+  </header>
+
+  <div class="op-card-meta mono">
+    {{if .Running}}
+      running for {{.UptimeLabel}}
+    {{else if .HasLastRun}}
+      last {{.LastStatusLabel}} {{.LastRanRelative}}{{if .LastDurationLabel}} · {{.LastDurationLabel}}{{end}}
+    {{else}}
+      never run
+    {{end}}
+  </div>
+
+  <footer class="op-card-actions">
+    {{if .Running}}
+    <form method="post" action="/operations/{{.Name}}/stop">
+      <button type="submit" class="btn btn-stop">
+        <svg class="btn-icon"><use href="/assets/icons.svg#icon-stop"/></svg> Stop
+      </button>
+    </form>
+    {{else}}
+    <form method="post" action="/operations/{{.Name}}/run">
+      <button type="submit" class="btn btn-run">
+        <svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Run
+      </button>
+    </form>
+    {{end}}
+    <a class="op-card-history" href="/history?name={{.Name}}">History</a>
+    <button type="button" class="op-card-inspect"
+            hx-get="/operations/{{.Name}}/drawer"
+            hx-target="#drawer"
+            hx-swap="innerHTML">Inspect</button>
+  </footer>
+</article>

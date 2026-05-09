@@ -1,0 +1,60 @@
+{{define "page"}}
+  <h2>History</h2>
+  <p class="subtitle">Audit log of every operation triggered. Click a row to inspect the run.</p>
+
+  <form class="history-filters" method="get" action="/history">
+    <select name="kind">
+      <option value="">All kinds</option>
+      <option value="service" {{if eq .HistoryFilter.Kind "service"}}selected{{end}}>Services</option>
+      <option value="task" {{if eq .HistoryFilter.Kind "task"}}selected{{end}}>Tasks</option>
+    </select>
+    <select name="status">
+      <option value="">Any status</option>
+      <option value="ok" {{if eq .HistoryFilter.Status "ok"}}selected{{end}}>OK</option>
+      <option value="error" {{if eq .HistoryFilter.Status "error"}}selected{{end}}>Error</option>
+      <option value="cancelled" {{if eq .HistoryFilter.Status "cancelled"}}selected{{end}}>Cancelled</option>
+      <option value="running" {{if eq .HistoryFilter.Status "running"}}selected{{end}}>Running</option>
+    </select>
+    <input type="search" name="name" placeholder="Filter by name…" value="{{.HistoryFilter.Name}}">
+    <button type="submit" class="btn">Filter</button>
+    <a class="history-clear" href="/history">Clear</a>
+    <span class="history-count mono fg-dim">{{len .HistoryRuns}} runs</span>
+  </form>
+
+  {{if .HistoryRuns}}
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th>Started</th>
+        <th>Operation</th>
+        <th>Status</th>
+        <th class="num">Duration</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .HistoryRuns}}
+      <tr data-history-row data-id="{{.ID}}"
+          hx-get="/history/{{.ID}}/drawer"
+          hx-target="#drawer"
+          hx-swap="innerHTML"
+          hx-trigger="click">
+        <td class="mono">{{.StartedAt.Local.Format "2006-01-02 15:04:05"}}</td>
+        <td>
+          <svg class="row-icon"><use href="/assets/icons.svg#icon-{{.IconName}}"/></svg>
+          <strong>{{.Name}}</strong>
+          <span class="kind-pill kind-{{.Kind}}">{{.Kind}}</span>
+        </td>
+        <td>
+          <span class="status-pill {{.PillClass}}">{{.StatusLabel}}</span>
+        </td>
+        <td class="num mono">{{if .DurationLabel}}{{.DurationLabel}}{{else}}—{{end}}</td>
+        <td class="fg-dim">{{if .Error}}{{.Error}}{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">No runs match the current filter.</div>
+  {{end}}
+{{end}}

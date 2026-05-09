@@ -393,3 +393,324 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   color: var(--fg-dim);
   font-size: 0.875rem;
 }
+
+/* ============================================================ */
+/* Etapa 3: actions, history, drawer, status pills              */
+/* ============================================================ */
+
+/* Universal status pill — used across cards, history rows, drawer
+   header. Strong color, capsule shape. The is-running variant pulses
+   to signal active work. */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid transparent;
+}
+.status-pill.is-idle {
+  background: var(--bg-elev-2);
+  color: var(--fg-dim);
+  border-color: var(--border);
+}
+.status-pill.is-running {
+  background: color-mix(in srgb, var(--nord8) 20%, transparent);
+  color: var(--nord8);
+  border-color: var(--nord8);
+  animation: pill-pulse 1.6s ease-in-out infinite;
+}
+.status-pill.is-ok {
+  background: color-mix(in srgb, var(--ok) 20%, transparent);
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.status-pill.is-error {
+  background: color-mix(in srgb, var(--err) 25%, transparent);
+  color: var(--err);
+  border-color: var(--err);
+}
+.status-pill.is-warn {
+  background: color-mix(in srgb, var(--warn) 22%, transparent);
+  color: var(--warn);
+  border-color: var(--warn);
+}
+@keyframes pill-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--nord8) 50%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--nord8) 0%, transparent); }
+}
+
+/* Kind pill — small marker next to operation names ("service" / "task"). */
+.kind-pill {
+  display: inline-block;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--bg-elev-2);
+  color: var(--fg-dim);
+  margin-left: 0.4rem;
+}
+.kind-pill.kind-service { color: var(--nord9); }
+.kind-pill.kind-task    { color: var(--nord15); }
+
+/* Quick-action banner (top of /actions and on /dashboard) */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.quick-button {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.quick-button-head { display: flex; align-items: flex-start; gap: 0.75rem; }
+.quick-button-icon {
+  width: 36px; height: 36px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.quick-button-name { font-size: 1.05rem; font-weight: 600; }
+.quick-button-desc { color: var(--fg-dim); font-size: 0.8rem; margin-top: 0.15rem; }
+.quick-button-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* Operation cards grid (/actions main area) */
+.action-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 1rem;
+}
+.op-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.op-card-head {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+.op-card-icon {
+  width: 28px; height: 28px;
+  color: var(--accent);
+}
+.op-card-name { font-size: 1rem; font-weight: 600; }
+.op-card-desc { color: var(--fg-dim); font-size: 0.8rem; margin-top: 0.15rem; }
+.op-card-meta {
+  font-size: 0.75rem;
+  color: var(--fg-dim);
+}
+.op-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: auto;
+}
+.op-card-history,
+.op-card-inspect {
+  font-size: 0.8rem;
+  color: var(--fg-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+}
+.op-card-history:hover,
+.op-card-inspect:hover { color: var(--accent); }
+
+/* Buttons with icons (Run / Stop / Re-run) */
+.btn-run {
+  border: 1px solid var(--ok);
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
+.btn-run:hover { background: color-mix(in srgb, var(--ok) 22%, transparent); }
+.btn-stop {
+  border: 1px solid var(--err);
+  color: var(--err);
+  background: color-mix(in srgb, var(--err) 10%, transparent);
+}
+.btn-stop:hover { background: color-mix(in srgb, var(--err) 22%, transparent); }
+.btn-icon {
+  width: 14px; height: 14px;
+  vertical-align: -2px;
+  margin-right: 0.3rem;
+}
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* History page */
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.history-filters select,
+.history-filters input[type="search"] {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-elev);
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+.history-filters .history-clear {
+  font-size: 0.8rem;
+  color: var(--fg-dim);
+}
+.history-filters .history-count { margin-left: auto; }
+.history-table { cursor: default; }
+.history-table tbody tr[data-history-row] { cursor: pointer; }
+.history-table tbody tr[data-history-row]:hover { background: var(--bg-elev-2); }
+.row-icon {
+  width: 16px; height: 16px;
+  vertical-align: -3px;
+  margin-right: 0.35rem;
+  color: var(--fg-dim);
+}
+
+/* Drawer (right-side overlay) */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease-out;
+}
+.drawer-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: min(480px, 100vw);
+  background: var(--bg-elev);
+  border-left: 1px solid var(--border);
+  z-index: 100;
+  transform: translateX(100%);
+  transition: transform 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.drawer.is-open { transform: translateX(0); }
+.drawer-empty {
+  display: none;
+}
+.drawer-head {
+  display: grid;
+  grid-template-columns: 28px 1fr auto auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-icon { width: 24px; height: 24px; color: var(--accent); }
+.drawer-name { font-weight: 600; font-size: 1rem; }
+.drawer-sub { font-size: 0.75rem; color: var(--fg-dim); }
+.drawer-close {
+  width: 28px; height: 28px;
+  background: transparent;
+  border: 0;
+  color: var(--fg-dim);
+  cursor: pointer;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.drawer-close:hover { color: var(--fg); background: var(--bg-elev-2); }
+.drawer-close svg { width: 16px; height: 16px; }
+
+.drawer-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-tab {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--fg-dim);
+  padding: 0.6rem 1rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.drawer-tab.is-active {
+  color: var(--fg);
+  border-bottom-color: var(--accent);
+}
+
+.drawer-pane {
+  display: none;
+  padding: 0.9rem 1rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.drawer-pane.is-active { display: block; }
+
+.drawer-logs,
+.drawer-params {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+  margin: 0;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: calc(100vh - 240px);
+  overflow: auto;
+  color: var(--fg-muted);
+}
+
+.drawer-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 0.7rem;
+  row-gap: 0.35rem;
+  margin: 0;
+  font-size: 0.8rem;
+}
+.drawer-meta dt { color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.7rem; }
+.drawer-meta dd { margin: 0; color: var(--fg-muted); word-break: break-word; }
+
+.drawer-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--border);
+}
