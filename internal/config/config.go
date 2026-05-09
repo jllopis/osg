@@ -226,6 +226,12 @@ type CommentsConfig struct {
 type UIConfig struct {
 	// Addr is the bind address for the dashboard (default ":1314").
 	Addr string `koanf:"addr" yaml:"addr"`
+	// Autostart lists services that should be triggered automatically
+	// when `osg ui` boots. Names match operations.Definition.Name for
+	// kind=service entries (typical values: "scheduler", "watcher",
+	// "serve", "api"). Unknown or non-service names are skipped with
+	// a warning. Empty list = no autostart, the historical default.
+	Autostart []string `koanf:"autostart" yaml:"autostart"`
 }
 
 // AuthProviderConfig describes a single OAuth2 provider.
@@ -952,6 +958,13 @@ logging:
 # ui:
 #   addr: ":1314"        # Bind address. Bare ":port" is normalised to
 #                        # 127.0.0.1:port. Override with --addr at the CLI.
+#   autostart:           # Services triggered automatically when osg ui
+#                        # boots. Names match the operation registry
+#                        # (kind=service): scheduler, watcher, serve, api.
+#                        # Unknown / non-service names are skipped with a
+#                        # warning. Empty list = nothing auto-starts.
+#     - scheduler        # required for auto-publish (osg.publish_at) to fire
+#     - watcher          # auto-rebuild on vault changes
 # -----------------------------------------------------------------------------
 # Interactions (views, likes/dislikes)
 # -----------------------------------------------------------------------------

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"path/filepath"
 	"strings"
@@ -56,6 +57,13 @@ func RunUI(ctx context.Context, opts CLIOptions) error {
 
 	runner := operations.New(buildOperationDefinitions(opts, cfg, store), store)
 
+	// Auto-start the services the user listed under ui.autostart.
+	// Tasks are silently skipped (they're meant to be triggered
+	// manually); unknown names produce a warning. The runner already
+	// rejects double-starts, so a re-run of `osg ui` after a crash
+	// where the systemd unit auto-restarted is idempotent.
+	autostartServices(runner, cfg.UI.Autostart, logger)
+
 	srv, err := ui.NewServer(ui.ServerOptions{
 		Addr:       addr,
 		Version:    Version,
@@ -68,6 +76,47 @@ func RunUI(ctx context.Context, opts CLIOptions) error {
 		return err
 	}
 	return srv.Run(ctx)
+}
+
+// autostartServices triggers each service named in the UI autostart
+// list. Names that aren't registered services are skipped with a
+// warning so a typo doesn't silently disable the feature; tasks (one
+// shots like build / deploy) are also skipped because triggering them
+// at boot would do unwanted work.
+func autostartServices(runner *operations.Runner, names []string, logger *slog.Logger) {
+	if runner == nil || len(names) == 0 {
+		return
+	}
+	defs := map[string]operations.Definition{}
+	for _, d := range runner.Definitions() {
+		defs[d.Name] = d
+	}
+	for _, name := range names {
+		def, ok := defs[name]
+		if !ok {
+			if logger != nil {
+				logger.Warn("ui.autostart: unknown service, skipping", "name", name)
+			}
+			continue
+		}
+		if def.Kind != operations.KindService {
+			if logger != nil {
+				logger.Warn("ui.autostart: skipping non-service entry",
+					"name", name, "kind", def.Kind)
+			}
+			continue
+		}
+		if _, err := runner.Trigger(name, nil); err != nil {
+			if logger != nil {
+				logger.Warn("ui.autostart: trigger failed",
+					"name", name, "error", err)
+			}
+			continue
+		}
+		if logger != nil {
+			logger.Info("ui.autostart: service started", "name", name)
+		}
+	}
 }
 
 // OperationsDBPath returns the unified audit DB path. Lives in the same

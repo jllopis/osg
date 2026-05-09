@@ -284,6 +284,13 @@ serve_debounce_ms: 300
 # ui:
 #   addr: ":1314"        # Bind address. Bare ":port" is normalised to
 #                        # 127.0.0.1:port. Override with --addr at the CLI.
+#   autostart:           # Services triggered automatically when `osg ui`
+#                        # boots. Names match the operation registry
+#                        # (kind=service): scheduler, watcher, serve, api.
+#                        # Unknown / non-service names are skipped with a
+#                        # warning. Empty list = nothing auto-starts.
+#     - scheduler        # required for auto-publish (osg.publish_at) to fire
+#     - watcher          # auto-rebuild on vault changes
 
 # -----------------------------------------------------------------------------
 # Interactions (views, likes/dislikes)
