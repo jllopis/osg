@@ -1042,3 +1042,117 @@ no se invoca `osg ui`.
   - Tabla de ficheros con filtro client-side (reusa `setupVaultFilter`)
   - Mutaciones (regenerar variants, convertir formato) deferred:
     `osg build` ya optimiza, y watcher/scheduler lo disparan
+
+## Phase 31 — Web UI operativa: tasks + history (done)
+
+`osg ui` deja de ser solo observable y pasa a ejecutar todos los comandos
+del CLI desde el navegador. Audit log persistente y panel lateral de
+inspeccion al estilo Linear/Kestra.
+
+### 31A — Operations runner unificado (done)
+- [done] `internal/operations.Runner` generaliza `Supervisor` (servicios
+  long-running) y el rebuilder one-shot detras de la misma API:
+  `Trigger`/`Stop`/`Snapshot`/`Logs`/`History`. Concurrencia por nombre
+  (un build serializa con build, check + audit corren en paralelo)
+- [done] `Definition{Name, Kind, Description, Run RunFunc}` con `Kind`
+  ∈ {`service`, `task`} y closures inyectados desde `app/ui.go` para
+  reusar `RunBuild`, `RunDeploy`, `RunCheck`, etc.
+- [done] Ring buffer 500 lineas por run con `Subscribe(ctx)` para SSE
+- [done] `internal/operations.Store` (SQLite via `modernc.org/sqlite`,
+  WAL) con tabla `operations_runs` (id, name, kind, params JSON,
+  started_at, ended_at, status, error). `Begin`/`Finish`/`Recent`/
+  `MarkInterruptedRunning` para shutdown sin runs colgando
+- [done] Migracion automatica del legado `.osg/scheduler.db`:
+  bootstrap copia rows al esquema nuevo y deja `.osg/scheduler.db.bak`
+
+### 31B — Tasks one-shot (done)
+- [done] Definitions registradas: `init`, `update-content`, `build`,
+  `deploy`, `check`, `audit`, `new`, `theme-init`, `plugin-install`,
+  `import-wordpress`, `import-hugo`. Cada una cierra sobre los closures
+  de `app.Run*` que ya existen
+- [done] `POST /operations/{name}/run` (303 a Referer; JSON cuando se
+  pide por Accept). `POST /operations/{name}/stop` cancela contexto
+- [done] `POST /operations/{name}/run-flow` ejecuta secuencia
+  `init → update-content → check → build → deploy` desde la operacion
+  pulsada en adelante (aborta al primer error)
+- [done] `GET /operations/{name}/logs` SSE con replay del ring buffer
+  + heartbeat 15s
+
+### 31C — UI: /actions, /history, drawer (done)
+- [done] `/actions` como pipeline horizontal (5 nodos init→deploy)
+  con flechas, status pill por estado, botones "Run" y "Run from here →"
+- [done] `/history` tabla cronologica con filtros (name/kind/status),
+  pills coloreadas (ok/error/cancelled/running), duracion mono
+- [done] Drawer lateral derecho con tabs Output/Params/Details: log
+  en vivo via SSE para active runs, snapshot estatico para finalizadas,
+  Re-run/Stop en footer. HTMX `hx-get → hx-target=#drawer`
+- [done] Iconos sprite SVG (`internal/ui/assets/icons.svg`) con `<symbol>`
+  por operacion (build=hammer, deploy=cloud-upload, check=clipboard,
+  audit=search, new=plus, theme=palette, etc.)
+
+### 31D — Parameter forms + confirmacion (done)
+- [done] `operationParamRegistry` (mapa name → []ParamDef) define
+  campos bool/string/select por operacion. Plantilla `op-field.html`
+  renderiza el control correspondiente; `paramsFromForm` coerce a
+  map[string]any que llega al RunFunc
+- [done] Modal de confirmacion (`<dialog>` nativo) para Deploy y los
+  importadores via `data-confirm` en el form
+- [done] Forms colapsables (`<details>` cerrado por defecto) en
+  /vault, /plugins, /themes, /import para que la pagina principal sea
+  el inventario y el formulario quede oculto hasta que se necesita
+
+### 31E — Pipeline view + reorganizacion (done)
+- [done] /actions deja de ser un grid de tareas; pasa a ser la
+  visualizacion del flow canonico (`actionFlow = [init, update-content,
+  check, build, deploy]`)
+- [done] Tasks domain-specific movidas a su pagina natural: `new` en
+  /vault, `plugin-install` en /plugins, `theme-init` en /themes,
+  `import-{wordpress,hugo}` en /import. `audit` con su propia pagina
+  y tabla de findings (severity/category/file/message/fix)
+- [done] Quick-action banner en /dashboard con cards Build/Deploy
+  (mismo partial `quick-button.html`, mismas pills + Stop)
+- [done] Boton "Inspect" en cada card abre el drawer con la run
+  activa o la ultima
+
+### 31F — Pulido v3 (done)
+- [done] `Runner.lastLogs` retiene el tail de la ultima ejecucion
+  finalizada en memoria (por nombre, sustituido en cada finish), de
+  forma que el drawer muestre el log de la run anterior tras volver
+  a idle. Logs no se persisten en disco (in-memory only)
+- [done] `drawerViewForHistory` cruza el row solicitado contra
+  `Runner.Snapshot()`: si coincide con `Active.ID` se streamea, si
+  coincide con `LastRun.ID` se muestra el tail capturado, runs mas
+  antiguas siguen mostrando "No log data captured"
+- [done] Card swap completo en transiciones de estado: cuatro
+  partials (`flow-node`, `op-card`, `quick-button`, `task-form`)
+  llevan `data-card-style` + `data-state`; el poller compara contra
+  `/operations.json` y, cuando el estado cambia, hace fetch a
+  `/operations/{name}/card?style=...` y `replaceWith` para refrescar
+  meta line + boton Run/Stop sin recargar la pagina
+- [done] Drop del bloque "Services placeholder" del dashboard
+  (cubierto por la entrada Services del nav)
+
+## Phase 32 — Image pipeline: encoders embebidos (done)
+
+Eliminada la dependencia externa de las CLIs `cwebp` y `avifenc`. La
+optimizacion de imagenes ya no requiere instalar nada en el sistema.
+
+### 32A — Encoders WebP/AVIF embebidos (done)
+- [done] `github.com/gen2brain/webp` v0.5.5 (libwebp compilado a WASM,
+  ejecutado via wazero — el mismo runtime que ya usamos para plugins)
+- [done] `github.com/gen2brain/avif` v0.4.4 (libavif analogo)
+- [done] `writeWebP`/`writeAVIF` toman `image.Image` directamente,
+  sin pasos intermedios JPEG en disco. Bucle por width re-encodea
+  desde la imagen redimensionada en RAM
+- [done] `Options.WebP`/`Options.AVIF` siguen siendo kill switches
+  para el operador, pero ya no estan gateados por `exec.LookPath`
+- [done] Tests sin skips por CLI ausente (encoders siempre disponibles)
+
+### 32B — Variants y calidad del original (done)
+- [done] Dropped JPEG variants en `<picture>`: cualquier navegador
+  que entiende `<picture>` entiende WebP, asi que las srcset de JPEG
+  eran codigo muerto en la practica
+- [done] El original (downsizeado a max width) se guarda con
+  `quality - 5` (clamp 50): solo lo consumen navegadores antiguos,
+  RSS readers y crawlers — no compensa el ancho de banda extra
+

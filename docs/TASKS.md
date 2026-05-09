@@ -609,3 +609,38 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 27B) Dispatcher inline en sidebar-right block iterando sidebar_widgets
 [done] (Phase 27B) Tests: normalisation de sidebar_widgets (trim, dedupe, validacion)
 [done] (Phase 27B) config.yaml.example y DefaultConfigYAML mirror con seccion Sidebar widgets
+
+[done] (Phase 31A) internal/operations.Runner unifica Supervisor + rebuilder one-shot (Trigger/Stop/Snapshot/Logs/History, concurrencia por nombre)
+[done] (Phase 31A) internal/operations.Store sobre SQLite (.osg/operations.db) con tabla operations_runs
+[done] (Phase 31A) Migracion automatica de .osg/scheduler.db legado al esquema unificado
+[done] (Phase 31A) Tests: lifecycle del runner + persistencia + concurrencia por kind
+
+[done] (Phase 31B) Definitions registradas: init, update-content, build, deploy, check, audit, new, theme-init, plugin-install, import-wordpress, import-hugo
+[done] (Phase 31B) POST /operations/{name}/run + stop + run-flow (303 a Referer; JSON via Accept)
+[done] (Phase 31B) GET /operations/{name}/logs SSE con replay del ring buffer + heartbeat 15s
+
+[done] (Phase 31C) /actions como pipeline horizontal (init→update-content→check→build→deploy)
+[done] (Phase 31C) /history tabla cronologica con filtros (name/kind/status), pills coloreadas, duracion mono
+[done] (Phase 31C) Drawer lateral derecho via HTMX (hx-target=#drawer) con tabs Output/Params/Details + Re-run/Stop
+[done] (Phase 31C) Iconos sprite SVG en internal/ui/assets/icons.svg con <symbol> por operacion
+
+[done] (Phase 31D) operationParamRegistry: bool/string/select fields por operacion; partial op-field.html renderiza el control
+[done] (Phase 31D) Modal de confirmacion via <dialog> nativo para deploy + import-{wordpress,hugo} (data-confirm)
+[done] (Phase 31D) Forms colapsables en /vault, /plugins, /themes, /import (page-section + collapsible-section)
+
+[done] (Phase 31E) Tasks domain-specific movidas: new→/vault, plugin-install→/plugins, theme-init→/themes, import-*→/import, audit→/audit
+[done] (Phase 31E) Quick-action banner Build/Deploy en /dashboard via partial quick-button.html
+[done] (Phase 31E) Pagina /audit con tabla de findings (severity pill / category / file / message / fix)
+[done] (Phase 31E) Boton Inspect en cada card abre drawer con run activa o ultima
+
+[done] (Phase 31F) Runner.lastLogs retiene tail de ultima ejecucion en memoria (por nombre); drawer surface logs tras volver a idle
+[done] (Phase 31F) drawerViewForHistory: surface logs si row.ID == Active.ID o LastRun.ID; runs antiguas siguen sin log
+[done] (Phase 31F) Card swap completo en transiciones de estado: data-card-style + data-state en flow-node, op-card, quick-button, task-form
+[done] (Phase 31F) GET /operations/{name}/card?style=... renderiza partial actualizado para fetch+replaceWith
+[done] (Phase 31F) Drop del bloque Services placeholder del dashboard (cubierto por nav)
+
+[done] (Phase 32A) WebP encoder embebido (gen2brain/webp v0.5.5, libwebp -> WASM via wazero)
+[done] (Phase 32A) AVIF encoder embebido (gen2brain/avif v0.4.4, libavif analogo)
+[done] (Phase 32A) writeWebP/writeAVIF toman image.Image directo; sin temp JPEG; tests sin skip por cwebp/avifenc
+[done] (Phase 32B) Drop JPEG variants en <picture>: srcset de JPEG eran codigo muerto (todo browser que entiende picture entiende WebP)
+[done] (Phase 32B) Original downsizeado guardado con quality-5 (clamp 50): solo navegadores antiguos / RSS / crawlers

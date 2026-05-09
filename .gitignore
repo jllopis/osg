@@ -18,7 +18,14 @@ cover.out
 
 # Runtime / cache
 .osg/
+.claude/
+.playwright-mcp/
 examples/sample-site/public/
+examples/sample-site/plugins/
+
+# Local working files (root-level dev scratch — not part of the repo)
+/config.yaml
+/idea-pool.md
 
 # Rust / WASM build artifacts
 examples/plugins/**/target/
