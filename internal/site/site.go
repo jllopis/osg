@@ -2,6 +2,7 @@ package site
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -477,10 +478,7 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 	}
 
 	page.WordCount = len(strings.Fields(string(body)))
-	page.ReadingTime = page.WordCount / 200
-	if page.ReadingTime < 1 {
-		page.ReadingTime = 1
-	}
+	page.ReadingTime = max(page.WordCount/200, 1)
 
 	return page, nil, nil
 }
@@ -621,8 +619,8 @@ func pathFromRel(rel string) string {
 	if strings.HasSuffix(rel, "/_index.md") {
 		return "/" + strings.TrimSuffix(rel, "_index.md")
 	}
-	if strings.HasSuffix(rel, ".md") {
-		return "/" + strings.TrimSuffix(rel, ".md") + "/"
+	if rest, ok := strings.CutSuffix(rel, ".md"); ok {
+		return "/" + rest + "/"
 	}
 	if strings.HasPrefix(rel, "/") {
 		return rel
@@ -758,9 +756,7 @@ func pickTaxonomies(fm map[string]any) map[string][]string {
 				out[key] = toStringSlice(raw)
 			}
 		case map[string][]string:
-			for key, raw := range v {
-				out[key] = raw
-			}
+			maps.Copy(out, v)
 		}
 	}
 
