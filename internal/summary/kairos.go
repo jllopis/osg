@@ -351,11 +351,10 @@ func newQwenProvider(cfg AIConfig) (llm.Provider, error) {
 }
 
 func newOllamaProvider(cfg AIConfig) (llm.Provider, error) {
-	// Kairos's llm.NewOllama hardcodes a 120s HTTP client timeout
-	// that silently overrides cfg.AI.Timeout for slow local models.
-	// newOllamaClient (internal/summary/ollama.go) returns an
-	// http.Client without a built-in timeout so the request context
-	// — which the caller already wraps with cfg.AI.Timeout — is the
-	// only deadline that fires.
-	return newOllamaClient(cfg.BaseURL), nil
+	// WithOllamaTimeout(0) disables kairos's own http.Client.Timeout
+	// so the only deadline that fires is the one the caller pushes
+	// into the request context. internal/build and internal/ui both
+	// wrap each Chat call with context.WithTimeout(cfg.AI.Timeout),
+	// which is what the operator actually configured.
+	return llm.NewOllama(cfg.BaseURL, llm.WithOllamaTimeout(0)), nil
 }

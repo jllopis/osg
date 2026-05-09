@@ -2,10 +2,7 @@ package summary
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -612,81 +609,5 @@ func TestChatWithRetry_HonoursContextCancel(t *testing.T) {
 	_, err := kp.Summarize(ctx, "Title", "body content")
 	if err == nil {
 		t.Fatal("expected error after context cancel, got nil")
-	}
-}
-
-func TestOllamaProvider_RespectsContextDeadline(t *testing.T) {
-	// Server delays the response by 5s. The client carries a 100ms
-	// context deadline. The provider must abort at the deadline
-	// (not at the kairos default of 120s) — proving cfg.AI.Timeout
-	// will actually kick in for slow local models.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		select {
-		case <-time.After(800 * time.Millisecond):
-			_, _ = w.Write([]byte(`{"message":{"role":"assistant","content":"late"},"done":true}`))
-		case <-r.Context().Done():
-		}
-	}))
-	defer srv.Close()
-
-	p := newOllamaClient(srv.URL)
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-
-	start := time.Now()
-	_, err := p.Chat(ctx, llm.ChatRequest{
-		Model:    "test",
-		Messages: []llm.Message{{Role: llm.RoleUser, Content: "hi"}},
-	})
-	elapsed := time.Since(start)
-
-	if err == nil {
-		t.Fatal("expected a deadline error, got nil")
-	}
-	// The call must abort near the 100ms client deadline, well
-	// before the 800ms server sleep. A generous upper bound keeps
-	// the test resilient to scheduling jitter on CI.
-	if elapsed > 600*time.Millisecond {
-		t.Errorf("Chat took %v; expected to abort near the 100ms context deadline", elapsed)
-	}
-}
-
-func TestOllamaProvider_PostsToChatEndpoint(t *testing.T) {
-	var got struct {
-		path        string
-		contentType string
-		body        ollamaChatRequest
-	}
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		got.path = r.URL.Path
-		got.contentType = r.Header.Get("Content-Type")
-		_ = json.NewDecoder(r.Body).Decode(&got.body)
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"message":{"role":"assistant","content":"ok"},"done":true,"prompt_eval_count":3,"eval_count":1}`))
-	}))
-	defer srv.Close()
-
-	p := newOllamaClient(srv.URL)
-	resp, err := p.Chat(context.Background(), llm.ChatRequest{
-		Model:    "llama3",
-		Messages: []llm.Message{{Role: llm.RoleUser, Content: "hi"}},
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.path != "/api/chat" {
-		t.Errorf("path = %q, want /api/chat", got.path)
-	}
-	if got.contentType != "application/json" {
-		t.Errorf("content-type = %q, want application/json", got.contentType)
-	}
-	if got.body.Model != "llama3" || got.body.Stream {
-		t.Errorf("unexpected request body: %+v", got.body)
-	}
-	if resp.Content != "ok" {
-		t.Errorf("response content = %q, want %q", resp.Content, "ok")
-	}
-	if resp.Usage.TotalTokens != 4 {
-		t.Errorf("total tokens = %d, want 4 (prompt 3 + eval 1)", resp.Usage.TotalTokens)
 	}
 }
