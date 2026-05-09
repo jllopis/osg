@@ -65,7 +65,11 @@ type Snapshot struct {
 	State      State
 	Active     *Run        // nil when no run is in flight
 	LastRun    *HistoryRun // most recent finished run, if any
-	LogTail    []string    // recent log lines (active run if any)
+	// LogTail carries recent log lines: from the active run while one is
+	// in flight, otherwise from the most recently finished run captured
+	// in memory (logs are not persisted to disk, so they survive only
+	// across other runs of the same dashboard process).
+	LogTail []string
 }
 
 // Runner manages a fixed set of Definitions, enforces one-per-name
@@ -76,16 +80,21 @@ type Runner struct {
 	defs   map[string]Definition
 	order  []string
 	active map[string]*Run
-	store  *Store
+	// lastLogs keeps the tail of the most recently finished run per
+	// operation name so the drawer can show "what just happened" after
+	// the run leaves r.active. Replaced on each finish.
+	lastLogs map[string][]string
+	store    *Store
 }
 
 // New creates a runner with the given definitions and a backing store.
 // store may be nil for tests; in that case runs simply aren't persisted.
 func New(defs []Definition, store *Store) *Runner {
 	r := &Runner{
-		defs:   make(map[string]Definition, len(defs)),
-		active: make(map[string]*Run, len(defs)),
-		store:  store,
+		defs:     make(map[string]Definition, len(defs)),
+		active:   make(map[string]*Run, len(defs)),
+		lastLogs: make(map[string][]string, len(defs)),
+		store:    store,
 	}
 	for _, d := range defs {
 		if d.Kind == "" {
@@ -161,6 +170,7 @@ func (r *Runner) Trigger(name string, params map[string]any) (*Run, error) {
 		run.State = newState
 		run.EndedAt = ended
 		run.LastError = errMsg
+		r.lastLogs[name] = run.logs.Tail(500)
 		delete(r.active, name)
 		r.mu.Unlock()
 
@@ -266,6 +276,8 @@ func (r *Runner) Snapshot() []Snapshot {
 			activeCopy := *active
 			snap.Active = &activeCopy
 			snap.LogTail = active.logs.Tail(20)
+		} else if tail, ok := r.lastLogs[name]; ok {
+			snap.LogTail = tail
 		}
 		if r.store != nil {
 			// Pull a couple of rows so we can skip the currently-running

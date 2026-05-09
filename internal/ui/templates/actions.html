@@ -4,42 +4,7 @@
 
   <div class="flow" data-operations-poll>
     {{range .FlowNodes}}
-    <article class="flow-node" data-operation="{{.Op.Name}}">
-      <header class="flow-node-head">
-        <svg class="flow-node-icon" aria-hidden="true"><use href="/assets/icons.svg#icon-{{.Op.IconName}}"/></svg>
-        <div class="flow-node-name">{{.Op.Name}}</div>
-        <span class="status-pill {{.Op.PillClass}}" data-state-pill>{{.Op.StateLabel}}</span>
-      </header>
-      <p class="flow-node-desc">{{.Op.Description}}</p>
-      <div class="flow-node-meta mono">
-        {{if .Op.Running}}
-          running for {{.Op.UptimeLabel}}
-        {{else if .Op.HasLastRun}}
-          last {{.Op.LastStatusLabel}} {{.Op.LastRanRelative}}{{if .Op.LastDurationLabel}} · {{.Op.LastDurationLabel}}{{end}}
-        {{else}}
-          never run
-        {{end}}
-      </div>
-      <div class="flow-node-actions">
-        <form method="post" action="/operations/{{.Op.Name}}/run">
-          <button type="submit" class="btn btn-run" title="Run only this step">
-            <svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Run
-          </button>
-        </form>
-        <form method="post" action="/operations/{{.Op.Name}}/run-flow">
-          <button type="submit" class="btn btn-flow" title="Run this step and every step after it">
-            Run from here →
-          </button>
-        </form>
-      </div>
-      <div class="flow-node-links">
-        <a href="/history?name={{.Op.Name}}">History</a>
-        <button type="button" class="op-card-inspect"
-                hx-get="/operations/{{.Op.Name}}/drawer"
-                hx-target="#drawer"
-                hx-swap="innerHTML">Inspect</button>
-      </div>
-    </article>
+    {{template "flow-node.html" .Op}}
     {{if not .IsLast}}
     <div class="flow-arrow" aria-hidden="true">→</div>
     {{end}}

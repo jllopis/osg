@@ -215,6 +215,7 @@ func drawerViewForOperation(r *operations.Runner, name string) (DrawerView, bool
 			v.PillClass = pillClassForStatus(snap.LastRun.Status)
 			v.Error = snap.LastRun.Error
 			v.ParamsJSON = encodeParamsJSON(snap.LastRun.Params)
+			v.LogTail = snap.LogTail
 			v.CanRerun = true
 		default:
 			v.CanRerun = true
@@ -254,6 +255,25 @@ func drawerViewForHistory(r *operations.Runner, id int64) (DrawerView, bool) {
 		if !row.EndedAt.IsZero() {
 			v.EndedAt = row.EndedAt.Local().Format("2006-01-02 15:04:05")
 			v.DurationLabel = relDuration(row.EndedAt.Sub(row.StartedAt))
+		}
+		// Logs are kept in memory only and live on the runner snapshot.
+		// Surface them when the requested row is the active run or the
+		// most recent finished run for this operation; older history
+		// rows have no log tail to display.
+		for _, snap := range r.Snapshot() {
+			if snap.Definition.Name != row.Name {
+				continue
+			}
+			isActive := snap.Active != nil && snap.Active.ID == row.ID
+			isLast := snap.LastRun != nil && snap.LastRun.ID == row.ID
+			if isActive {
+				v.CanStream = true
+				v.LogTail = snap.LogTail
+				v.CanStop = true
+			} else if isLast {
+				v.LogTail = snap.LogTail
+			}
+			break
 		}
 		return v, true
 	}

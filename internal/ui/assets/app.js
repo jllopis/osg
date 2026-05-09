@@ -189,11 +189,14 @@
     }
   }
 
-  // Polls /operations.json for the /actions page so cards keep their
-  // pill state and uptime in sync without a full reload.
+  // Polls /operations.json so cards (flow nodes, op-cards, quick
+  // buttons, task-form panels) reflect the runner's current state. The
+  // pill text/class is patched in place for cheap feedback; the card is
+  // re-fetched and swapped when the state crosses a transition (e.g.
+  // running → idle), which also flips the Run/Stop button and meta line.
   function setupOperationsPolling() {
-    const root = document.querySelector("[data-operations-poll]");
-    if (!root) return;
+    const cards = document.querySelectorAll("[data-card-style]");
+    if (!cards.length) return;
 
     const pillClass = {
       running: "status-pill is-running",
@@ -204,14 +207,44 @@
       stopping: "status-pill is-warn",
     };
 
+    const inFlight = new Set();
+
+    function swapCard(card, op) {
+      const style = card.getAttribute("data-card-style");
+      if (!style) return;
+      const key = op.name + "/" + style;
+      if (inFlight.has(key)) return;
+      inFlight.add(key);
+      fetch("/operations/" + encodeURIComponent(op.name) + "/card?style=" + encodeURIComponent(style))
+        .then(function (r) { return r.ok ? r.text() : null; })
+        .then(function (html) {
+          if (!html) return;
+          const tmpl = document.createElement("template");
+          tmpl.innerHTML = html.trim();
+          const next = tmpl.content.firstElementChild;
+          if (next && card.parentNode) {
+            card.replaceWith(next);
+          }
+        })
+        .catch(function () {})
+        .finally(function () { inFlight.delete(key); });
+    }
+
     function update() {
       fetch("/operations.json", { headers: { Accept: "application/json" } })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) {
           if (!data || !Array.isArray(data.operations)) return;
-          data.operations.forEach(function (op) {
-            const card = root.querySelector('[data-operation="' + cssEscape(op.name) + '"]');
-            if (!card) return;
+          const byName = new Map(data.operations.map(function (op) { return [op.name, op]; }));
+          document.querySelectorAll("[data-card-style]").forEach(function (card) {
+            const name = card.getAttribute("data-operation");
+            const op = name ? byName.get(name) : null;
+            if (!op) return;
+            const prev = card.getAttribute("data-state");
+            if (prev !== op.state) {
+              swapCard(card, op);
+              return;
+            }
             const pill = card.querySelector("[data-state-pill]");
             if (pill) {
               pill.textContent = op.state;
@@ -220,10 +253,6 @@
           });
         })
         .catch(function () {});
-    }
-    function cssEscape(s) {
-      if (window.CSS && CSS.escape) return CSS.escape(s);
-      return String(s).replace(/["\\]/g, "\\$&");
     }
     update();
     setInterval(update, 2500);

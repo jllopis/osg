@@ -133,6 +133,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /operations/{name}/run-flow", s.handleOperationRunFlow)
 	s.mux.HandleFunc("POST /operations/{name}/stop", s.handleOperationStop)
 	s.mux.HandleFunc("GET /operations/{name}/logs", s.handleOperationLogs)
+	s.mux.HandleFunc("GET /operations/{name}/card", s.handleOperationCard)
 	s.mux.HandleFunc("GET /operations.json", s.handleOperationsJSON)
 }
 
@@ -150,6 +151,7 @@ func loadTemplates() (map[string]*template.Template, error) {
 		"templates/partials/operation-card.html",
 		"templates/partials/op-field.html",
 		"templates/partials/task-form.html",
+		"templates/partials/flow-node.html",
 		"templates/partials/drawer.html",
 	}
 	out := make(map[string]*template.Template, len(pages)+1)

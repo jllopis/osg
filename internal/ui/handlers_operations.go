@@ -175,6 +175,35 @@ func (s *Server) handleOperationLogs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleOperationCard renders a single card partial for the named
+// operation. The poller calls this whenever it detects a state change,
+// swapping the previous element so meta line and Run/Stop button stay
+// in sync without a full page reload. The "style" query parameter
+// selects the partial: flow-node, op-card, quick-button or task-form.
+func (s *Server) handleOperationCard(w http.ResponseWriter, r *http.Request) {
+	if s.opts.Runner == nil {
+		http.Error(w, "runner not configured", http.StatusServiceUnavailable)
+		return
+	}
+	name := r.PathValue("name")
+	style := r.URL.Query().Get("style")
+	tplName := ""
+	switch style {
+	case "flow-node", "op-card", "quick-button", "task-form":
+		tplName = style + ".html"
+	default:
+		http.Error(w, "unknown card style", http.StatusBadRequest)
+		return
+	}
+	views := operationsViewFromRunner(s.opts.Runner)
+	view := findOperationView(views, name)
+	if view.Name == "" {
+		http.Error(w, "operation not found", http.StatusNotFound)
+		return
+	}
+	s.renderFragment(w, tplName, view)
+}
+
 // handleOperationsJSON returns the runner's current snapshot for every
 // definition. The /actions page polls this every couple of seconds to
 // refresh state pills without reloading the page.

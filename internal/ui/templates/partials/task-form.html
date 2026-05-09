@@ -3,7 +3,10 @@
      of the action-cards grid. Argument: an OperationView. Renders a
      bordered panel with title, description, last-run summary, params
      form (no collapse — these pages have plenty of space). */}}
-<section class="task-form" data-operation="{{.Name}}">
+<section class="task-form"
+         data-operation="{{.Name}}"
+         data-card-style="task-form"
+         data-state="{{.State}}">
   <header class="task-form-head">
     <svg class="task-form-icon" aria-hidden="true"><use href="/assets/icons.svg#icon-{{.IconName}}"/></svg>
     <div>

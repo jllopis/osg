@@ -2,7 +2,10 @@
      Header: icon + name + description; pill state; meta line with last
      run summary; optional collapsible params form; footer with Run /
      Stop / History / Inspect controls. */}}
-<article class="op-card" data-operation="{{.Name}}">
+<article class="op-card"
+         data-operation="{{.Name}}"
+         data-card-style="op-card"
+         data-state="{{.State}}">
   <header class="op-card-head">
     <svg class="op-card-icon" aria-hidden="true"><use href="/assets/icons.svg#icon-{{.IconName}}"/></svg>
     <div class="op-card-title">

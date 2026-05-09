@@ -1,0 +1,50 @@
+{{/* Single pipeline node on /actions. Argument: an OperationView.
+     The trailing flow-arrow is rendered by the parent template (which
+     knows whether this is the last node). */}}
+<article class="flow-node"
+         data-operation="{{.Name}}"
+         data-card-style="flow-node"
+         data-state="{{.State}}">
+  <header class="flow-node-head">
+    <svg class="flow-node-icon" aria-hidden="true"><use href="/assets/icons.svg#icon-{{.IconName}}"/></svg>
+    <div class="flow-node-name">{{.Name}}</div>
+    <span class="status-pill {{.PillClass}}" data-state-pill>{{.StateLabel}}</span>
+  </header>
+  <p class="flow-node-desc">{{.Description}}</p>
+  <div class="flow-node-meta mono">
+    {{if .Running}}
+      running for {{.UptimeLabel}}
+    {{else if .HasLastRun}}
+      last {{.LastStatusLabel}} {{.LastRanRelative}}{{if .LastDurationLabel}} · {{.LastDurationLabel}}{{end}}
+    {{else}}
+      never run
+    {{end}}
+  </div>
+  <div class="flow-node-actions">
+    {{if .Running}}
+    <form method="post" action="/operations/{{.Name}}/stop">
+      <button type="submit" class="btn btn-stop" title="Stop this run">
+        <svg class="btn-icon"><use href="/assets/icons.svg#icon-stop"/></svg> Stop
+      </button>
+    </form>
+    {{else}}
+    <form method="post" action="/operations/{{.Name}}/run">
+      <button type="submit" class="btn btn-run" title="Run only this step">
+        <svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Run
+      </button>
+    </form>
+    <form method="post" action="/operations/{{.Name}}/run-flow">
+      <button type="submit" class="btn btn-flow" title="Run this step and every step after it">
+        Run from here →
+      </button>
+    </form>
+    {{end}}
+  </div>
+  <div class="flow-node-links">
+    <a href="/history?name={{.Name}}">History</a>
+    <button type="button" class="op-card-inspect"
+            hx-get="/operations/{{.Name}}/drawer"
+            hx-target="#drawer"
+            hx-swap="innerHTML">Inspect</button>
+  </div>
+</article>
