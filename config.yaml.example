@@ -487,6 +487,29 @@ doctor_profile: dev
 # license: "CC [BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)"
 
 # -----------------------------------------------------------------------------
+# Sidebar widgets (homepage)
+# -----------------------------------------------------------------------------
+# sidebar_widgets activates the 3-column homepage layout. List the widgets
+# you want and they render in the right sidebar in the given order. The
+# layout collapses to single column below 1400px.
+#
+# Available: author, newsletter, popular.
+#   - author: avatar + bio + social, reads from author/author_bio/author_avatar/social
+#   - newsletter: simple email form posting to newsletter_action
+#   - popular: top 5 pages by views (requires interactions: enabled and a
+#     populated .osg/interactions.db; hides itself if no data yet)
+#
+# sidebar_widgets:
+#   - author
+#   - newsletter
+#   - popular
+#
+# newsletter_action: Form action URL for the newsletter widget. Most
+# providers (Buttondown, Mailchimp, Substack, ConvertKit) accept a POST
+# with an "email" field; check your provider's docs for the exact URL.
+# newsletter_action: ""
+
+# -----------------------------------------------------------------------------
 # Logging
 # -----------------------------------------------------------------------------
 # level: Minimum log level (debug, info, warn, error).

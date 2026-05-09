@@ -50,7 +50,18 @@ aria_terms: Terms
 aria_posts: Posts
 aria_subsections: Subsections
 aria_paginated_posts: Paginated posts
+aria_sidebar_left: Sidebar
+aria_sidebar_right: Sidebar
 aria_language: Language
+
+# --- Sidebar widgets ---
+widget_about_heading: About
+widget_newsletter_heading: Newsletter
+widget_newsletter_intro: Get new posts straight to your inbox.
+widget_newsletter_email_label: Email
+widget_newsletter_email_placeholder: you@example.com
+widget_newsletter_subscribe: Subscribe
+widget_popular_heading: Popular posts
 
 # --- Navigation ---
 nav.search: Search

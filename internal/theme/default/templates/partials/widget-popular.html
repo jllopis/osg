@@ -1,0 +1,17 @@
+{{/* Sidebar widget: popular posts. Top 5 pages by views from the
+     interactions database (page_views table), populated at build time.
+     Hidden when there is no view data yet (e.g. interactions disabled
+     or no traffic). */}}
+{{ if .popular_pages }}
+<section class="widget widget-popular" aria-labelledby="widget-popular-heading">
+  <h3 id="widget-popular-heading" class="widget-heading">{{ trans "widget_popular_heading" .lang }}</h3>
+  <ol class="widget-popular-list">
+    {{ range .popular_pages }}
+    <li>
+      <a class="widget-popular-link" href="{{ .permalink }}">{{ .title }}</a>
+      <span class="widget-popular-views">{{ .views }}</span>
+    </li>
+    {{ end }}
+  </ol>
+</section>
+{{ end }}

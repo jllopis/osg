@@ -50,7 +50,18 @@ aria_terms: Terminos
 aria_posts: Publicaciones
 aria_subsections: Subsecciones
 aria_paginated_posts: Publicaciones paginadas
+aria_sidebar_left: Barra lateral
+aria_sidebar_right: Barra lateral
 aria_language: Idioma
+
+# --- Widgets de la barra lateral ---
+widget_about_heading: Sobre el autor
+widget_newsletter_heading: Boletin
+widget_newsletter_intro: Recibe los nuevos articulos en tu bandeja.
+widget_newsletter_email_label: Correo
+widget_newsletter_email_placeholder: tu@ejemplo.com
+widget_newsletter_subscribe: Suscribirse
+widget_popular_heading: Articulos populares
 
 # --- Navegacion ---
 nav.search: Buscar

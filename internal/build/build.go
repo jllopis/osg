@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"osg/internal/api"
 	"osg/internal/assets"
 	"osg/internal/config"
 	"osg/internal/i18n"
@@ -336,6 +337,9 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	taxonomy.FilterPageTaxonomies(cfg.Taxonomies, siteIndex.Pages)
 	siteView := siteIndex.View()
 	baseCtx := baseContext(cfg, siteView, indices, siteIndex.MenuPages())
+	if popular := popularPagesView(cfg, siteIndex); len(popular) > 0 {
+		baseCtx["popular_pages"] = popular
+	}
 
 	// config.validate: plugins can validate config and return errors/warnings.
 	if err := emitConfigValidate(ctx, plugins, cfg, logger); err != nil {
@@ -1103,6 +1107,52 @@ func baseContext(cfg config.Config, siteView map[string]any, indices map[string]
 	return ctx
 }
 
+// popularPagesView reads the interactions DB (if enabled and present)
+// and returns the top pages with their resolved titles and permalinks
+// for the popular-posts sidebar widget. Returns nil silently when
+// interactions are disabled, the DB is missing, the query fails or no
+// view data exists yet — the widget then hides itself.
+func popularPagesView(cfg config.Config, siteIndex *site.Site) []map[string]any {
+	if !cfg.Interactions.Enabled {
+		return nil
+	}
+	if _, err := os.Stat(cfg.Interactions.DBPath); err != nil {
+		return nil
+	}
+	store, err := api.NewStore(cfg.Interactions.DBPath, cfg.Interactions.ViewDedupHours)
+	if err != nil {
+		return nil
+	}
+	defer func() { _ = store.Close() }()
+
+	top, err := store.TopPages(5)
+	if err != nil || len(top) == 0 {
+		return nil
+	}
+
+	// Resolve paths to their titles via the site index. Pages not found
+	// (renamed, deleted) are dropped from the list.
+	byPath := make(map[string]*site.Page, len(siteIndex.Pages))
+	for _, p := range siteIndex.Pages {
+		byPath[p.Path] = p
+	}
+
+	out := make([]map[string]any, 0, len(top))
+	for _, tp := range top {
+		page, ok := byPath[tp.Path]
+		if !ok {
+			continue
+		}
+		out = append(out, map[string]any{
+			"title":     page.Title,
+			"path":      page.Path,
+			"permalink": page.Permalink,
+			"views":     tp.Views,
+		})
+	}
+	return out
+}
+
 func configView(cfg config.Config) map[string]any {
 	taxonomies := make([]map[string]any, 0, len(cfg.Taxonomies))
 	for _, taxCfg := range cfg.Taxonomies {
@@ -1165,6 +1215,8 @@ func configView(cfg config.Config) map[string]any {
 		"organization":       organizationView(cfg.Organization),
 		"robots":             robotsView(cfg.Robots),
 		"social":             cfg.Social,
+		"sidebar_widgets":    cfg.SidebarWidgets,
+		"newsletter_action":  cfg.NewsletterAction,
 		"copyright":          strings.ReplaceAll(cfg.Copyright, "{year}", fmt.Sprintf("%d", time.Now().Year())),
 		"license":            template.HTML(inlineMarkdownLinks(cfg.License)),
 		"llmstxt":            slices.Contains(cfg.PluginsEnabled, "llmstxt"),

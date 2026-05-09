@@ -1,0 +1,28 @@
+{{/* Sidebar widget: author. Hidden when no author info is configured. */}}
+{{ if or .config.author .config.author_bio .config.author_avatar }}
+<section class="widget widget-author" aria-labelledby="widget-author-heading">
+  <h3 id="widget-author-heading" class="widget-heading">{{ trans "widget_about_heading" .lang }}</h3>
+  <div class="widget-author-body">
+    {{ if .config.author_avatar }}
+    <img class="widget-author-avatar" src="{{ get_url .config.author_avatar false true }}" alt="{{ .config.author }}" loading="lazy" decoding="async">
+    {{ end }}
+    {{ if .config.author }}
+      {{ if .config.author_url }}
+      <a class="widget-author-name" href="{{ .config.author_url }}" rel="author">{{ .config.author }}</a>
+      {{ else }}
+      <span class="widget-author-name">{{ .config.author }}</span>
+      {{ end }}
+    {{ end }}
+    {{ if .config.author_bio }}
+    <p class="widget-author-bio">{{ .config.author_bio }}</p>
+    {{ end }}
+    {{ if .config.social }}
+    <ul class="widget-author-social">
+      {{ range $key, $url := .config.social }}
+      <li><a href="{{ $url }}" rel="me" aria-label="{{ $key }}">{{ $key }}</a></li>
+      {{ end }}
+    </ul>
+    {{ end }}
+  </div>
+</section>
+{{ end }}

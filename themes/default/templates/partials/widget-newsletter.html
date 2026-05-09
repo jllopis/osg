@@ -1,0 +1,17 @@
+{{/* Sidebar widget: newsletter. Posts to config.newsletter_action.
+     Field name is "email" by default — most providers (Buttondown,
+     Mailchimp, Substack, ConvertKit) accept that as the email param.
+     Hidden when no action URL is configured. */}}
+{{ if .config.newsletter_action }}
+<section class="widget widget-newsletter" aria-labelledby="widget-newsletter-heading">
+  <h3 id="widget-newsletter-heading" class="widget-heading">{{ trans "widget_newsletter_heading" .lang }}</h3>
+  <p class="widget-newsletter-intro">{{ trans "widget_newsletter_intro" .lang }}</p>
+  <form class="widget-newsletter-form" action="{{ .config.newsletter_action }}" method="post">
+    <label class="visually-hidden" for="widget-newsletter-email">{{ trans "widget_newsletter_email_label" .lang }}</label>
+    <input id="widget-newsletter-email" type="email" name="email" required
+           placeholder="{{ trans "widget_newsletter_email_placeholder" .lang }}"
+           autocomplete="email">
+    <button type="submit" class="btn btn-primary">{{ trans "widget_newsletter_subscribe" .lang }}</button>
+  </form>
+</section>
+{{ end }}

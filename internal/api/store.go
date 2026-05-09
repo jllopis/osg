@@ -140,6 +140,43 @@ func (s *Store) Vote(pagePath, fingerprint string, vote int) (Stats, error) {
 	return s.getStats(pagePath, fingerprint)
 }
 
+// TopPage holds an aggregated view count keyed by page path.
+type TopPage struct {
+	Path  string
+	Views int64
+}
+
+// TopPages returns the most viewed pages ordered by view count desc.
+// Counts come from the page_views table (one row per unique
+// fingerprint+day per RecordView's INSERT OR IGNORE). Used by the
+// build pipeline to populate the popular-posts sidebar widget.
+func (s *Store) TopPages(limit int) ([]TopPage, error) {
+	if limit <= 0 {
+		limit = 5
+	}
+	rows, err := s.db.Query(
+		`SELECT page_path, COUNT(*) FROM page_views
+		 GROUP BY page_path
+		 ORDER BY COUNT(*) DESC, page_path ASC
+		 LIMIT ?`,
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var out []TopPage
+	for rows.Next() {
+		var tp TopPage
+		if err := rows.Scan(&tp.Path, &tp.Views); err != nil {
+			return nil, err
+		}
+		out = append(out, tp)
+	}
+	return out, rows.Err()
+}
+
 // GetStats returns the current interaction stats for a page and fingerprint.
 func (s *Store) GetStats(pagePath, fingerprint string) (Stats, error) {
 	return s.getStats(pagePath, fingerprint)

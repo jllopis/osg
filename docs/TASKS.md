@@ -600,3 +600,12 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 30H) Supervisor.Restart wirea plugin toggle a reinicio de serve/watcher/scheduler running
 [done] (Phase 30H) Boton "Rebuild now" en /assets: POST /rebuild + /rebuild.json polling
 [done] (Phase 30H) HTMX 2.0.4 vendorado en internal/ui/assets/htmx.min.js (no migracion, disponible para futuro)
+
+[done] (Phase 27A) Grid 3 columnas en homepage activado por sidebar_widgets, breakpoint 1400px
+[done] (Phase 27A) display: contents en wrapper para preservar single-column cuando no hay widgets
+[done] (Phase 27B) widget-author: avatar/nombre/bio/social desde config.author*, oculto sin datos
+[done] (Phase 27B) widget-newsletter: form POST a newsletter_action, oculto sin URL
+[done] (Phase 27B) widget-popular: top 5 paginas via Store.TopPages + popularPagesView en build
+[done] (Phase 27B) Dispatcher inline en sidebar-right block iterando sidebar_widgets
+[done] (Phase 27B) Tests: normalisation de sidebar_widgets (trim, dedupe, validacion)
+[done] (Phase 27B) config.yaml.example y DefaultConfigYAML mirror con seccion Sidebar widgets

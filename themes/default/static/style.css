@@ -216,6 +216,161 @@ a {
   margin-inline: auto;
 }
 
+/* Sidebar widgets (homepage). Each partial-widget renders as a
+   distinct section card; the sidebar stacks them vertically. */
+.widget {
+  background: var(--bg-elev, var(--surface, transparent));
+  border: 1px solid var(--border-color, var(--border, #4c566a));
+  border-radius: var(--radius-md, 8px);
+  padding: var(--sp-4);
+}
+.widget-heading {
+  margin: 0 0 var(--sp-3);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #81a1c1);
+}
+
+/* widget-author */
+.widget-author-body { display: flex; flex-direction: column; gap: var(--sp-2); }
+.widget-author-avatar {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  align-self: flex-start;
+}
+.widget-author-name { font-weight: 600; }
+.widget-author-bio {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-muted, #d8dee9);
+}
+.widget-author-social {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  font-size: 0.8rem;
+}
+
+/* widget-newsletter */
+.widget-newsletter-intro {
+  margin: 0 0 var(--sp-3);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.widget-newsletter-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.widget-newsletter-form input[type="email"] {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border-color, #4c566a);
+  border-radius: 4px;
+  background: var(--surface-2, transparent);
+  color: inherit;
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+.widget-newsletter-form input[type="email"]:focus {
+  outline: none;
+  border-color: var(--accent, #88c0d0);
+}
+.widget-newsletter-form .btn-primary {
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--accent, #88c0d0);
+  background: var(--accent, #88c0d0);
+  color: var(--surface, #2e3440);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.widget-newsletter-form .btn-primary:hover { filter: brightness(0.95); }
+
+/* widget-popular */
+.widget-popular-list {
+  list-style: none;
+  counter-reset: popular;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.widget-popular-list li {
+  counter-increment: popular;
+  display: grid;
+  grid-template-columns: 1.5em 1fr auto;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+.widget-popular-list li::before {
+  content: counter(popular);
+  color: var(--text-muted, #81a1c1);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.widget-popular-link {
+  color: inherit;
+  line-height: 1.35;
+}
+.widget-popular-link:hover { color: var(--accent, #88c0d0); }
+.widget-popular-views {
+  font-size: 0.75rem;
+  color: var(--text-muted, #81a1c1);
+  font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Homepage 3-column layout. Activated only when sidebar_widgets is set
+   in the config; otherwise the page renders single-column as before.
+   The center column keeps its width and viewport-center position
+   regardless of sidebar presence: both sidebar tracks are fixed at
+   240px and the grid is centered. Below 1400px sidebars hide and
+   the center column reverts to standard .container behaviour. */
+.home-layout {
+  display: contents;
+}
+@media (min-width: 1400px) {
+  .home-layout--with-sidebars {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1080px) 240px;
+    justify-content: center;
+    gap: var(--sp-6);
+    align-items: start;
+  }
+  .home-layout--with-sidebars > .home-main { width: 100%; }
+}
+.home-sidebar {
+  width: 240px;
+  position: sticky;
+  top: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+@media (max-width: 1399px) {
+  .home-sidebar { display: none; }
+}
+
 .container-narrow {
   width: min(800px, 100% - var(--sp-8));
   margin-inline: auto;

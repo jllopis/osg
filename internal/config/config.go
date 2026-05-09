@@ -108,6 +108,8 @@ type Config struct {
 	Organization       OrganizationConfig        `koanf:"organization" yaml:"organization"`
 	Robots             RobotsConfig              `koanf:"robots" yaml:"robots"`
 	Social             map[string]string         `koanf:"social" yaml:"social"`
+	SidebarWidgets     []string                  `koanf:"sidebar_widgets" yaml:"sidebar_widgets"`
+	NewsletterAction   string                    `koanf:"newsletter_action" yaml:"newsletter_action"`
 	Copyright          string                    `koanf:"copyright" yaml:"copyright"`
 	License            string                    `koanf:"license" yaml:"license"`
 	AI                 AIConfig                  `koanf:"ai" yaml:"ai"`
@@ -471,6 +473,28 @@ func Load(path string) (Config, error) {
 		cfg.UI.Addr = ":1314"
 	}
 
+	// Normalise sidebar_widgets: trim, drop empties, dedupe, validate names.
+	if len(cfg.SidebarWidgets) > 0 {
+		seen := map[string]bool{}
+		out := make([]string, 0, len(cfg.SidebarWidgets))
+		for _, name := range cfg.SidebarWidgets {
+			name = strings.ToLower(strings.TrimSpace(name))
+			if name == "" || seen[name] {
+				continue
+			}
+			switch name {
+			case "author", "newsletter", "popular":
+				// valid
+			default:
+				return cfg, fmt.Errorf("invalid sidebar_widgets entry %q: must be one of author, newsletter, popular", name)
+			}
+			seen[name] = true
+			out = append(out, name)
+		}
+		cfg.SidebarWidgets = out
+	}
+	cfg.NewsletterAction = strings.TrimSpace(cfg.NewsletterAction)
+
 	// Normalise and validate tui_log_modifier.
 	cfg.TUILogModifier = strings.ToLower(strings.TrimSpace(cfg.TUILogModifier))
 	switch cfg.TUILogModifier {
@@ -824,6 +848,23 @@ doctor_profile: dev
 #   Supports markdown links: [text](url) for linking to the full license.
 #   Leave empty to hide.
 # license: ""
+
+# -----------------------------------------------------------------------------
+# Sidebar widgets (homepage)
+# -----------------------------------------------------------------------------
+# sidebar_widgets activates the 3-column homepage layout. Listed widgets
+# render in the right sidebar in order. Layout collapses to single column
+# below 1400px viewport.
+#
+# Available: author, newsletter, popular.
+#
+# sidebar_widgets:
+#   - author
+#   - newsletter
+#   - popular
+#
+# newsletter_action: Form action URL for the newsletter widget.
+# newsletter_action: ""
 
 # -----------------------------------------------------------------------------
 # Logging

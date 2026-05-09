@@ -8,7 +8,15 @@
     <div class="page">
       {{ template "partials/header.html" . }}
 
-      <main id="main-content" class="container" role="main">
+      {{ $widgets := .config.sidebar_widgets }}
+      <div class="home-layout {{ if $widgets }}home-layout--with-sidebars{{ end }}">
+        {{ if $widgets }}
+        <aside class="home-sidebar home-sidebar-left" aria-label="{{ trans "aria_sidebar_left" .lang }}">
+          {{ block "sidebar-left" . }}{{ end }}
+        </aside>
+        {{ end }}
+
+      <main id="main-content" class="container home-main" role="main">
 
         {{ block "index-featured" . }}
         {{/* ---- Featured post ---- */}}
@@ -128,6 +136,20 @@
         {{ end }}
 
       </main>
+
+        {{ if $widgets }}
+        <aside class="home-sidebar home-sidebar-right" aria-label="{{ trans "aria_sidebar_right" .lang }}">
+          {{ block "sidebar-right" . }}
+            {{ range .config.sidebar_widgets }}
+              {{ if eq . "author" }}{{ template "partials/widget-author.html" $ }}
+              {{ else if eq . "newsletter" }}{{ template "partials/widget-newsletter.html" $ }}
+              {{ else if eq . "popular" }}{{ template "partials/widget-popular.html" $ }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        </aside>
+        {{ end }}
+      </div>
 
       {{ template "partials/footer.html" . }}
     </div>
