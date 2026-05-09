@@ -11,33 +11,23 @@ import (
 	"time"
 
 	"osg/internal/config"
+	"osg/internal/operations"
 )
 
 // ServerOptions configures a dashboard server instance.
 type ServerOptions struct {
-	Addr           string
-	Version        string
-	Cfg            config.Config
-	ConfigPath     string
-	Logger         *slog.Logger
-	Supervisor     *Supervisor
-	SchedulerStore SchedulerHistory
-	// BuildFn is invoked by the manual "Rebuild now" button. It should
-	// be a thin wrapper around app.RunBuild bound to the dashboard's
-	// CLIOptions. When nil, the button is hidden.
-	BuildFn func(ctx context.Context) error
+	Addr       string
+	Version    string
+	Cfg        config.Config
+	ConfigPath string
+	Logger     *slog.Logger
+	// Runner is the unified operations runner driving services and
+	// tasks. The dashboard is read-only when Runner is nil.
+	Runner *operations.Runner
 }
 
-// SchedulerHistory is the read interface the dashboard needs from the
-// scheduler audit store. Keeping it small avoids a hard dependency on
-// the concrete SQLite store from the ui package.
-type SchedulerHistory interface {
-	Recent(limit int) ([]SchedulerRun, error)
-}
-
-// SchedulerRun is the template-friendly view of a scheduler.Run. The
-// duplicate type lets the ui package render history without importing
-// the scheduler package directly (avoids a cycle for tests).
+// SchedulerRun is the template-friendly view of one scheduler trigger
+// row. Built from operations.HistoryRun in handleScheduler.
 type SchedulerRun struct {
 	DueAt  time.Time
 	RanAt  time.Time
@@ -50,7 +40,6 @@ type Server struct {
 	opts      ServerOptions
 	templates map[string]*template.Template
 	mux       *http.ServeMux
-	rebuilder *rebuildState
 }
 
 // NewServer prepares the dashboard server: parses templates and registers
@@ -67,14 +56,15 @@ func NewServer(opts ServerOptions) (*Server, error) {
 		opts:      opts,
 		templates: tpls,
 		mux:       http.NewServeMux(),
-		rebuilder: newRebuildState(opts.BuildFn),
 	}
 	s.routes()
 	return s, nil
 }
 
 // Run starts the HTTP server and blocks until ctx is cancelled or the
-// server returns. Performs graceful shutdown with a 3s timeout.
+// server returns. Performs graceful shutdown with a 3s timeout. On
+// shutdown the runner stops every active operation and the audit log
+// rows for in-flight runs are marked as cancelled.
 func (s *Server) Run(ctx context.Context) error {
 	server := &http.Server{
 		Addr:              s.opts.Addr,
@@ -90,15 +80,15 @@ func (s *Server) Run(ctx context.Context) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
 		_ = server.Shutdown(shutdownCtx)
-		if s.opts.Supervisor != nil {
-			s.opts.Supervisor.StopAll()
+		if s.opts.Runner != nil {
+			s.opts.Runner.StopAll()
 		}
 		if err := <-errCh; err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
 		}
 	case err := <-errCh:
-		if s.opts.Supervisor != nil {
-			s.opts.Supervisor.StopAll()
+		if s.opts.Runner != nil {
+			s.opts.Runner.StopAll()
 		}
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err

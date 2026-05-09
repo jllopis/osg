@@ -5,36 +5,14 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"path/filepath"
 	"strings"
 
 	"osg/internal/config"
 	"osg/internal/logging"
-	"osg/internal/scheduler"
+	"osg/internal/operations"
 	"osg/internal/ui"
 )
-
-// schedulerHistoryAdapter bridges scheduler.Store (concrete type) to the
-// minimal ui.SchedulerHistory interface, mapping scheduler.Run values to
-// the duplicate ui.SchedulerRun struct so the ui package stays free of
-// the database/sql dependency.
-type schedulerHistoryAdapter struct{ s *scheduler.Store }
-
-func (a schedulerHistoryAdapter) Recent(limit int) ([]ui.SchedulerRun, error) {
-	rows, err := a.s.Recent(limit)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]ui.SchedulerRun, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, ui.SchedulerRun{
-			DueAt:  r.DueAt,
-			RanAt:  r.RanAt,
-			Status: r.Status,
-			Error:  r.Error,
-		})
-	}
-	return out, nil
-}
 
 // RunUI starts the local web dashboard (`osg ui`). The dashboard is
 // loopback-only: any non-loopback bind address is rejected.
@@ -59,35 +37,23 @@ func RunUI(ctx context.Context, opts CLIOptions) error {
 	logger := logging.NewWithWriter(cfg.Logging, opts.Verbose, opts.LogWriter)
 	logger.Info("starting ui dashboard", "addr", addr)
 
-	supervisor := ui.NewSupervisor(buildServiceMetas(opts, cfg))
-
-	// Open the scheduler audit store for the dashboard's read path. The
-	// scheduler service opens its own handle for writes; SQLite WAL mode
-	// coordinates the two safely.
-	var history ui.SchedulerHistory
-	if store, err := scheduler.NewStore(SchedulerDBPath(opts.ConfigPath)); err != nil {
-		logger.Warn("scheduler audit store unavailable", "error", err)
-	} else {
+	store, err := operations.NewStore(OperationsDBPath(opts.ConfigPath))
+	if err != nil {
+		logger.Warn("operations audit store unavailable", "error", err)
+	}
+	if store != nil {
 		defer func() { _ = store.Close() }()
-		history = schedulerHistoryAdapter{s: store}
 	}
 
-	parentOpts := opts
+	runner := operations.New(buildOperationDefinitions(opts, cfg, store), store)
+
 	srv, err := ui.NewServer(ui.ServerOptions{
-		Addr:           addr,
-		Version:        Version,
-		Cfg:            cfg,
-		ConfigPath:     opts.ConfigPath,
-		Logger:         logger,
-		Supervisor:     supervisor,
-		SchedulerStore: history,
-		BuildFn: func(ctx context.Context) error {
-			o := parentOpts
-			o.SkipAI = true
-			o.LogWriter = nil
-			o.Progress = nil
-			return RunBuild(ctx, o)
-		},
+		Addr:       addr,
+		Version:    Version,
+		Cfg:        cfg,
+		ConfigPath: opts.ConfigPath,
+		Logger:     logger,
+		Runner:     runner,
 	})
 	if err != nil {
 		return err
@@ -95,10 +61,22 @@ func RunUI(ctx context.Context, opts CLIOptions) error {
 	return srv.Run(ctx)
 }
 
-// buildServiceMetas returns the runner closures the supervisor will invoke
-// when the user clicks Start. The runners reuse RunServe / RunAPI directly
-// so behavior matches the standalone commands.
-func buildServiceMetas(parent CLIOptions, cfg config.Config) []ui.ServiceMeta {
+// OperationsDBPath returns the unified audit DB path. Lives in the same
+// .osg/ directory as the rest of OSG state.
+func OperationsDBPath(configPath string) string {
+	dir := filepath.Dir(configPath)
+	if dir == "" || dir == "." {
+		return ".osg/operations.db"
+	}
+	return filepath.Join(dir, ".osg", "operations.db")
+}
+
+// buildOperationDefinitions enumerates every operation the dashboard can
+// drive: the four long-running services (serve, api, watcher, scheduler)
+// and the build task that powers /assets' "Rebuild now" button. Each
+// definition wraps the corresponding app.RunX with the dashboard's
+// CLIOptions baseline.
+func buildOperationDefinitions(parent CLIOptions, cfg config.Config, store *operations.Store) []operations.Definition {
 	serveAddr := parent.ServeAddr
 	if serveAddr == "" {
 		serveAddr = ":1313"
@@ -108,12 +86,13 @@ func buildServiceMetas(parent CLIOptions, cfg config.Config) []ui.ServiceMeta {
 		apiAddr = ":8090"
 	}
 
-	return []ui.ServiceMeta{
+	return []operations.Definition{
 		{
 			Name:        "serve",
+			Kind:        operations.KindService,
 			Description: "Preview server for the public/ directory",
 			Addr:        serveAddr,
-			Runner: func(ctx context.Context, w io.Writer) error {
+			Run: func(ctx context.Context, _ map[string]any, w io.Writer) error {
 				o := parent
 				o.LogWriter = w
 				o.ServeAddr = serveAddr
@@ -123,9 +102,10 @@ func buildServiceMetas(parent CLIOptions, cfg config.Config) []ui.ServiceMeta {
 		},
 		{
 			Name:        "api",
+			Kind:        operations.KindService,
 			Description: "Standalone interactions API (comments, likes, views)",
 			Addr:        apiAddr,
-			Runner: func(ctx context.Context, w io.Writer) error {
+			Run: func(ctx context.Context, _ map[string]any, w io.Writer) error {
 				o := parent
 				o.LogWriter = w
 				o.Progress = nil
@@ -134,9 +114,10 @@ func buildServiceMetas(parent CLIOptions, cfg config.Config) []ui.ServiceMeta {
 		},
 		{
 			Name:        "watcher",
+			Kind:        operations.KindService,
 			Description: "Watches the vault and rebuilds on changes (no preview server)",
 			Addr:        "(filesystem)",
-			Runner: func(ctx context.Context, w io.Writer) error {
+			Run: func(ctx context.Context, _ map[string]any, w io.Writer) error {
 				o := parent
 				o.LogWriter = w
 				o.Progress = nil
@@ -145,13 +126,26 @@ func buildServiceMetas(parent CLIOptions, cfg config.Config) []ui.ServiceMeta {
 		},
 		{
 			Name:        "scheduler",
+			Kind:        operations.KindService,
 			Description: "Rebuilds when a future publish_at date becomes due",
 			Addr:        "(timer)",
-			Runner: func(ctx context.Context, w io.Writer) error {
+			Run: func(ctx context.Context, _ map[string]any, w io.Writer) error {
 				o := parent
 				o.LogWriter = w
 				o.Progress = nil
-				return RunScheduler(ctx, o)
+				return RunScheduler(ctx, o, store)
+			},
+		},
+		{
+			Name:        "build",
+			Kind:        operations.KindTask,
+			Description: "Render the site to public/ (one-shot)",
+			Run: func(ctx context.Context, _ map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				o.SkipAI = true
+				return RunBuild(ctx, o)
 			},
 		},
 	}

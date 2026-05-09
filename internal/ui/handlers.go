@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"osg/internal/config"
+	"osg/internal/operations"
 )
 
 type viewData struct {
@@ -27,14 +28,12 @@ type viewData struct {
 func (s *Server) buildView(active, title string, r *http.Request) viewData {
 	st := Collect(r.Context(), s.opts.Cfg, s.opts.Logger)
 	v := viewData{
-		Title:   title,
-		Active:  active,
-		Version: s.opts.Version,
-		Now:     time.Now(),
-		State:   st,
-	}
-	if s.opts.Supervisor != nil {
-		v.Services = s.opts.Supervisor.Snapshot()
+		Title:    title,
+		Active:   active,
+		Version:  s.opts.Version,
+		Now:      time.Now(),
+		State:    st,
+		Services: servicesFromRunner(s.opts.Runner),
 	}
 	return v
 }
@@ -70,10 +69,9 @@ func (s *Server) handlePlugins(w http.ResponseWriter, r *http.Request) {
 }
 
 // handlePluginToggle flips the enabled state of a single plugin and
-// persists the change to config.yaml via config.UpdatePluginsEnabled,
-// which round-trips the YAML preserving comments. The in-memory cfg is
-// also updated so subsequent renders show the new state without needing
-// a Load() round trip.
+// persists the change to config.yaml via config.UpdatePluginsEnabled.
+// Running services that load plugins are restarted so the new list takes
+// effect immediately.
 func (s *Server) handlePluginToggle(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	if name == "" {
@@ -115,13 +113,9 @@ func (s *Server) handlePluginToggle(w http.ResponseWriter, r *http.Request) {
 		s.opts.Logger.Info("plugin toggled", "plugin", name, "action", action)
 	}
 
-	// Restart the supervised services that load plugins so the new
-	// plugins_enabled list takes effect. Idle services pick up the
-	// change naturally on next start; only currently-running ones need
-	// a recycle. The api service does not load plugins, so skip it.
-	if s.opts.Supervisor != nil {
+	if s.opts.Runner != nil {
 		for _, svcName := range []string{"serve", "watcher", "scheduler"} {
-			if err := s.opts.Supervisor.Restart(svcName); err != nil && s.opts.Logger != nil {
+			if err := s.opts.Runner.Restart(svcName); err != nil && s.opts.Logger != nil {
 				s.opts.Logger.Warn("plugin toggle restart failed", "service", svcName, "error", err)
 			}
 		}
@@ -132,12 +126,12 @@ func (s *Server) handlePluginToggle(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleScheduler(w http.ResponseWriter, r *http.Request) {
 	v := s.buildView("scheduler", "Scheduler", r)
-	if s.opts.SchedulerStore != nil {
-		runs, err := s.opts.SchedulerStore.Recent(50)
+	if s.opts.Runner != nil {
+		rows, err := s.opts.Runner.History(operations.Filter{Name: "scheduler:trigger", Limit: 50})
 		if err != nil && s.opts.Logger != nil {
 			s.opts.Logger.Warn("scheduler history fetch failed", "error", err)
 		}
-		v.SchedulerRuns = runs
+		v.SchedulerRuns = schedulerRunsFromHistory(rows)
 	}
 	s.render(w, "scheduler", v)
 }
@@ -145,15 +139,18 @@ func (s *Server) handleScheduler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleAssets(w http.ResponseWriter, r *http.Request) {
 	v := s.buildView("assets", "Assets", r)
 	v.Assets, v.AssetSummary = collectAssets(s.opts.Cfg, s.opts.Logger)
-	v.Rebuild = s.rebuilder.Snapshot()
+	v.Rebuild = rebuildSnapshotFromRunner(s.opts.Runner)
 	s.render(w, "assets", v)
 }
 
-// handleRebuild kicks off an ad-hoc rebuild via the optional BuildFn.
-// Returns 303 to /assets so the user immediately sees the "running"
-// state; the page polls /rebuild.json to update.
+// handleRebuild triggers a "build" task via the runner and redirects to
+// /assets so the user immediately sees the running state.
 func (s *Server) handleRebuild(w http.ResponseWriter, r *http.Request) {
-	if err := s.rebuilder.Trigger(); err != nil {
+	if s.opts.Runner == nil {
+		http.Error(w, "runner not configured", http.StatusServiceUnavailable)
+		return
+	}
+	if _, err := s.opts.Runner.Trigger("build", nil); err != nil {
 		if s.opts.Logger != nil {
 			s.opts.Logger.Warn("rebuild trigger failed", "error", err)
 		}
@@ -162,10 +159,9 @@ func (s *Server) handleRebuild(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleRebuildJSON returns the current rebuild state for client-side
-// polling. The /assets page calls this every couple of seconds while a
-// rebuild is in flight.
+// polling. Sourced from the runner's snapshot of the "build" operation.
 func (s *Server) handleRebuildJSON(w http.ResponseWriter, r *http.Request) {
-	snap := s.rebuilder.Snapshot()
+	snap := rebuildSnapshotFromRunner(s.opts.Runner)
 	out := map[string]any{
 		"available": snap.Available,
 		"running":   snap.Running,
@@ -188,8 +184,8 @@ func (s *Server) handleServiceStart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if s.opts.Supervisor == nil {
-		http.Error(w, "supervisor not configured", http.StatusServiceUnavailable)
+	if s.opts.Runner == nil {
+		http.Error(w, "runner not configured", http.StatusServiceUnavailable)
 		return
 	}
 	name := r.FormValue("name")
@@ -197,21 +193,16 @@ func (s *Server) handleServiceStart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing name", http.StatusBadRequest)
 		return
 	}
-	if err := s.opts.Supervisor.Start(name); err != nil {
+	if _, err := s.opts.Runner.Trigger(name, nil); err != nil {
 		if s.opts.Logger != nil {
 			s.opts.Logger.Warn("service start failed", "name", name, "error", err)
 		}
-		// Surface the error inline by re-rendering the services page
-		// after the supervisor has already recorded LastError on the
-		// Service entry. Rendering returns 200 so the user sees the
-		// page with the error pill rather than a bare error string.
 	}
 	http.Redirect(w, r, "/services", http.StatusSeeOther)
 }
 
 // servicesJSON is the polled response shape used by the /services page to
-// keep state pills and uptime live without a full reload. Logs are served
-// over SSE (see handleServiceLogs) and not duplicated here.
+// keep state pills and uptime live without a full reload.
 type servicesJSON struct {
 	Services []serviceJSON `json:"services"`
 	Now      string        `json:"now"`
@@ -226,14 +217,13 @@ type serviceJSON struct {
 }
 
 func (s *Server) handleServicesJSON(w http.ResponseWriter, r *http.Request) {
-	if s.opts.Supervisor == nil {
-		http.Error(w, "supervisor not configured", http.StatusServiceUnavailable)
+	if s.opts.Runner == nil {
+		http.Error(w, "runner not configured", http.StatusServiceUnavailable)
 		return
 	}
 	now := time.Now()
-	snap := s.opts.Supervisor.Snapshot()
 	out := servicesJSON{Now: now.Format(time.RFC3339)}
-	for _, svc := range snap {
+	for _, svc := range servicesFromRunner(s.opts.Runner) {
 		entry := serviceJSON{
 			Name:      svc.Name,
 			State:     string(svc.State),
@@ -250,8 +240,8 @@ func (s *Server) handleServicesJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleServiceLogs(w http.ResponseWriter, r *http.Request) {
-	if s.opts.Supervisor == nil {
-		http.Error(w, "supervisor not configured", http.StatusServiceUnavailable)
+	if s.opts.Runner == nil {
+		http.Error(w, "runner not configured", http.StatusServiceUnavailable)
 		return
 	}
 	name := r.PathValue("name")
@@ -269,21 +259,19 @@ func (s *Server) handleServiceLogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no") // disable proxy buffering
+	w.Header().Set("X-Accel-Buffering", "no")
 	w.WriteHeader(http.StatusOK)
 
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	ch := s.opts.Supervisor.Logs(ctx, name)
+	ch := s.opts.Runner.Logs(ctx, name)
 	if ch == nil {
-		_, _ = w.Write([]byte("event: error\ndata: unknown service\n\n"))
+		_, _ = w.Write([]byte("event: error\ndata: not running\n\n"))
 		flusher.Flush()
 		return
 	}
 
-	// Heartbeat keeps the connection open through proxies and lets the
-	// client detect a closed server quickly.
 	tick := time.NewTicker(15 * time.Second)
 	defer tick.Stop()
 
@@ -309,9 +297,6 @@ func (s *Server) handleServiceLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeSSE(w http.ResponseWriter, event, data string) error {
-	// SSE requires each line of the data field to be prefixed with "data: ".
-	// We collapse newlines into single-line events; OSG logs are JSON or
-	// plaintext one per line so this is safe.
 	data = strings.ReplaceAll(data, "\r", "")
 	data = strings.ReplaceAll(data, "\n", " ")
 	_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, data)
@@ -323,8 +308,8 @@ func (s *Server) handleServiceStop(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if s.opts.Supervisor == nil {
-		http.Error(w, "supervisor not configured", http.StatusServiceUnavailable)
+	if s.opts.Runner == nil {
+		http.Error(w, "runner not configured", http.StatusServiceUnavailable)
 		return
 	}
 	name := r.FormValue("name")
@@ -332,10 +317,36 @@ func (s *Server) handleServiceStop(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing name", http.StatusBadRequest)
 		return
 	}
-	if err := s.opts.Supervisor.Stop(name); err != nil {
+	if err := s.opts.Runner.Stop(name); err != nil {
 		if s.opts.Logger != nil {
 			s.opts.Logger.Warn("service stop failed", "name", name, "error", err)
 		}
 	}
 	http.Redirect(w, r, "/services", http.StatusSeeOther)
+}
+
+// schedulerRunsFromHistory turns operations.HistoryRun rows into the
+// template-friendly SchedulerRun shape, extracting the `due_at` value
+// from the run's params (falling back to ran/started time when absent).
+func schedulerRunsFromHistory(rows []operations.HistoryRun) []SchedulerRun {
+	out := make([]SchedulerRun, 0, len(rows))
+	for _, r := range rows {
+		run := SchedulerRun{
+			RanAt:  r.StartedAt,
+			Status: r.Status,
+			Error:  r.Error,
+		}
+		if v, ok := r.Params["due_at"].(string); ok {
+			if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+				run.DueAt = t
+			} else if t, err := time.Parse(time.RFC3339, v); err == nil {
+				run.DueAt = t
+			}
+		}
+		if run.DueAt.IsZero() {
+			run.DueAt = r.StartedAt
+		}
+		out = append(out, run)
+	}
+	return out
 }

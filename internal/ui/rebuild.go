@@ -1,26 +1,14 @@
 package ui
 
 import (
-	"context"
-	"errors"
-	"sync"
 	"time"
+
+	"osg/internal/operations"
 )
 
-// rebuildState tracks ad-hoc on-demand rebuilds triggered from the UI's
-// "Rebuild now" button. Only one rebuild runs at a time; concurrent
-// triggers return a busy error.
-type rebuildState struct {
-	fn func(ctx context.Context) error
-
-	mu       sync.Mutex
-	running  bool
-	lastRan  time.Time
-	lastErr  string
-	duration time.Duration
-}
-
-// RebuildSnapshot is the read-side view of the rebuilder for templates.
+// RebuildSnapshot is the template-facing summary of the most recent
+// build run, surfaced on the /assets page. Built from the runner's
+// snapshot of the "build" task.
 type RebuildSnapshot struct {
 	Available bool
 	Running   bool
@@ -29,53 +17,27 @@ type RebuildSnapshot struct {
 	Duration  time.Duration
 }
 
-func newRebuildState(fn func(ctx context.Context) error) *rebuildState {
-	return &rebuildState{fn: fn}
-}
-
-// Trigger starts a rebuild in the background and returns immediately.
-// Returns an error if a rebuild is already in flight or no build
-// function was configured.
-func (r *rebuildState) Trigger() error {
-	if r == nil || r.fn == nil {
-		return errors.New("rebuild not available")
-	}
-	r.mu.Lock()
-	if r.running {
-		r.mu.Unlock()
-		return errors.New("rebuild already in progress")
-	}
-	r.running = true
-	r.mu.Unlock()
-
-	go func() {
-		started := time.Now()
-		err := r.fn(context.Background())
-		r.mu.Lock()
-		r.running = false
-		r.lastRan = time.Now()
-		r.duration = r.lastRan.Sub(started)
-		if err != nil {
-			r.lastErr = err.Error()
-		} else {
-			r.lastErr = ""
-		}
-		r.mu.Unlock()
-	}()
-	return nil
-}
-
-func (r *rebuildState) Snapshot() RebuildSnapshot {
+func rebuildSnapshotFromRunner(r *operations.Runner) RebuildSnapshot {
 	if r == nil {
 		return RebuildSnapshot{}
 	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return RebuildSnapshot{
-		Available: r.fn != nil,
-		Running:   r.running,
-		LastRan:   r.lastRan,
-		LastError: r.lastErr,
-		Duration:  r.duration,
+	snap := RebuildSnapshot{}
+	for _, s := range r.Snapshot() {
+		if s.Definition.Name != "build" {
+			continue
+		}
+		snap.Available = true
+		if s.State == operations.StateRunning || s.State == operations.StateStarting {
+			snap.Running = true
+		}
+		if s.LastRun != nil {
+			snap.LastRan = s.LastRun.EndedAt
+			snap.LastError = s.LastRun.Error
+			if !s.LastRun.StartedAt.IsZero() && !s.LastRun.EndedAt.IsZero() {
+				snap.Duration = s.LastRun.EndedAt.Sub(s.LastRun.StartedAt)
+			}
+		}
+		break
 	}
+	return snap
 }

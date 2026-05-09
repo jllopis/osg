@@ -2,13 +2,12 @@ package app
 
 import (
 	"context"
-	"path/filepath"
 	"time"
 
 	"osg/internal/build"
 	"osg/internal/config"
 	"osg/internal/logging"
-	"osg/internal/scheduler"
+	"osg/internal/operations"
 )
 
 // schedulerFallback is the maximum sleep between checks when no
@@ -18,6 +17,15 @@ import (
 // answer for that — it triggers a rebuild on file change anyway).
 const schedulerFallback = 5 * time.Minute
 
+// schedulerStore is the subset of operations.Store the scheduler needs
+// to record build triggers. Accepting an interface keeps tests light
+// (nil is allowed and simply skips audit) and avoids a hard dependency
+// on the SQLite dialect from this package.
+type schedulerStore interface {
+	Begin(name, kind string, params map[string]any, started time.Time) (int64, error)
+	Finish(id int64, status, errMsg string, ended time.Time) error
+}
+
 // RunScheduler watches for posts with a future publish_at frontmatter
 // field and triggers a rebuild when each one becomes due. The function
 // blocks until ctx is cancelled.
@@ -26,18 +34,12 @@ const schedulerFallback = 5 * time.Minute
 // finds the earliest future PublishAt across all pages, and sleeps
 // until that moment (or until schedulerFallback elapses, whichever is
 // sooner). When the timer fires it runs RunBuild and re-scans.
-func RunScheduler(ctx context.Context, opts CLIOptions) error {
+//
+// store may be nil; in that case scheduler triggers are not persisted
+// to the audit log.
+func RunScheduler(ctx context.Context, opts CLIOptions, store schedulerStore) error {
 	logger := logging.NewWithWriter(loadLoggingCfg(opts.ConfigPath), opts.Verbose, opts.LogWriter)
 	logger.Info("scheduler starting")
-
-	store, err := scheduler.NewStore(SchedulerDBPath(opts.ConfigPath))
-	if err != nil {
-		// Non-fatal: scheduler still works without an audit trail.
-		logger.Warn("scheduler audit store unavailable", "error", err)
-	}
-	if store != nil {
-		defer func() { _ = store.Close() }()
-	}
 
 	for {
 		cfg, err := config.Load(opts.ConfigPath)
@@ -61,10 +63,7 @@ func RunScheduler(ctx context.Context, opts CLIOptions) error {
 				logger.Info("scheduler idle (no upcoming publish_at)", "fallback", schedulerFallback)
 				sleepFor = schedulerFallback
 			} else {
-				sleepFor = time.Until(next)
-				if sleepFor < 0 {
-					sleepFor = 0
-				}
+				sleepFor = max(time.Until(next), 0)
 				if sleepFor > schedulerFallback {
 					sleepFor = schedulerFallback
 				}
@@ -87,33 +86,34 @@ func RunScheduler(ctx context.Context, opts CLIOptions) error {
 			logger.Info("scheduler triggering build",
 				"due_at", next.Format(time.RFC3339),
 			)
+			startedAt := time.Now()
+			var auditID int64
+			if store != nil {
+				params := map[string]any{"due_at": next.Format(time.RFC3339Nano)}
+				id, err := store.Begin("scheduler:trigger", operations.KindTask, params, startedAt)
+				if err != nil {
+					logger.Warn("scheduler audit begin failed", "error", err)
+				} else {
+					auditID = id
+				}
+			}
+
 			o := opts
 			o.SkipAI = true
-			run := scheduler.Run{DueAt: next, RanAt: time.Now(), Status: "ok"}
+			status := operations.StatusOK
+			errMsg := ""
 			if err := RunBuild(ctx, o); err != nil {
 				logger.Warn("scheduler build failed", "error", err)
-				run.Status = "error"
-				run.Error = err.Error()
+				status = operations.StatusError
+				errMsg = err.Error()
 			}
-			run.RanAt = time.Now()
-			if store != nil {
-				if recErr := store.Record(run); recErr != nil {
-					logger.Warn("scheduler audit record failed", "error", recErr)
+			if store != nil && auditID > 0 {
+				if err := store.Finish(auditID, status, errMsg, time.Now()); err != nil {
+					logger.Warn("scheduler audit finish failed", "error", err)
 				}
 			}
 		}
 	}
-}
-
-// SchedulerDBPath returns the path of the scheduler audit database. It
-// lives next to other OSG state under .osg/, derived from the config
-// path's directory.
-func SchedulerDBPath(configPath string) string {
-	dir := filepath.Dir(configPath)
-	if dir == "" || dir == "." {
-		return ".osg/scheduler.db"
-	}
-	return filepath.Join(dir, ".osg", "scheduler.db")
 }
 
 // sleep blocks for d or until ctx is cancelled. Returns false if the
