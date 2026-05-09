@@ -1006,24 +1006,24 @@ func TestThemeI18nDir(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// aiCachePath
+// summariesDBPath
 // ---------------------------------------------------------------------------
 
-func TestAICachePath(t *testing.T) {
+func TestSummariesDBPath(t *testing.T) {
 	tests := []struct {
 		name          string
 		buildCacheDir string
 		want          string
 	}{
-		{"custom dir", "/tmp/cache", filepath.Join("/tmp/cache", "ai-summaries.json")},
-		{"empty uses default", "", filepath.Join(".osg/cache", "ai-summaries.json")},
+		{"custom dir", "/tmp/cache", filepath.Join("/tmp/cache", "summaries.db")},
+		{"empty uses default", "", filepath.Join(".osg/cache", "summaries.db")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := config.Config{BuildCacheDir: tt.buildCacheDir}
-			got := aiCachePath(cfg)
+			got := summariesDBPath(cfg)
 			if got != tt.want {
-				t.Errorf("aiCachePath() = %q, want %q", got, tt.want)
+				t.Errorf("summariesDBPath() = %q, want %q", got, tt.want)
 			}
 		})
 	}

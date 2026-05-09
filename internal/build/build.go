@@ -2056,8 +2056,7 @@ func fillSummaries(ctx context.Context, cfg config.Config, opts BuildOptions, si
 	// without making new LLM calls; uncached pages fall back to auto.
 	if strings.EqualFold(strategy, "ai") {
 		if opts.SkipAI {
-			cachePath := aiCachePath(cfg)
-			cache := loadAICache(cachePath, logger)
+			cache := loadAICache(cfg, logger)
 			return fillFromCacheOrAuto(ctx, siteIndex, cache, logger)
 		}
 
@@ -2082,15 +2081,14 @@ func fillSummaries(ctx context.Context, cfg config.Config, opts BuildOptions, si
 		}
 
 		// Load AI summary cache.
-		cachePath := aiCachePath(cfg)
-		cache := loadAICache(cachePath, logger)
+		cache := loadAICache(cfg, logger)
 		cache.provider = cfg.AI.Provider
 		cache.model = cfg.AI.Model
 
 		affected := fillWithAI(ctx, siteIndex, kp, timeout, concurrency, cache, opts.ForceAISummaries, logger, opts.Progress)
 
 		// Save updated cache.
-		if err := saveAICache(cachePath, cache, logger); err != nil {
+		if err := saveAICache(cfg, cache, logger); err != nil {
 			logger.Warn("failed to save AI summary cache", "error", err)
 		}
 		return affected

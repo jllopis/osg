@@ -1,10 +1,10 @@
 package build
 
 import (
-	"os"
-	"path/filepath"
 	"sync"
 	"testing"
+
+	"osg/internal/config"
 )
 
 // ---------------------------------------------------------------------------
@@ -119,36 +119,31 @@ func TestAICache_ConcurrentAccess(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Persistence: save / load round-trip
+// SQLite-backed save/load round-trip
 // ---------------------------------------------------------------------------
 
-func TestAICache_SaveLoadRoundTrip(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "ai-summaries.json")
+func cacheTestCfg(t *testing.T) config.Config {
+	t.Helper()
+	return config.Config{BuildCacheDir: t.TempDir()}
+}
 
-	// Create and populate a cache.
+func TestAICache_SaveLoadRoundTrip(t *testing.T) {
+	cfg := cacheTestCfg(t)
+
 	cache := newAICache("anthropic", "claude")
 	cache.Store(contentHash("post one"), "Summary one.")
 	cache.Store(contentHash("post two"), "Summary two.")
 
-	// Save.
-	if err := saveAICache(path, cache, nil); err != nil {
+	if err := saveAICache(cfg, cache, nil); err != nil {
 		t.Fatalf("saveAICache: %v", err)
 	}
 
-	// Verify file exists.
-	if _, err := os.Stat(path); err != nil {
-		t.Fatalf("cache file not found: %v", err)
-	}
-
-	// Load into a new cache.
-	loaded := loadAICache(path, nil)
+	loaded := loadAICache(cfg, nil)
 	if loaded.Len() != 2 {
 		t.Fatalf("expected 2 entries, got %d", loaded.Len())
 	}
 
-	hash1 := contentHash("post one")
-	entry, ok := loaded.Lookup(hash1)
+	entry, ok := loaded.Lookup(contentHash("post one"))
 	if !ok {
 		t.Fatal("expected cache hit for 'post one'")
 	}
@@ -160,11 +155,9 @@ func TestAICache_SaveLoadRoundTrip(t *testing.T) {
 	}
 }
 
-func TestAICache_LoadMissingFile(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "nonexistent.json")
-
-	cache := loadAICache(path, nil)
+func TestAICache_LoadEmptyStore(t *testing.T) {
+	cfg := cacheTestCfg(t)
+	cache := loadAICache(cfg, nil)
 	if cache == nil {
 		t.Fatal("expected non-nil cache")
 	}
@@ -173,46 +166,25 @@ func TestAICache_LoadMissingFile(t *testing.T) {
 	}
 }
 
-func TestAICache_LoadCorruptedFile(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "ai-summaries.json")
-
-	// Write garbage.
-	if err := os.WriteFile(path, []byte("not json{{{"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	cache := loadAICache(path, nil)
-	if cache == nil {
-		t.Fatal("expected non-nil cache")
-	}
-	if cache.Len() != 0 {
-		t.Errorf("expected empty cache after corruption, got %d entries", cache.Len())
-	}
-}
-
 func TestAICache_SaveCreatesDirectories(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "a", "b", "c", "ai-summaries.json")
+	cfg := config.Config{BuildCacheDir: t.TempDir() + "/a/b/c"}
 
 	cache := newAICache("", "")
 	cache.Store("hash", "summary")
 
-	if err := saveAICache(path, cache, nil); err != nil {
+	if err := saveAICache(cfg, cache, nil); err != nil {
 		t.Fatalf("saveAICache: %v", err)
 	}
 
-	if _, err := os.Stat(path); err != nil {
-		t.Fatalf("cache file not found: %v", err)
+	loaded := loadAICache(cfg, nil)
+	if _, ok := loaded.Lookup("hash"); !ok {
+		t.Error("expected entry to be persisted under nested dir")
 	}
 }
 
 func TestAICache_SaveNilCache(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "ai-summaries.json")
-
-	// Should not panic or error.
-	if err := saveAICache(path, nil, nil); err != nil {
+	cfg := cacheTestCfg(t)
+	if err := saveAICache(cfg, nil, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -263,5 +235,62 @@ func TestAICache_Remove(t *testing.T) {
 	}
 	if cache.Remove("a") {
 		t.Error("Remove(a) returned true on second call; expected false")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// SQLite store invalidation API
+// ---------------------------------------------------------------------------
+
+func TestInvalidateAISummary_RemovesPersistedEntry(t *testing.T) {
+	cfg := cacheTestCfg(t)
+	cache := newAICache("p", "m")
+	cache.Store("zzz", "to be invalidated")
+	if err := saveAICache(cfg, cache, nil); err != nil {
+		t.Fatalf("saveAICache: %v", err)
+	}
+
+	removed, err := InvalidateAISummary(cfg, "zzz", nil)
+	if err != nil {
+		t.Fatalf("InvalidateAISummary: %v", err)
+	}
+	if !removed {
+		t.Error("expected removed=true for existing entry")
+	}
+
+	// Round-trip: loading again should not surface the entry.
+	loaded := loadAICache(cfg, nil)
+	if _, ok := loaded.Lookup("zzz"); ok {
+		t.Error("expected entry to be gone after invalidation")
+	}
+
+	// Second invalidation is a no-op.
+	removed, err = InvalidateAISummary(cfg, "zzz", nil)
+	if err != nil {
+		t.Fatalf("InvalidateAISummary (second): %v", err)
+	}
+	if removed {
+		t.Error("expected removed=false for missing entry")
+	}
+}
+
+func TestLookupAISummary_ReturnsCachedValue(t *testing.T) {
+	cfg := cacheTestCfg(t)
+	cache := newAICache("p", "m")
+	cache.Store("hh", "cached value")
+	if err := saveAICache(cfg, cache, nil); err != nil {
+		t.Fatalf("saveAICache: %v", err)
+	}
+
+	got, ok := LookupAISummary(cfg, "hh", nil)
+	if !ok {
+		t.Fatal("expected lookup hit")
+	}
+	if got != "cached value" {
+		t.Errorf("got %q, want %q", got, "cached value")
+	}
+
+	if _, ok := LookupAISummary(cfg, "missing", nil); ok {
+		t.Error("expected miss for unknown hash")
 	}
 }

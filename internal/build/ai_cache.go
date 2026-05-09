@@ -3,32 +3,33 @@ package build
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
 	"osg/internal/config"
 )
 
-// AICacheEntry stores a single cached AI summary together with metadata
-// about how and when it was generated.
+// AICacheEntry is a single AI-generated summary plus the metadata
+// recorded the moment it was produced. Persisted in
+// .osg/cache/summaries.db (see summary_store.go).
 type AICacheEntry struct {
-	Summary     string `json:"summary"`
-	Provider    string `json:"provider,omitempty"`
-	Model       string `json:"model,omitempty"`
-	GeneratedAt string `json:"generated_at"`
+	Summary     string
+	Provider    string
+	Model       string
+	GeneratedAt string
 }
 
-// AICache is the in-memory representation of the AI summary cache.
-// It is safe for concurrent use from multiple goroutines.
+// AICache is the in-memory view of every cached AI summary. It is
+// loaded from SQLite at the start of a build, mutated by the parallel
+// summary pipeline, and flushed back at the end. Safe for concurrent
+// access.
 type AICache struct {
 	mu      sync.RWMutex
-	Entries map[string]AICacheEntry `json:"entries"`
+	Entries map[string]AICacheEntry
 
-	// provider and model are set at construction and stamped into new entries.
+	// provider and model are stamped onto new entries so the row
+	// records which backend produced the value.
 	provider string
 	model    string
 }
@@ -63,8 +64,7 @@ func (c *AICache) Store(hash string, summary string) {
 }
 
 // Remove drops the entry with the given content hash. Returns true
-// when an entry was actually removed (false when the hash was absent),
-// so callers can decide whether to log a no-op vs report success.
+// when an entry was actually removed.
 func (c *AICache) Remove(hash string) bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -82,126 +82,71 @@ func (c *AICache) Len() int {
 	return len(c.Entries)
 }
 
-// ---------------------------------------------------------------------------
-// Persistence
-// ---------------------------------------------------------------------------
-
-const aiCacheFile = "ai-summaries.json"
-
-// aiCachePath returns the full path to the AI summary cache file inside
-// the configured build cache directory.
-func aiCachePath(cfg config.Config) string {
-	dir := cfg.BuildCacheDir
-	if dir == "" {
-		dir = ".osg/cache"
-	}
-	return filepath.Join(dir, aiCacheFile)
+// loadAICache loads every persisted summary into a fresh in-memory
+// cache. Backed by SQLite (.osg/cache/summaries.db).
+func loadAICache(cfg config.Config, logger *slog.Logger) *AICache {
+	return loadAISummariesIntoCache(cfg, logger)
 }
 
-// loadAICache reads the cache file from disk.  If the file doesn't exist
-// or is unreadable an empty cache is returned (never nil).
-func loadAICache(path string, logger *slog.Logger) *AICache {
-	cache := newAICache("", "")
+// saveAICache persists the in-memory cache to SQLite.
+func saveAICache(cfg config.Config, cache *AICache, logger *slog.Logger) error {
+	return persistAICache(cfg, cache, logger)
+}
 
-	data, err := os.ReadFile(path)
+// InvalidateAISummary drops the entry with the given content hash
+// from the persisted store so the next build is forced to re-call
+// the LLM for that page. Returns true when an entry was removed.
+func InvalidateAISummary(cfg config.Config, hash string, logger *slog.Logger) (bool, error) {
+	store, err := openSummaryStore(cfg)
 	if err != nil {
-		if !os.IsNotExist(err) && logger != nil {
-			logger.Warn("failed to read AI summary cache", "path", path, "error", err)
-		}
-		return cache
+		return false, err
 	}
+	defer func() { _ = store.Close() }()
+	removed, err := store.Remove(hash)
+	if err != nil {
+		return false, err
+	}
+	if logger != nil && removed {
+		logger.Info("ai summary invalidated", "hash", hash)
+	}
+	return removed, nil
+}
 
-	if err := json.Unmarshal(data, cache); err != nil {
+// LookupAISummary returns the cached AI summary for the given content
+// hash, or "" with ok=false when no entry exists. Read-only — used by
+// the UI to preview the cached value next to the editor.
+func LookupAISummary(cfg config.Config, hash string, logger *slog.Logger) (string, bool) {
+	store, err := openSummaryStore(cfg)
+	if err != nil {
 		if logger != nil {
-			logger.Warn("failed to parse AI summary cache, starting fresh", "path", path, "error", err)
+			logger.Warn("open summary store failed", "error", err)
 		}
-		return newAICache("", "")
+		return "", false
 	}
-
-	if cache.Entries == nil {
-		cache.Entries = make(map[string]AICacheEntry)
-	}
-
-	if logger != nil {
-		logger.Info("AI summary cache loaded", "entries", len(cache.Entries))
-	}
-	return cache
-}
-
-// saveAICache writes the cache to disk, creating parent directories as
-// needed.  Returns any write error.
-func saveAICache(path string, cache *AICache, logger *slog.Logger) error {
-	if cache == nil {
-		return nil
-	}
-
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-
-	cache.mu.RLock()
-	data, err := json.MarshalIndent(cache, "", "  ")
-	cache.mu.RUnlock()
+	defer func() { _ = store.Close() }()
+	entry, ok, err := store.Lookup(hash)
 	if err != nil {
-		return err
+		if logger != nil {
+			logger.Warn("lookup summary failed", "error", err)
+		}
+		return "", false
 	}
-
-	if err := os.WriteFile(path, data, 0o644); err != nil {
-		return err
+	if !ok {
+		return "", false
 	}
-
-	if logger != nil {
-		logger.Info("AI summary cache saved", "entries", cache.Len(), "path", path)
-	}
-	return nil
+	return entry.Summary, true
 }
 
-// ---------------------------------------------------------------------------
-// Hashing
-// ---------------------------------------------------------------------------
-
-// contentHash returns the SHA-256 hex digest of the given content string.
-// This is used as the cache key — when content changes, the hash changes
-// and the old cache entry is naturally invalidated.
+// contentHash returns the SHA-256 hex digest of the given content
+// string. This is the cache key — when content changes the hash
+// changes and the old entry naturally goes unused.
 func contentHash(content string) string {
 	h := sha256.Sum256([]byte(content))
 	return hex.EncodeToString(h[:])
 }
 
-// ContentHash exposes contentHash so callers in other packages (in
-// particular internal/ui) can compute the same cache key the build
-// uses without duplicating the SHA-256 logic.
+// ContentHash exposes contentHash so callers in other packages can
+// compute the same cache key the build uses.
 func ContentHash(content string) string {
 	return contentHash(content)
-}
-
-// InvalidateAISummary loads the on-disk AI summary cache, drops the
-// entry with the given content hash, and writes it back. No-op when
-// the entry is absent; returns true when an entry was actually
-// removed. Used by the UI's "regenerate summary" action so the next
-// build is forced to re-call the LLM for that one page.
-func InvalidateAISummary(cfg config.Config, hash string, logger *slog.Logger) (bool, error) {
-	path := aiCachePath(cfg)
-	cache := loadAICache(path, logger)
-	if !cache.Remove(hash) {
-		return false, nil
-	}
-	if err := saveAICache(path, cache, logger); err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-// LookupAISummary returns the cached AI summary for the given content
-// hash, or "" with ok=false when no entry exists. Read-only, so the
-// UI can preview the cached value without disturbing the cache file.
-func LookupAISummary(cfg config.Config, hash string, logger *slog.Logger) (string, bool) {
-	path := aiCachePath(cfg)
-	cache := loadAICache(path, logger)
-	entry, ok := cache.Lookup(hash)
-	if !ok {
-		return "", false
-	}
-	return entry.Summary, true
 }
