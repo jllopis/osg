@@ -351,9 +351,11 @@ func newQwenProvider(cfg AIConfig) (llm.Provider, error) {
 }
 
 func newOllamaProvider(cfg AIConfig) (llm.Provider, error) {
-	baseURL := cfg.BaseURL
-	if baseURL == "" {
-		baseURL = "http://localhost:11434"
-	}
-	return llm.NewOllama(baseURL), nil
+	// Kairos's llm.NewOllama hardcodes a 120s HTTP client timeout
+	// that silently overrides cfg.AI.Timeout for slow local models.
+	// newOllamaClient (internal/summary/ollama.go) returns an
+	// http.Client without a built-in timeout so the request context
+	// — which the caller already wraps with cfg.AI.Timeout — is the
+	// only deadline that fires.
+	return newOllamaClient(cfg.BaseURL), nil
 }
