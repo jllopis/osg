@@ -9,14 +9,16 @@ A fast, opinionated static site generator that turns your [Obsidian](https://obs
 - **Nord-themed default** — dark/light modes, Inter + JetBrains Mono fonts, responsive
 - **Taxonomy system** — tags, categories, custom taxonomies with pagination and feeds
 - **Full-text search** — bundled WASM plugin, zero-JS index, keyboard-navigable dropdown
-- **Image pipeline** — WebP optimization, srcset, lazy loading, lightbox gallery
-- **AI summaries** — auto/manual/AI strategies via Kairos (Gemini, Anthropic, OpenAI, etc.)
+- **Image pipeline** — WebP + AVIF optimization, srcset, lazy loading, lightbox gallery; encoders embedded (libwebp/libavif via wazero) so no external `cwebp`/`avifenc` is required
+- **AI summaries** — auto/manual/AI strategies via Kairos (Gemini, Anthropic, OpenAI, etc.); per-page editor with "AI Suggestion" button in the web dashboard; SQLite-backed cache with bounded retries on transient errors
 - **WASM plugins** — 10 hooks, Rust/Go SDKs, GitHub registry, hot-reload in TUI
 - **Shortcodes** — YouTube, Twitter, CodePen embeds; admonitions; tabs; figures; collapsible details
 - **i18n** — English and Spanish built-in, extensible translation system
 - **SEO** — canonical URLs, Open Graph, Twitter Cards, sitemaps, RSS/Atom feeds
 - **Sass compilation** — compressed output, theme overrides
 - **TUI** — two-panel Bubble Tea interface with slash commands
+- **Web UI** — `osg ui` boots a local loopback dashboard with vault editor, /actions pipeline (run from here), /history audit log, services supervisor, scheduler audit, and per-page operations
+- **Auto-publish** — `osg.publish: draft` + `osg.publish_at: <date>` schedules a post; the scheduler flips the flag in the vault and triggers update-content + build when the date arrives. Drafts and scheduled-future pages never reach the deploy upload
 - **Related posts** — automatic recommendations by shared taxonomy terms
 - **Reading progress** — scroll progress bar on article pages
 - **Sidebar widgets** — optional homepage with author / newsletter / popular widgets; sticky right sidebar at ≥1400px, stacked below content on narrower viewports
@@ -59,6 +61,7 @@ Open `http://localhost:1313`.
 
 ```
 osg                          # Launch TUI (default command)
+osg ui                       # Launch local web dashboard (loopback :1314)
 osg init                     # Initialize project structure
 osg update-content           # Sync content from Obsidian vault
 osg build                    # Build static site to public/
@@ -66,10 +69,18 @@ osg serve                    # Serve with live reload
 osg serve --watch --live-reload
 osg new "My Post Title"      # Create a new post in the vault
 osg new "Post" --no-editor   # Create without opening editor
+osg check                    # Validate content (links, images, frontmatter)
+osg audit                    # Audit rendered site for SEO / performance issues
 osg doctor                   # Validate configuration
 osg deploy                   # Deploy to Cloudflare/rsync/S3
 osg version                  # Show version info
 ```
+
+`osg ui` and `osg` (TUI) are independent: the TUI runs in your terminal,
+the web dashboard runs as a loopback HTTP server (`127.0.0.1:1314` by
+default; non-loopback binds are rejected) and lets you run every CLI
+command from a browser, edit per-page summaries, follow live logs, and
+inspect history.
 
 `osg new` creates a Markdown file in the vault with pre-configured frontmatter
 including all `osg:` fields as commented-out placeholders. After creating the
@@ -129,10 +140,18 @@ osg:
   path: "/about/"        # custom URL (standalone page)
   permalink: "blog/{year}/{slug}"  # URL pattern with placeholders
   menu: true             # add to site navigation
-  abstract: "Custom summary for listings and meta tags."
+  summary: "Hand-written summary."        # alias of abstract; either is honoured
+  abstract: "Legacy field, still works."  # equivalent to summary
+  publish_at: 2026-06-15 # schedule auto-publish on this date (works with publish:draft)
   author: "Joan Llopis"  # author shown alongside the date
 ---
 ```
+
+When `publish_at` is set on a draft, the post is synced to `content/`
+but kept out of `public/` (and therefore out of the deploy) until the
+date arrives. At that moment the scheduler service flips
+`osg.publish: draft` → `osg.publish: true` in the vault and triggers
+update-content + build automatically.
 
 ### Taxonomies
 

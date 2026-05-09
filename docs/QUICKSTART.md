@@ -27,6 +27,26 @@ osg tui
 
 Por defecto, `osg` sin comando lanza la TUI.
 
+## 5b) Web UI (dashboard)
+
+```bash
+osg ui
+```
+
+Levanta un dashboard web en `127.0.0.1:1314` (loopback-only, rechaza
+binds publicos). Desde el navegador puedes:
+
+- Ver inventario del vault, plugins, assets, scheduler audit y servicios
+- Editar `osg.summary` por pagina (con boton "Sugerencia IA" que llama
+  al LLM en directo)
+- Ejecutar el pipeline `init → update-content → check → build → deploy`
+  via `/actions` con "Run from here"
+- Inspeccionar logs en vivo en el drawer inferior
+- Consultar `/history` con filtros por nombre/kind/status
+
+La TUI y la Web UI son independientes y comparten los mismos comandos
+internos — uses la que prefieras.
+
 ## 6) Crear un post nuevo
 
 ```bash
@@ -48,12 +68,29 @@ osg:
   # path: ""           # Custom output path override
   # permalink: ""      # URL pattern ({date}, {year}, {month}, {day}, {slug}, {title})
   # menu: false        # Add to navigation menu
-  # abstract: ""       # Summary/excerpt override
+  # summary: ""        # Summary/excerpt override (alias of abstract)
+  # abstract: ""       # Legacy alias of summary
   # author: ""         # Author override
+  # publish_at:        # Auto-publish date (works with publish:draft)
 ---
 ```
 
 Todos los campos `osg:` aparecen como comentarios YAML listos para descomentar.
+
+### Programar la publicacion de un draft
+
+Mantente con `osg.publish: draft` y añade `osg.publish_at: 2026-06-15`.
+El scheduler service (incluido en `osg ui` o ejecutado independiente
+con la operacion `scheduler`) despertara el dia indicado, reescribira
+el frontmatter del vault para flipear `osg.publish: draft → true`, y
+disparara `update-content` + `build`. Mientras tanto el post:
+
+- Se sincroniza a `content/` para que el scheduler lo encuentre
+- Se queda fuera de `public/` (build sigue tratandolo como draft)
+- Tampoco se sube en deploys (esta registrado en `deferred_publications`)
+
+Si cambias de opinion, basta con borrar el `publish_at` o eliminar el
+fichero del vault antes de la fecha.
 
 **Opciones:**
 

@@ -932,10 +932,22 @@ logging:
 # -----------------------------------------------------------------------------
 # UI dashboard (osg ui)
 # -----------------------------------------------------------------------------
-# Local web dashboard for the author. Surfaces vault/build state, plugin
-# metadata, and lets you start/stop the serve and api services from a
-# single browser tab. Loopback-only by default — non-loopback bind addresses
-# are rejected.
+# Local web dashboard for the author. Loopback-only by default —
+# non-loopback bind addresses are rejected. Pages:
+#   /              dashboard with stats + Build/Deploy quick actions
+#   /vault         page list as cards; expand for summary + Editar/Resumir/Eliminar
+#   /vault/page    per-page editor (osg.summary + AI Suggestion + Save/Build/Deploy)
+#   /actions       horizontal pipeline (init→update-content→check→build→deploy)
+#                  with "Run" and "Run from here →"; bottom drawer auto-follows
+#                  the running step's live log
+#   /history       audit log with filters (name / kind / status)
+#   /services      long-running services (serve, api, watcher, scheduler)
+#   /assets        image inventory + Rebuild now
+#   /scheduler     persistent scheduler audit
+#   /plugins       enable/disable + install
+#   /import        WordPress / Hugo importers
+#   /themes        installed themes + scaffold
+#   /audit         site quality audit (HTML / a11y / perf)
 #
 # ui:
 #   addr: ":1314"        # Bind address. Bare ":port" is normalised to
