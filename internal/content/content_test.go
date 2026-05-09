@@ -649,3 +649,49 @@ func containsSubstr(s, sub string) bool {
 	}
 	return false
 }
+
+func TestNormalizeFrontmatter_PreservesOSGPublishAt(t *testing.T) {
+	// A draft scheduled to publish later must keep its publish_at
+	// when the vault is synced to content/. Without it the build's
+	// ComputeStats sees PublishAt=zero, classifies the post as a
+	// plain Draft, and the scheduler service sleeps forever.
+	publishAt, _ := time.Parse(time.RFC3339, "2099-05-10T00:35:00+02:00")
+	fm := map[string]any{
+		"title": "Future post",
+		"osg": map[string]any{
+			"publish":    "draft",
+			"publish_at": publishAt,
+		},
+	}
+
+	out := NormalizeFrontmatter(fm, "future-post", "2099-05-10", true, "future-post.md")
+	got, ok := out["publish_at"]
+	if !ok {
+		t.Fatal("publish_at missing from normalized output")
+	}
+	if !got.(time.Time).Equal(publishAt) {
+		t.Errorf("publish_at = %v, want %v", got, publishAt)
+	}
+}
+
+func TestNormalizeFrontmatter_TopLevelPublishAt(t *testing.T) {
+	// Top-level `publish_at` (legacy form, not under osg) must also
+	// survive the rewrite — publish.PublishAt accepts both spellings.
+	publishAt, _ := time.Parse(time.RFC3339, "2099-05-10T00:35:00+02:00")
+	fm := map[string]any{
+		"title":      "Top-level",
+		"publish_at": publishAt,
+	}
+	out := NormalizeFrontmatter(fm, "top", "2099-05-10", false, "top.md")
+	if _, ok := out["publish_at"]; !ok {
+		t.Error("top-level publish_at must also be preserved")
+	}
+}
+
+func TestNormalizeFrontmatter_NoPublishAt_OmitsField(t *testing.T) {
+	fm := map[string]any{"title": "Plain"}
+	out := NormalizeFrontmatter(fm, "plain", "2026-01-01", false, "plain.md")
+	if _, ok := out["publish_at"]; ok {
+		t.Error("publish_at must not be set when source has none")
+	}
+}

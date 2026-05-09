@@ -31,6 +31,16 @@ func NormalizeFrontmatter(fm map[string]any, slug string, dateISO string, isDraf
 	out["slug"] = slug
 	out["draft"] = isDraft
 
+	// Publish-at: preserved as a top-level field so site.ParseFile's
+	// pickTime picks it up after the vault → content sync. Without
+	// this, scheduled drafts never reach the scheduler classification
+	// (publish.PublishAt reads osg.* or top-level; NormalizeFrontmatter
+	// builds the output map from scratch, so anything we don't copy
+	// here is lost).
+	if at := publish.PublishAt(fm); !at.IsZero() {
+		out["publish_at"] = at
+	}
+
 	if tags := toStringSlice(fm["tags"]); len(tags) > 0 {
 		out["tags"] = tags
 	}
