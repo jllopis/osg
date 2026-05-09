@@ -961,6 +961,83 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .flow-node { width: 100%; }
 }
 
+/* Bottom panel that follows the currently running pipeline step. The
+   panel auto-attaches to whichever operation is in `running`/`starting`
+   state, streaming its logs via SSE; when the next step takes over,
+   the panel switches its source automatically. The top edge is a
+   drag handle so the user can give it more or less screen space, and
+   the chosen height is persisted in localStorage. */
+.flow-drawer {
+  position: relative;
+  margin-top: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  display: flex;
+  flex-direction: column;
+  height: 280px;
+  min-height: 140px;
+  overflow: hidden;
+}
+.flow-drawer[hidden] { display: none; }
+.flow-drawer-resize {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+}
+.flow-drawer-resize:hover,
+.flow-drawer.is-resizing .flow-drawer-resize {
+  background: var(--accent);
+  opacity: 0.5;
+}
+.flow-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev-2);
+  flex-shrink: 0;
+}
+.flow-drawer-title { flex: 1; display: flex; align-items: baseline; gap: 0.5rem; }
+.flow-drawer-title strong { font-size: 0.9rem; }
+.flow-drawer-title [data-flow-status] { font-size: 0.75rem; }
+.flow-drawer-clear,
+.flow-drawer-close {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+.flow-drawer-close { font-size: 1.1rem; line-height: 1; padding: 0.05rem 0.4rem; }
+.flow-drawer-clear:hover,
+.flow-drawer-close:hover { color: var(--fg); border-color: var(--border); }
+.flow-drawer-logs {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg);
+  color: var(--fg-muted);
+}
+.flow-drawer-logs .flow-drawer-sep {
+  display: block;
+  color: var(--fg-dim);
+  margin: 0.4rem 0;
+}
+
 /* Collapsed task-form on domain pages (/vault new, /plugins install,
    /themes scaffold). Closed by default so the page leads with its
    primary content (pages list / installed list / theme list). The

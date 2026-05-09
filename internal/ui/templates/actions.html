@@ -10,4 +10,17 @@
     {{end}}
     {{end}}
   </div>
+
+  <section class="flow-drawer" data-flow-drawer hidden>
+    <div class="flow-drawer-resize" data-flow-resize aria-label="Drag to resize"></div>
+    <header class="flow-drawer-head">
+      <div class="flow-drawer-title">
+        <strong data-flow-step>—</strong>
+        <span class="fg-dim mono" data-flow-status></span>
+      </div>
+      <button type="button" class="flow-drawer-clear" data-flow-clear title="Clear">clear</button>
+      <button type="button" class="flow-drawer-close" data-flow-close aria-label="Close">×</button>
+    </header>
+    <pre class="flow-drawer-logs" data-flow-logs></pre>
+  </section>
 {{end}}

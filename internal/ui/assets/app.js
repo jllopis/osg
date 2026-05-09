@@ -189,6 +189,120 @@
     }
   }
 
+  // setupFlowDrawer wires the bottom panel on /actions that follows the
+  // currently running pipeline step. The panel auto-opens when a step
+  // enters running/starting state, attaches an EventSource to its log
+  // stream, and switches its source as each step finishes and the next
+  // takes over. The user can resize the panel by dragging the top edge
+  // and clear the buffer or close the whole panel via the header
+  // controls. Returns null when the page has no flow drawer (i.e.
+  // anywhere other than /actions).
+  function setupFlowDrawer() {
+    const drawer = document.querySelector("[data-flow-drawer]");
+    if (!drawer) return null;
+    const stepEl = drawer.querySelector("[data-flow-step]");
+    const statusEl = drawer.querySelector("[data-flow-status]");
+    const logsEl = drawer.querySelector("[data-flow-logs]");
+    const closeBtn = drawer.querySelector("[data-flow-close]");
+    const clearBtn = drawer.querySelector("[data-flow-clear]");
+    const resizer = drawer.querySelector("[data-flow-resize]");
+
+    let following = null;
+    let es = null;
+
+    function openIfHidden() { if (drawer.hidden) drawer.hidden = false; }
+    function closeStream() {
+      if (es) { es.close(); es = null; }
+    }
+    function appendLine(line) {
+      const nearBottom = logsEl.scrollTop + logsEl.clientHeight >= logsEl.scrollHeight - 20;
+      logsEl.appendChild(document.createTextNode(line + "\n"));
+      if (nearBottom) logsEl.scrollTop = logsEl.scrollHeight;
+    }
+    function appendSeparator(text) {
+      const span = document.createElement("span");
+      span.className = "flow-drawer-sep";
+      span.textContent = "── " + text + " ──";
+      logsEl.appendChild(span);
+      logsEl.appendChild(document.createTextNode("\n"));
+      logsEl.scrollTop = logsEl.scrollHeight;
+    }
+    function follow(name) {
+      closeStream();
+      following = name;
+      stepEl.textContent = name;
+      statusEl.textContent = "running…";
+      appendSeparator(name + " started");
+      es = new EventSource("/operations/" + encodeURIComponent(name) + "/logs");
+      es.addEventListener("log", function (ev) { appendLine(ev.data); });
+      es.onerror = function () { /* run end closes the stream; pill update reports final state */ };
+    }
+    function unfollow(prevState) {
+      if (!following) return;
+      appendSeparator(following + " " + (prevState || "done"));
+      closeStream();
+      stepEl.textContent = "—";
+      statusEl.textContent = "idle";
+      following = null;
+    }
+
+    closeBtn.addEventListener("click", function () {
+      closeStream();
+      following = null;
+      drawer.hidden = true;
+    });
+    clearBtn.addEventListener("click", function () {
+      logsEl.textContent = "";
+    });
+
+    // Resize: drag the top edge, persist height to localStorage so it
+    // survives page navigation. Lower bound matches CSS min-height; the
+    // upper bound leaves space for the pipeline above.
+    let dragging = false, startY = 0, startH = 0;
+    resizer.addEventListener("mousedown", function (e) {
+      dragging = true; startY = e.clientY; startH = drawer.offsetHeight;
+      drawer.classList.add("is-resizing");
+      e.preventDefault();
+    });
+    document.addEventListener("mousemove", function (e) {
+      if (!dragging) return;
+      const dy = startY - e.clientY;
+      const h = Math.max(140, Math.min(window.innerHeight - 120, startH + dy));
+      drawer.style.height = h + "px";
+    });
+    document.addEventListener("mouseup", function () {
+      if (!dragging) return;
+      dragging = false;
+      drawer.classList.remove("is-resizing");
+      try { localStorage.setItem("osg-flow-drawer-h", String(drawer.offsetHeight)); } catch (_) {}
+    });
+    try {
+      const saved = parseInt(localStorage.getItem("osg-flow-drawer-h") || "0", 10);
+      if (saved > 140) drawer.style.height = saved + "px";
+    } catch (_) {}
+
+    return {
+      // update is called on every operations poll cycle. ops is the
+      // map name → op JSON; running is the first op found in a
+      // running/starting state (or null when the pipeline is idle).
+      update: function (running, ops) {
+        if (running) {
+          if (running.name !== following) {
+            if (following) {
+              const prev = ops.get(following);
+              appendSeparator(following + " " + (prev ? prev.state : "done"));
+            }
+            openIfHidden();
+            follow(running.name);
+          }
+        } else if (following) {
+          const prev = ops.get(following);
+          unfollow(prev ? prev.state : "done");
+        }
+      },
+    };
+  }
+
   // Polls /operations.json so cards (flow nodes, op-cards, quick
   // buttons, task-form panels) reflect the runner's current state. The
   // pill text/class is patched in place for cheap feedback; the card is
@@ -207,6 +321,7 @@
       stopping: "status-pill is-warn",
     };
 
+    const flowDrawer = setupFlowDrawer();
     const inFlight = new Set();
 
     function swapCard(card, op) {
@@ -236,6 +351,13 @@
         .then(function (data) {
           if (!data || !Array.isArray(data.operations)) return;
           const byName = new Map(data.operations.map(function (op) { return [op.name, op]; }));
+          let running = null;
+          data.operations.forEach(function (op) {
+            if (!running && (op.state === "running" || op.state === "starting")) {
+              running = op;
+            }
+          });
+          if (flowDrawer) flowDrawer.update(running, byName);
           document.querySelectorAll("[data-card-style]").forEach(function (card) {
             const name = card.getAttribute("data-operation");
             const op = name ? byName.get(name) : null;
