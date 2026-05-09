@@ -136,6 +136,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /operations/{name}/card", s.handleOperationCard)
 	s.mux.HandleFunc("GET /operations.json", s.handleOperationsJSON)
 	s.mux.HandleFunc("POST /summary/invalidate", s.handleSummaryInvalidate)
+	s.mux.HandleFunc("POST /summary/save", s.handleSummarySave)
+	s.mux.HandleFunc("GET /vault/page", s.handleVaultPage)
 }
 
 // loadTemplates parses each page template against the layout and the
@@ -146,7 +148,7 @@ func (s *Server) routes() {
 // without the layout so individual partials (e.g. drawer.html) can be
 // rendered directly into HTMX targets.
 func loadTemplates() (map[string]*template.Template, error) {
-	pages := []string{"dashboard", "actions", "history", "vault", "plugins", "assets", "scheduler", "services", "import", "themes", "audit"}
+	pages := []string{"dashboard", "actions", "history", "vault", "page", "plugins", "assets", "scheduler", "services", "import", "themes", "audit"}
 	partials := []string{
 		"templates/partials/quick-button.html",
 		"templates/partials/operation-card.html",

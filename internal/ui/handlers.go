@@ -39,6 +39,7 @@ type viewData struct {
 	AuditReport     *audit.Report
 	AuditFindings   []FindingView
 	FlowNodes       []FlowNodeView
+	PageEdit        *PageEditView
 	State
 }
 

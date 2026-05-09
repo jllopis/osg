@@ -398,6 +398,53 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   text-underline-offset: 3px;
 }
 .btn-link:hover { color: var(--fg); }
+.btn-link + .btn-link, .btn-link + form { margin-left: 0.5rem; }
+
+/* Per-page summary editor at /vault/page. The page-meta dl shows
+   read-only metadata; page-summary-current frames the value the
+   site is currently using; the form below holds the override. */
+.page-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0;
+}
+.page-meta dt { color: var(--fg-dim); font-size: 0.8rem; }
+.page-meta dd { margin: 0; }
+.page-summary-current {
+  margin: 0.75rem 0;
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-elev);
+  border-radius: 0 4px 4px 0;
+}
+.page-summary-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-dim);
+  margin-bottom: 0.25rem;
+}
+.page-summary-body { font-size: 0.85rem; }
+.page-edit-form { margin-top: 0.75rem; max-width: 720px; }
+.page-edit-form textarea {
+  width: 100%;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+.page-edit-form textarea:focus { outline: none; border-color: var(--accent); }
+.page-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
 
 /* Empty state */
 .empty {

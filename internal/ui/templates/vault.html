@@ -34,7 +34,8 @@
         <td class="mono">{{if .Date}}{{.Date.Format "2006-01-02"}}{{else}}—{{end}}</td>
         <td>{{if .Draft}}<span class="pill warn">draft</span>{{else}}<span class="pill ok">published</span>{{end}}</td>
         <td>
-          <form method="post" action="/summary/invalidate"
+          <a class="btn-link" href="/vault/page?source={{.Source}}" title="Edit summary, rebuild and deploy">edit</a>
+          <form method="post" action="/summary/invalidate" style="display:inline"
                 data-confirm="Drop the AI summary cache for this page? The next build will re-call the LLM.">
             <input type="hidden" name="source" value="{{.Source}}">
             <button type="submit" class="btn-link" title="Drop the AI summary cache so the next build regenerates it">re-summarize</button>

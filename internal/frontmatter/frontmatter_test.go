@@ -2,6 +2,7 @@ package frontmatter
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -52,5 +53,92 @@ func TestSplitFrontmatterMissingEnd(t *testing.T) {
 	_, _, _, err := SplitFrontmatter(input)
 	if err == nil {
 		t.Fatalf("expected error")
+	}
+}
+
+func TestUpdateField_AddsNewOSGSummary(t *testing.T) {
+	src := `---
+title: Test post
+date: 2026-01-01
+osg:
+  publish: true
+---
+Body content.
+`
+	out, err := UpdateField([]byte(src), "osg.summary", "Hand-written summary.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	if !strings.Contains(s, "summary: Hand-written summary.") {
+		t.Errorf("expected new osg.summary key, got:\n%s", s)
+	}
+	if !strings.Contains(s, "publish: true") {
+		t.Errorf("existing osg.publish must be preserved, got:\n%s", s)
+	}
+	if !strings.Contains(s, "title: Test post") {
+		t.Errorf("title preserved, got:\n%s", s)
+	}
+	if !strings.HasSuffix(s, "Body content.\n") {
+		t.Errorf("body preserved, got:\n%s", s)
+	}
+}
+
+func TestUpdateField_ReplacesExisting(t *testing.T) {
+	src := `---
+title: T
+osg:
+  summary: old summary
+---
+body
+`
+	out, err := UpdateField([]byte(src), "osg.summary", "new summary")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	if strings.Contains(s, "old summary") {
+		t.Errorf("old summary should have been replaced, got:\n%s", s)
+	}
+	if !strings.Contains(s, "new summary") {
+		t.Errorf("new summary missing, got:\n%s", s)
+	}
+}
+
+func TestUpdateField_DeleteOnEmpty(t *testing.T) {
+	src := `---
+title: T
+osg:
+  summary: drop me
+  publish: true
+---
+body
+`
+	out, err := UpdateField([]byte(src), "osg.summary", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	if strings.Contains(s, "drop me") {
+		t.Errorf("summary should have been deleted, got:\n%s", s)
+	}
+	if !strings.Contains(s, "publish: true") {
+		t.Errorf("sibling osg.publish must survive, got:\n%s", s)
+	}
+}
+
+func TestUpdateField_CreatesMappingIfMissing(t *testing.T) {
+	src := `---
+title: T
+---
+body
+`
+	out, err := UpdateField([]byte(src), "osg.summary", "added")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	if !strings.Contains(s, "osg:") || !strings.Contains(s, "summary: added") {
+		t.Errorf("expected osg.summary block to be created, got:\n%s", s)
 	}
 }

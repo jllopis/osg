@@ -192,3 +192,16 @@ func InvalidateAISummary(cfg config.Config, hash string, logger *slog.Logger) (b
 	}
 	return true, nil
 }
+
+// LookupAISummary returns the cached AI summary for the given content
+// hash, or "" with ok=false when no entry exists. Read-only, so the
+// UI can preview the cached value without disturbing the cache file.
+func LookupAISummary(cfg config.Config, hash string, logger *slog.Logger) (string, bool) {
+	path := aiCachePath(cfg)
+	cache := loadAICache(path, logger)
+	entry, ok := cache.Lookup(hash)
+	if !ok {
+		return "", false
+	}
+	return entry.Summary, true
+}

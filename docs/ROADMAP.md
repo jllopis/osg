@@ -1192,3 +1192,26 @@ desde la UI sin tener que tocar el cache a mano.
   (modal de confirmacion ya existente). `PageView.Source` (path
   relativo a content_dir) sirve como identificador estable
 
+### 33C — Editor de resumen + chained build/deploy (done)
+- [done] `internal/frontmatter.UpdateField`: reemplaza/elimina un
+  dotted key (`osg.summary`) preservando el resto del frontmatter
+  YAML mediante `yaml.Node` (orden, comentarios, body intactos);
+  soporta archivos sin frontmatter (lo crea); estilo de bloque
+  literal para summaries multilinea
+- [done] `site.ParseFile` reconoce `osg.summary` como alias del
+  ya existente `osg.abstract` para que la UI hable el mismo nombre
+  que escribe la persistencia
+- [done] `build.LookupAISummary` (read-only) para que la UI muestre
+  como referencia el ultimo summary generado por IA
+- [done] Pagina `/vault/page?source=…` con metadata read-only,
+  bloque "currently used" (resumen efectivo), bloque "AI cache"
+  cuando difiere, y textarea sobre `osg.summary` con tres botones:
+  Save / Save &amp; rebuild / Save, build &amp; deploy
+- [done] `POST /summary/save` reescribe el `.md` atomicamente
+  (tmpfile + rename), opcionalmente dispara `build` o
+  `build → deploy` via `Runner.RunFlow` y redirige a `/actions` para
+  que el flow drawer muestre el progreso
+- [done] El boton "Save, build &amp; deploy" lleva el `data-confirm`
+  modal existente; deploy implica build automaticamente
+- [done] Link "edit" por fila en `/vault` apunta al editor
+

@@ -384,10 +384,14 @@ func ParseFile(contentDir string, baseURL string, filePath string) (*Page, *Sect
 		}
 	}
 
-	// Resolve summary: osg.abstract > top-level summary/description/excerpt
+	// Resolve summary: osg.summary / osg.abstract > top-level
+	// summary/description/excerpt. Both osg.summary and osg.abstract
+	// are accepted because the field name was historically "abstract"
+	// but "summary" reads more naturally and the UI exposes that
+	// label in its editor.
 	pageSummary := ""
 	if osg != nil {
-		pageSummary = pickString(osg, "abstract")
+		pageSummary = pickString(osg, "summary", "abstract")
 	}
 	if pageSummary == "" {
 		pageSummary = pickString(fm, "summary", "description", "excerpt")

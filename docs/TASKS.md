@@ -651,3 +651,10 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 33B) AICache.Remove + InvalidateAISummary expuesto desde internal/build (load → drop entry → save)
 [done] (Phase 33B) POST /summary/invalidate con sanitize de path (Clean + relativity check) y redirect 303 a Referer
 [done] (Phase 33B) Boton "re-summarize" por fila en /vault con data-confirm; PageView.Source (relative path) como identificador estable
+
+[done] (Phase 33C) frontmatter.UpdateField via yaml.Node: edita osg.summary preservando el resto del FM (orden, comentarios), crea bloque osg si no existe, soporta delete via valor vacio
+[done] (Phase 33C) site.ParseFile reconoce osg.summary como alias de osg.abstract
+[done] (Phase 33C) build.LookupAISummary (read-only) para que el editor muestre el cache como referencia
+[done] (Phase 33C) Pagina /vault/page?source=… con editor osg.summary + currently-used + AI-cache reference
+[done] (Phase 33C) POST /summary/save: write atomico (tmp+rename), opcional build, opcional build+deploy via Runner.RunFlow; deploy implica build
+[done] (Phase 33C) Link "edit" en /vault apunta al editor

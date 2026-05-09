@@ -1,0 +1,59 @@
+{{define "page"}}
+{{with .PageEdit}}
+  <h2>Edit page</h2>
+  <p class="subtitle"><a href="/vault">← back to vault</a> · editing <code class="mono">{{.Source}}</code></p>
+
+  <section class="page-section">
+    <dl class="page-meta">
+      <dt>Title</dt><dd>{{.Title}}</dd>
+      <dt>Section</dt><dd class="mono">{{.Section}}</dd>
+      {{if .DateLabel}}<dt>Date</dt><dd class="mono">{{.DateLabel}}</dd>{{end}}
+      <dt>Status</dt><dd>{{if .Draft}}<span class="pill warn">draft</span>{{else}}<span class="pill ok">published</span>{{end}}</dd>
+    </dl>
+  </section>
+
+  <section class="page-section">
+    <h3 class="section-heading">Summary</h3>
+    <p class="fg-dim">
+      {{if .HasOverride}}This page has an explicit <code class="mono">osg.summary</code> in its frontmatter — that value overrides any AI-generated text and survives rebuilds. Edit it below or clear the field to drop the override.
+      {{else if .HasAICached}}No <code class="mono">osg.summary</code> override is set. The site currently uses the cached AI summary shown below; saving a value here writes <code class="mono">osg.summary</code> into the frontmatter so future builds use yours instead.
+      {{else}}No <code class="mono">osg.summary</code> override is set and no AI summary has been cached yet. Saving a value here writes <code class="mono">osg.summary</code> into the frontmatter; an empty save just keeps the page on its current fallback (auto-extracted from the body).
+      {{end}}
+    </p>
+
+    {{if .CurrentSummary}}
+    <div class="page-summary-current">
+      <div class="page-summary-label">Currently used</div>
+      <div class="page-summary-body">{{.CurrentSummary}}</div>
+    </div>
+    {{end}}
+
+    {{if and .HasAICached (ne .AICachedSummary .CurrentSummary)}}
+    <div class="page-summary-current">
+      <div class="page-summary-label">AI cache (latest run)</div>
+      <div class="page-summary-body">{{.AICachedSummary}}</div>
+    </div>
+    {{end}}
+
+    <form method="post" action="/summary/save" class="page-edit-form">
+      <input type="hidden" name="source" value="{{.Source}}">
+      <label class="op-field" for="summary">
+        <span class="op-field-label">osg.summary</span>
+        <textarea id="summary" name="summary" rows="5" placeholder="Write a 2-3 sentence summary used as the post excerpt.">{{.OverrideSummary}}</textarea>
+        <span class="op-field-help">Leave empty to drop the override and let the next build regenerate the summary (AI cache → extract).</span>
+      </label>
+      <div class="page-edit-actions">
+        <button type="submit" class="btn btn-run">Save</button>
+        <button type="submit" class="btn btn-run" name="build" value="1">Save &amp; rebuild</button>
+        <button type="submit" class="btn btn-flow"
+                name="deploy" value="1"
+                data-confirm="This saves the summary, rebuilds the site and deploys the result. Continue?">
+          Save, build &amp; deploy
+        </button>
+      </div>
+    </form>
+  </section>
+{{else}}
+  <div class="empty">No page selected. <a href="/vault">Go back to the vault</a>.</div>
+{{end}}
+{{end}}
