@@ -1165,3 +1165,30 @@ optimizacion de imagenes ya no requiere instalar nada en el sistema.
   knob de calidad). Mantiene la extension `.png` para no romper
   referencias en el HTML
 
+## Phase 33 — Resilencia y mantenimiento de resumenes IA (done)
+
+Cuando la generacion de resumen via IA falla (timeouts, 5xx, 429) la
+build cae al modo extractivo. Esta fase añade reintentos automaticos
+para fallos transitorios y una accion manual para regenerar resumenes
+desde la UI sin tener que tocar el cache a mano.
+
+### 33A — Reintentos en kairos.Summarize (done)
+- [done] `chatWithRetry` envuelve `llm.Provider.Chat` con 3 intentos
+  totales y backoff exponencial 250ms / 500ms. El context del caller
+  se respeta entre intentos (cancel inmediato)
+- [done] `isRetryable` clasifica errores: 4xx-style (401/403/400/404,
+  "invalid api key", "permission denied", "unauthorized", "forbidden")
+  fallan rapido; resto (timeouts, 5xx, 429, errores de red) reintenta
+- [done] Logging via `slog.Default()` para reportar cada reintento
+
+### 33B — Invalidacion de cache de resumen desde la UI (done)
+- [done] `AICache.Remove(hash)` y helper publico
+  `build.InvalidateAISummary(cfg, hash, logger)` para borrar la entrada
+  con un load → drop → save
+- [done] `POST /summary/invalidate` con sanitize del path (Clean +
+  relativity check para evitar escape de `content_dir`); 303 a
+  Referer; tras borrar, la siguiente build re-llama al LLM
+- [done] Boton "re-summarize" por fila en `/vault` con `data-confirm`
+  (modal de confirmacion ya existente). `PageView.Source` (path
+  relativo a content_dir) sirve como identificador estable
+

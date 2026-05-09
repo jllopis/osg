@@ -23,6 +23,11 @@ type PageView struct {
 	Section string
 	Date    time.Time
 	Draft   bool
+	// Source is the markdown file path relative to ContentDir. It is
+	// the stable identifier that the /summary/invalidate endpoint
+	// expects; it stays inside ContentDir even after Page.Path has
+	// been mangled (date prefixes stripped, slugified, etc.).
+	Source string
 }
 
 // MonthlyBar adds a precomputed Width (0..100) on top of build.MonthlyStats
@@ -152,12 +157,17 @@ func collectPages(cfg config.Config, logger *slog.Logger) []PageView {
 		if err != nil || page == nil {
 			continue
 		}
+		rel, relErr := filepath.Rel(cfg.ContentDir, fp)
+		if relErr != nil {
+			rel = fp
+		}
 		out = append(out, PageView{
 			Title:   page.Title,
 			Path:    page.Path,
 			Section: sectionOf(page.Path),
 			Date:    page.Date,
 			Draft:   page.Draft,
+			Source:  filepath.ToSlash(rel),
 		})
 	}
 	sort.Slice(out, func(i, j int) bool {

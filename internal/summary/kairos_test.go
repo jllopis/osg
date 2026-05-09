@@ -527,3 +527,87 @@ func TestNewKairosProvider_SetsLanguage(t *testing.T) {
 		t.Errorf("expected language %q, got %q", "fr", kp.Language)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// chatWithRetry / isRetryable
+// ---------------------------------------------------------------------------
+
+func TestIsRetryable(t *testing.T) {
+	cases := []struct {
+		err  error
+		want bool
+	}{
+		{nil, false},
+		{context.Canceled, false},
+		{fmt.Errorf("HTTP 401: unauthorized"), false},
+		{fmt.Errorf("403 forbidden: quota exceeded"), false},
+		{fmt.Errorf("invalid api key"), false},
+		{fmt.Errorf("400 Bad Request"), false},
+		{fmt.Errorf("HTTP 500 internal server error"), true},
+		{fmt.Errorf("dial tcp: i/o timeout"), true},
+		{fmt.Errorf("HTTP 429: too many requests"), true},
+		{fmt.Errorf("connection reset by peer"), true},
+	}
+	for _, c := range cases {
+		if got := isRetryable(c.err); got != c.want {
+			t.Errorf("isRetryable(%v) = %v, want %v", c.err, got, c.want)
+		}
+	}
+}
+
+func TestChatWithRetry_RetriesTransientThenSucceeds(t *testing.T) {
+	var calls atomic.Int32
+	mock := &llm.MockProvider{
+		ChatFunc: func(ctx context.Context, req llm.ChatRequest) (*llm.ChatResponse, error) {
+			n := calls.Add(1)
+			if n < 3 {
+				return nil, fmt.Errorf("HTTP 503: service unavailable")
+			}
+			return &llm.ChatResponse{Content: "ok"}, nil
+		},
+	}
+	kp := &KairosProvider{LLM: mock}
+	got, err := kp.Summarize(context.Background(), "Title", "body content")
+	if err != nil {
+		t.Fatalf("expected success after retries, got %v", err)
+	}
+	if got != "ok" {
+		t.Errorf("expected summary %q, got %q", "ok", got)
+	}
+	if calls.Load() != 3 {
+		t.Errorf("expected 3 attempts, got %d", calls.Load())
+	}
+}
+
+func TestChatWithRetry_FailsFastOnNonRetryable(t *testing.T) {
+	var calls atomic.Int32
+	mock := &llm.MockProvider{
+		ChatFunc: func(ctx context.Context, req llm.ChatRequest) (*llm.ChatResponse, error) {
+			calls.Add(1)
+			return nil, fmt.Errorf("HTTP 401: unauthorized")
+		},
+	}
+	kp := &KairosProvider{LLM: mock}
+	_, err := kp.Summarize(context.Background(), "Title", "body content")
+	if err == nil {
+		t.Fatal("expected error for 401, got nil")
+	}
+	if calls.Load() != 1 {
+		t.Errorf("expected 1 attempt for non-retryable error, got %d", calls.Load())
+	}
+}
+
+func TestChatWithRetry_HonoursContextCancel(t *testing.T) {
+	mock := &llm.MockProvider{
+		ChatFunc: func(ctx context.Context, req llm.ChatRequest) (*llm.ChatResponse, error) {
+			return nil, fmt.Errorf("HTTP 503: try again later")
+		},
+	}
+	kp := &KairosProvider{LLM: mock}
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	_, err := kp.Summarize(ctx, "Title", "body content")
+	if err == nil {
+		t.Fatal("expected error after context cancel, got nil")
+	}
+}

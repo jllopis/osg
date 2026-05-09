@@ -62,6 +62,19 @@ func (c *AICache) Store(hash string, summary string) {
 	}
 }
 
+// Remove drops the entry with the given content hash. Returns true
+// when an entry was actually removed (false when the hash was absent),
+// so callers can decide whether to log a no-op vs report success.
+func (c *AICache) Remove(hash string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, ok := c.Entries[hash]; !ok {
+		return false
+	}
+	delete(c.Entries, hash)
+	return true
+}
+
 // Len returns the number of cached entries.
 func (c *AICache) Len() int {
 	c.mu.RLock()
@@ -154,4 +167,28 @@ func saveAICache(path string, cache *AICache, logger *slog.Logger) error {
 func contentHash(content string) string {
 	h := sha256.Sum256([]byte(content))
 	return hex.EncodeToString(h[:])
+}
+
+// ContentHash exposes contentHash so callers in other packages (in
+// particular internal/ui) can compute the same cache key the build
+// uses without duplicating the SHA-256 logic.
+func ContentHash(content string) string {
+	return contentHash(content)
+}
+
+// InvalidateAISummary loads the on-disk AI summary cache, drops the
+// entry with the given content hash, and writes it back. No-op when
+// the entry is absent; returns true when an entry was actually
+// removed. Used by the UI's "regenerate summary" action so the next
+// build is forced to re-call the LLM for that one page.
+func InvalidateAISummary(cfg config.Config, hash string, logger *slog.Logger) (bool, error) {
+	path := aiCachePath(cfg)
+	cache := loadAICache(path, logger)
+	if !cache.Remove(hash) {
+		return false, nil
+	}
+	if err := saveAICache(path, cache, logger); err != nil {
+		return false, err
+	}
+	return true, nil
 }

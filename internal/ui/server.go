@@ -135,6 +135,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /operations/{name}/logs", s.handleOperationLogs)
 	s.mux.HandleFunc("GET /operations/{name}/card", s.handleOperationCard)
 	s.mux.HandleFunc("GET /operations.json", s.handleOperationsJSON)
+	s.mux.HandleFunc("POST /summary/invalidate", s.handleSummaryInvalidate)
 }
 
 // loadTemplates parses each page template against the layout and the

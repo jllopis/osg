@@ -246,3 +246,22 @@ func TestAICache_ContentChangeInvalidates(t *testing.T) {
 		t.Errorf("got %q", entry.Summary)
 	}
 }
+
+func TestAICache_Remove(t *testing.T) {
+	cache := newAICache("provider", "model")
+	cache.Store("a", "summary a")
+	cache.Store("b", "summary b")
+
+	if !cache.Remove("a") {
+		t.Error("Remove(a) returned false; expected true on existing key")
+	}
+	if _, ok := cache.Lookup("a"); ok {
+		t.Error("expected entry a to be gone after Remove")
+	}
+	if _, ok := cache.Lookup("b"); !ok {
+		t.Error("entry b should still be present")
+	}
+	if cache.Remove("a") {
+		t.Error("Remove(a) returned true on second call; expected false")
+	}
+}

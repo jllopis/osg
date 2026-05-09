@@ -383,6 +383,22 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-variant-numeric: tabular-nums;
 }
 
+/* Link-style button used for inline row actions (e.g. re-summarize on
+   /vault). Visually a plain underlined link but keeps button semantics
+   so it can submit the surrounding form. */
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.btn-link:hover { color: var(--fg); }
+
 /* Empty state */
 .empty {
   background: var(--bg-elev);

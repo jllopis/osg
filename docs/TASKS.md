@@ -645,3 +645,9 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 32B) Drop JPEG variants en <picture>: srcset de JPEG eran codigo muerto (todo browser que entiende picture entiende WebP)
 [done] (Phase 32B) Original downsizeado guardado con quality-5 (clamp 50): solo navegadores antiguos / RSS / crawlers
 [done] (Phase 32C) downsizeIfNeeded acepta .png: re-encodea a PNG (lossless, png.BestCompression) tras resize a max width
+
+[done] (Phase 33A) Reintentos en kairos.Summarize: 3 intentos con backoff exponencial (250ms/500ms), classifier isRetryable
+[done] (Phase 33A) chatWithRetry honra ctx.Done; clasifica 4xx/auth como no recuperable; tests del classifier + tres rutas (success-after-retry, fail-fast, ctx-cancel)
+[done] (Phase 33B) AICache.Remove + InvalidateAISummary expuesto desde internal/build (load → drop entry → save)
+[done] (Phase 33B) POST /summary/invalidate con sanitize de path (Clean + relativity check) y redirect 303 a Referer
+[done] (Phase 33B) Boton "re-summarize" por fila en /vault con data-confirm; PageView.Source (relative path) como identificador estable

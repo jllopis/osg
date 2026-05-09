@@ -2,9 +2,12 @@ package summary
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/jllopis/kairos/pkg/llm"
 	"github.com/jllopis/kairos/providers/anthropic"
@@ -104,14 +107,15 @@ func (k *KairosProvider) Summarize(ctx context.Context, title string, rawMarkdow
 
 	userContent := fmt.Sprintf("Title: %s\n\n%s", title, plain)
 
-	resp, err := k.LLM.Chat(ctx, llm.ChatRequest{
+	req := llm.ChatRequest{
 		Model: k.Model,
 		Messages: []llm.Message{
 			{Role: llm.RoleSystem, Content: prompt},
 			{Role: llm.RoleUser, Content: userContent},
 		},
 		Temperature: 0.3,
-	})
+	}
+	resp, err := chatWithRetry(ctx, k.LLM, req)
 	if err != nil {
 		return "", fmt.Errorf("kairos: %w", err)
 	}
@@ -130,6 +134,80 @@ func (k *KairosProvider) Summarize(ctx context.Context, title string, rawMarkdow
 		summary = truncateSentence(summary, maxSummaryLen)
 	}
 	return summary, nil
+}
+
+// retryAttempts and retryBackoff control the simple bounded retry
+// policy applied to every LLM Chat call. Three attempts total with an
+// exponential backoff (250ms, 500ms) cover most transient failures
+// (timeouts, brief 5xx, 429 throttling) without dragging the build
+// when the provider is genuinely down.
+const (
+	retryAttempts = 3
+	retryBackoff  = 250 * time.Millisecond
+)
+
+// chatWithRetry wraps llm.Chat with a small retry loop. Errors are
+// classified by isRetryable: auth/config/4xx-style failures fail fast,
+// everything else (network, timeout, 5xx, 429) is retried up to
+// retryAttempts-1 times. The caller's context is honoured between
+// attempts so cancellation aborts the loop immediately.
+func chatWithRetry(ctx context.Context, p llm.Provider, req llm.ChatRequest) (*llm.ChatResponse, error) {
+	var (
+		resp *llm.ChatResponse
+		err  error
+	)
+	for attempt := 0; attempt < retryAttempts; attempt++ {
+		if attempt > 0 {
+			delay := retryBackoff * time.Duration(1<<(attempt-1))
+			select {
+			case <-time.After(delay):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+			slog.Default().Warn("kairos: retrying summary call", "attempt", attempt+1, "previous_error", err)
+		}
+		resp, err = p.Chat(ctx, req)
+		if err == nil {
+			return resp, nil
+		}
+		if !isRetryable(err) {
+			return nil, err
+		}
+	}
+	return nil, err
+}
+
+// isRetryable classifies LLM errors. Anything that points at a
+// permanent client-side problem (auth, malformed request, missing
+// resource) fails fast — retrying would only burn time. Everything
+// else, including timeouts and 5xx, is treated as transient.
+//
+// Kairos surfaces provider errors as plain strings without a typed
+// status, so we lean on substring matching against well-known markers.
+// False positives only mean we skip retries when retrying might have
+// helped, never the inverse — so the policy stays conservative.
+func isRetryable(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	nonRetryableMarkers := []string{
+		"401", "unauthorized",
+		"403", "forbidden",
+		"400", "bad request", "invalid_request", "invalid request",
+		"404", "not found",
+		"invalid api key", "invalid_api_key",
+		"permission denied",
+	}
+	for _, m := range nonRetryableMarkers {
+		if strings.Contains(msg, m) {
+			return false
+		}
+	}
+	return true
 }
 
 // maxInputWords is the maximum number of words sent to the LLM.  The first
