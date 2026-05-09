@@ -852,18 +852,31 @@ doctor_profile: dev
 # -----------------------------------------------------------------------------
 # Sidebar widgets (homepage)
 # -----------------------------------------------------------------------------
-# sidebar_widgets activates the 3-column homepage layout. Listed widgets
-# render in the right sidebar in order. Layout collapses to single column
-# below 1400px viewport.
+# Activate the optional 3-column homepage layout. When sidebar_widgets is
+# set the homepage renders with a right sidebar containing the listed
+# widgets in the given order. The layout collapses to a single column
+# below 1400px viewport — sidebars are desktop-only by design.
 #
-# Available: author, newsletter, popular.
+# Each widget self-hides when its data is missing, so it is safe to
+# enable a widget you have not fully configured yet.
+#
+# Available widgets:
+#   author      Avatar + name + bio + social, from author/author_bio/
+#               author_avatar/author_url/social. Hidden if all blank.
+#   newsletter  Email subscription form posting to newsletter_action with
+#               an "email" field. Hidden if newsletter_action is empty.
+#   popular     Top 5 pages by views from interactions.db at build time.
+#               Hidden if interactions disabled or no view data yet.
+#
+# Order is rendering order. Unknown names fail validation.
 #
 # sidebar_widgets:
 #   - author
 #   - newsletter
 #   - popular
 #
-# newsletter_action: Form action URL for the newsletter widget.
+# Newsletter form action URL. Provider-specific (Buttondown, Mailchimp,
+# Substack, ConvertKit, etc.) — check your provider's docs.
 # newsletter_action: ""
 
 # -----------------------------------------------------------------------------

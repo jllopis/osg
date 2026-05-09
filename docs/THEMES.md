@@ -198,6 +198,53 @@ Ejemplo: si `my-theme` tiene `parent: default`, y el usuario solo define `templa
 
 OSG detecta ciclos en la cadena de herencia (ej. A -> B -> A) y reporta un error antes del build.
 
+## Sidebar widgets (homepage)
+
+La portada soporta un layout opcional de 3 columnas con widgets en la columna derecha. Se activa configurando `sidebar_widgets` en `config.yaml`:
+
+```yaml
+sidebar_widgets:
+  - author
+  - newsletter
+  - popular
+newsletter_action: "https://buttondown.email/api/emails/embed-subscribe/handle"
+```
+
+### Comportamiento del layout
+
+- **Activacion:** solo cuando `sidebar_widgets` no esta vacio. Sin la clave, la home se renderiza single-column igual que antes.
+- **Breakpoint responsive:** los sidebars solo se muestran a partir de 1400px de viewport. Por debajo (mobile, tablet, monitor pequeno) se ocultan via `display: none` y la columna central conserva su ancho de `.container` (1080px max).
+- **Centrado del contenido:** la columna central mantiene la misma posicion en viewport con o sin sidebars (grid simetrico de `240px | 1080px | 240px`, centrado).
+- **Wrapper transparente:** sin widgets configurados, el layout usa `display: contents` para no introducir cambios visibles en el DOM render.
+
+### Widgets disponibles
+
+Cada widget es un `partials/widget-<name>.html` independiente y se auto-oculta cuando le faltan datos.
+
+| Widget | Lee de | Se oculta cuando |
+|--------|--------|------------------|
+| `author` | `author`, `author_bio`, `author_avatar`, `author_url`, `social` | Los tres campos `author/author_bio/author_avatar` estan vacios |
+| `newsletter` | `newsletter_action` | `newsletter_action` esta vacio |
+| `popular` | `.osg/interactions.db` (top 5 paginas por views) | Interactions deshabilitado, DB inexistente, o sin datos |
+
+El orden en `sidebar_widgets` es el orden de renderizado. Nombres desconocidos hacen fallar `osg build` con error de validacion.
+
+### Sobreescribir widgets o anadir uno nuevo
+
+Para sobreescribir un widget existente, copia `themes/default/templates/partials/widget-<name>.html` a tu tema (o a `templates/`) y modifica.
+
+Para anadir un widget propio sin tocar los existentes, sobreescribe el bloque `sidebar-right`:
+
+```html
+{{/* templates/partials/sidebar-right-override.html */}}
+{{ define "sidebar-right" }}
+  {{ template "partials/widget-author.html" . }}
+  {{ template "partials/widget-mio.html" . }}
+{{ end }}
+```
+
+El bloque por defecto itera `sidebar_widgets`; sobreescribirlo te da control total.
+
 ## Bloques sobreescribibles
 
 Los templates principales del tema default usan `{{ block }}` para permitir sobreescritura parcial sin copiar el template completo:
@@ -214,8 +261,10 @@ Los templates principales del tema default usan `{{ block }}` para permitir sobr
 **index.html:**
 - `index-featured` — post destacado hero
 - `index-intro` — intro de seccion o descripcion del sitio
+- `index-recent-cards` — grid de cards (primeros N posts en pagina 1)
 - `index-posts` — listado de posts recientes
 - `index-sections` — grid de subsecciones
+- `sidebar-right` — contenido de la sidebar derecha (solo cuando `sidebar_widgets` esta activa)
 
 **section.html:**
 - `section-breadcrumbs` — breadcrumbs

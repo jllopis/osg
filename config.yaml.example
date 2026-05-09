@@ -489,24 +489,48 @@ doctor_profile: dev
 # -----------------------------------------------------------------------------
 # Sidebar widgets (homepage)
 # -----------------------------------------------------------------------------
-# sidebar_widgets activates the 3-column homepage layout. List the widgets
-# you want and they render in the right sidebar in the given order. The
-# layout collapses to single column below 1400px.
+# Activate the optional 3-column homepage layout. When `sidebar_widgets` is
+# set the homepage renders with a right sidebar containing the listed
+# widgets in the given order. The layout collapses to a single column below
+# 1400px viewport — sidebars are desktop-only by design.
 #
-# Available: author, newsletter, popular.
-#   - author: avatar + bio + social, reads from author/author_bio/author_avatar/social
-#   - newsletter: simple email form posting to newsletter_action
-#   - popular: top 5 pages by views (requires interactions: enabled and a
-#     populated .osg/interactions.db; hides itself if no data yet)
+# Each widget self-hides when its data is missing, so it is safe to enable
+# a widget you have not fully configured yet — it will start showing once
+# the underlying data is in place.
+#
+# Available widgets:
+#
+#   author      Avatar + name + bio + social links.
+#               Reads: author, author_bio, author_avatar, author_url, social
+#               (see "Author bio card" and "Social links" sections above).
+#               Hidden when none of author/author_bio/author_avatar are set.
+#
+#   newsletter  Single-input email subscription form. Posts to the URL
+#               configured in `newsletter_action` below with an "email"
+#               field (the format accepted by Buttondown, Mailchimp,
+#               Substack, ConvertKit, etc.).
+#               Hidden when `newsletter_action` is empty.
+#
+#   popular     Top 5 pages by view count, snapshot at build time.
+#               Reads `interactions.db_path` (default .osg/interactions.db),
+#               which is populated when interactions are enabled and the
+#               site receives traffic.
+#               Hidden when interactions are disabled, the database is
+#               missing, or there is no view data yet (e.g. fresh blog).
+#
+# Order matters: the listed sequence is the rendering sequence. Unknown
+# widget names cause `osg build` to fail with a validation error.
 #
 # sidebar_widgets:
 #   - author
 #   - newsletter
 #   - popular
 #
-# newsletter_action: Form action URL for the newsletter widget. Most
-# providers (Buttondown, Mailchimp, Substack, ConvertKit) accept a POST
-# with an "email" field; check your provider's docs for the exact URL.
+# Newsletter form action URL. Provider-specific; some common examples:
+#   Buttondown:  https://buttondown.email/api/emails/embed-subscribe/<handle>
+#   Mailchimp:   <list-form-url>          # List → Signup forms → Embedded
+#   ConvertKit:  https://app.convertkit.com/forms/<id>/subscriptions
+#   Substack:    https://<handle>.substack.com/subscribe
 # newsletter_action: ""
 
 # -----------------------------------------------------------------------------

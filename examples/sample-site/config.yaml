@@ -49,3 +49,26 @@ taxonomies:
     paginate_path: page
     feed: false
     render: true
+
+# -----------------------------------------------------------------------------
+# Sidebar widgets (homepage)
+# -----------------------------------------------------------------------------
+# Optional 3-column homepage layout. When sidebar_widgets is set the
+# homepage gains a right sidebar with the listed widgets. Sidebars are
+# visible at >=1400px viewport; below that the layout collapses to a
+# single column. Each widget self-hides when its data is missing.
+#
+# Available: author / newsletter / popular.
+#
+# Uncomment to enable. With only this minimal sample-site the `popular`
+# widget would hide itself (no interactions DB / no view data).
+#
+# sidebar_widgets:
+#   - author
+#   - newsletter
+# author: "Sample Author"
+# author_bio: "Demo author for the OSG sample site."
+# author_url: "https://example.com"
+# social:
+#   github: "https://github.com/example"
+# newsletter_action: ""
