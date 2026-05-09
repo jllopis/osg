@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -15,6 +14,8 @@ import (
 
 	_ "image/gif"
 
+	"github.com/gen2brain/avif"
+	"github.com/gen2brain/webp"
 	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp"
 )
@@ -84,23 +85,12 @@ func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*
 		logger = slog.Default()
 	}
 
-	hasWebP := false
-	if opts.WebP {
-		if _, err := exec.LookPath("cwebp"); err == nil {
-			hasWebP = true
-		} else {
-			logger.Info("cwebp not found in PATH, WebP generation disabled")
-		}
-	}
-
-	hasAVIF := false
-	if opts.AVIF {
-		if _, err := exec.LookPath("avifenc"); err == nil {
-			hasAVIF = true
-		} else {
-			logger.Info("avifenc not found in PATH, AVIF generation disabled")
-		}
-	}
+	// WebP and AVIF encoders are embedded (libwebp/libavif compiled to
+	// WASM, executed via the same wazero runtime that powers the plugin
+	// system). Available everywhere — Options.WebP / Options.AVIF stay
+	// only as user-facing kill switches.
+	hasWebP := opts.WebP
+	hasAVIF := opts.AVIF
 
 	// Phase 1: discover all optimizable images (fast filesystem walk).
 	var jobs []imageJob
@@ -339,19 +329,11 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, hasAV
 			continue
 		}
 
-		// Resize once, then encode WebP and AVIF directly. JPEG
-		// variants are no longer emitted in <picture>: every browser
-		// that understands <picture> also understands WebP, so JPEG
-		// srcset entries were dead code in practice. We write a
-		// temporary JPEG only to feed cwebp/avifenc (they're CLI
-		// tools that take files), then delete it.
+		// Resize once, then encode WebP and AVIF directly from the
+		// resized image. JPEG variants are no longer emitted in
+		// <picture>: every browser that understands <picture> also
+		// understands WebP, so JPEG srcset entries were dead code.
 		resized := resize(src, w)
-
-		jpgName := fmt.Sprintf("%s-%dw.jpg", base, w)
-		jpgPath := filepath.Join(dir, jpgName)
-		if err := writeJPEG(jpgPath, resized, opts.Quality); err != nil {
-			return nil, 0, fmt.Errorf("write intermediate jpeg %s: %w", jpgPath, err)
-		}
 
 		variants := []Variant{}
 
@@ -360,8 +342,8 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, hasAV
 			webpPath := filepath.Join(dir, webpName)
 			webpURL := urlDir(urlPath) + webpName
 
-			if err := writeWebP(jpgPath, webpPath, opts.Quality); err != nil {
-				logger.Warn("webp conversion failed", "path", jpgPath, "error", err)
+			if err := writeWebP(webpPath, resized, opts.Quality); err != nil {
+				logger.Warn("webp conversion failed", "path", webpPath, "error", err)
 			} else {
 				variants = append(variants, Variant{URLPath: webpURL, Width: w, Format: "webp"})
 				count++
@@ -374,18 +356,14 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, hasAV
 			avifPath := filepath.Join(dir, avifName)
 			avifURL := urlDir(urlPath) + avifName
 
-			if err := writeAVIF(jpgPath, avifPath, opts.Quality); err != nil {
-				logger.Warn("avif conversion failed", "path", jpgPath, "error", err)
+			if err := writeAVIF(avifPath, resized, opts.Quality); err != nil {
+				logger.Warn("avif conversion failed", "path", avifPath, "error", err)
 			} else {
 				variants = append(variants, Variant{URLPath: avifURL, Width: w, Format: "avif"})
 				count++
 				logger.Debug("image variant", "src", urlPath, "variant", avifURL, "width", w, "format", "avif")
 			}
 		}
-
-		// Drop the intermediate JPEG. It only existed to feed the
-		// modern encoders above.
-		_ = os.Remove(jpgPath)
 
 		if len(variants) > 0 {
 			res.Variants[w] = variants
@@ -400,7 +378,7 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, hasAV
 		webpPath := filepath.Join(dir, webpName)
 		webpURL := urlDir(urlPath) + webpName
 
-		if err := writeWebP(path, webpPath, opts.Quality); err != nil {
+		if err := writeWebP(webpPath, src, opts.Quality); err != nil {
 			logger.Warn("webp conversion of original failed", "path", path, "error", err)
 		} else {
 			if res.Variants[srcWidth] == nil {
@@ -419,7 +397,7 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, hasAV
 		avifPath := filepath.Join(dir, avifName)
 		avifURL := urlDir(urlPath) + avifName
 
-		if err := writeAVIF(path, avifPath, opts.Quality); err != nil {
+		if err := writeAVIF(avifPath, src, opts.Quality); err != nil {
 			logger.Warn("avif conversion of original failed", "path", path, "error", err)
 		} else {
 			if res.Variants[srcWidth] == nil {
@@ -467,20 +445,32 @@ func writeJPEG(path string, img image.Image, quality int) error {
 	return jpeg.Encode(f, img, &jpeg.Options{Quality: quality})
 }
 
-// writeWebP converts an image to WebP using the cwebp binary.
-func writeWebP(srcPath string, destPath string, quality int) error {
-	cmd := exec.Command("cwebp", "-q", fmt.Sprintf("%d", quality), srcPath, "-o", destPath)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	return cmd.Run()
+// writeWebP encodes the given image to WebP using the embedded
+// libwebp (gen2brain/webp -> wazero). Method 4 is the library's
+// default quality/speed trade-off; we keep it.
+func writeWebP(path string, img image.Image, quality int) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return webp.Encode(f, img, webp.Options{Quality: quality, Method: 4})
 }
 
-// writeAVIF converts an image to AVIF using the avifenc binary.
-func writeAVIF(srcPath string, destPath string, quality int) error {
-	cmd := exec.Command("avifenc", "-q", fmt.Sprintf("%d", quality), "--speed", "6", srcPath, destPath)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	return cmd.Run()
+// writeAVIF encodes the given image to AVIF using the embedded
+// libavif (gen2brain/avif -> wazero). Speed 6 mirrors the speed flag
+// we passed to the avifenc CLI before — the libavif default is 6.
+func writeAVIF(path string, img image.Image, quality int) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	return avif.Encode(f, img, avif.Options{
+		Quality:      quality,
+		QualityAlpha: quality,
+		Speed:        6,
+	})
 }
 
 // urlDir returns the directory portion of a URL path with a trailing slash.
@@ -641,17 +631,10 @@ func downsizeIfNeeded(path string, maxWidth int, quality int, hasWebP bool, logg
 		if !hasWebP {
 			return false
 		}
-		tmpPath := path + ".tmp.jpg"
-		if err := writeJPEG(tmpPath, resized, quality); err != nil {
+		if err := writeWebP(path, resized, quality); err != nil {
 			logger.Warn("downsize original failed", "path", path, "error", err)
 			return false
 		}
-		if err := writeWebP(tmpPath, path, quality); err != nil {
-			logger.Warn("downsize original failed", "path", path, "error", err)
-			_ = os.Remove(tmpPath)
-			return false
-		}
-		_ = os.Remove(tmpPath)
 	}
 
 	logger.Debug("downsized original", "path", path, "from", cfg.Width, "to", maxWidth)

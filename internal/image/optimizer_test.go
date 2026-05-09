@@ -8,7 +8,6 @@ import (
 	"image/png"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -176,10 +175,6 @@ func TestURLDir(t *testing.T) {
 }
 
 func TestOptimizeFile_JPEG(t *testing.T) {
-	if _, err := exec.LookPath("cwebp"); err != nil {
-		t.Skip("cwebp not available")
-	}
-
 	dir := t.TempDir()
 	imgPath := filepath.Join(dir, "hero.jpg")
 	createTestJPEG(t, imgPath, 1600, 900)
@@ -206,11 +201,12 @@ func TestOptimizeFile_JPEG(t *testing.T) {
 		t.Errorf("OriginalWidth = %d, want 1200 (capped)", res.OriginalWidth)
 	}
 
-	// Intermediate JPEG used to feed cwebp must be cleaned up.
+	// No intermediate JPEG variants are written: encoders take
+	// image.Image directly so we never touch disk for JPEG.
 	for _, w := range []int{640, 1200} {
 		jpgPath := filepath.Join(dir, fmt.Sprintf("hero-%dw.jpg", w))
 		if _, err := os.Stat(jpgPath); err == nil {
-			t.Errorf("intermediate JPEG %s should have been removed", jpgPath)
+			t.Errorf("unexpected JPEG variant at %s", jpgPath)
 		}
 		webpPath := filepath.Join(dir, fmt.Sprintf("hero-%dw.webp", w))
 		if _, err := os.Stat(webpPath); err != nil {
@@ -262,17 +258,22 @@ func TestOptimizeFile_SkipsVariants(t *testing.T) {
 }
 
 func TestOptimizeFile_WebP(t *testing.T) {
-	// Create a WebP test image via cwebp (skip if not available).
-	if _, err := exec.LookPath("cwebp"); err != nil {
-		t.Skip("cwebp not available")
-	}
-
 	dir := t.TempDir()
 	pngPath := filepath.Join(dir, "src.png")
 	createTestPNG(t, pngPath, 2000, 1000)
 
+	pngF, err := os.Open(pngPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srcImg, _, err := image.Decode(pngF)
+	_ = pngF.Close()
+	if err != nil {
+		t.Fatalf("decoding src png: %v", err)
+	}
+
 	webpPath := filepath.Join(dir, "photo.webp")
-	if err := writeWebP(pngPath, webpPath, 80); err != nil {
+	if err := writeWebP(webpPath, srcImg, 80); err != nil {
 		t.Fatalf("creating test webp: %v", err)
 	}
 	_ = os.Remove(pngPath) // only keep the webp
@@ -304,9 +305,6 @@ func TestOptimizeFile_WebP(t *testing.T) {
 }
 
 func TestOptimizeFile_PNG(t *testing.T) {
-	if _, err := exec.LookPath("cwebp"); err != nil {
-		t.Skip("cwebp not available")
-	}
 	dir := t.TempDir()
 	imgPath := filepath.Join(dir, "chart.png")
 	createTestPNG(t, imgPath, 2000, 1000)
@@ -327,9 +325,6 @@ func TestOptimizeFile_PNG(t *testing.T) {
 }
 
 func TestOptimize_FullWalk(t *testing.T) {
-	if _, err := exec.LookPath("cwebp"); err != nil {
-		t.Skip("cwebp not available")
-	}
 	dir := t.TempDir()
 
 	// Create subdirectory structure like public/
@@ -467,9 +462,6 @@ func TestPictureHTML_DefaultLoading(t *testing.T) {
 }
 
 func TestOptimizeFile_OnlyOneWidth(t *testing.T) {
-	if _, err := exec.LookPath("cwebp"); err != nil {
-		t.Skip("cwebp not available")
-	}
 	dir := t.TempDir()
 	imgPath := filepath.Join(dir, "medium.jpg")
 	createTestJPEG(t, imgPath, 800, 600) // 800 > 640 but 800 < 1200
@@ -543,9 +535,6 @@ func TestWriteJPEG(t *testing.T) {
 }
 
 func TestOptimize_SkipsDotDirs(t *testing.T) {
-	if _, err := exec.LookPath("cwebp"); err != nil {
-		t.Skip("cwebp not available")
-	}
 	dir := t.TempDir()
 	// Image inside a dot-directory should be skipped.
 	createTestJPEG(t, filepath.Join(dir, ".cache", "old.jpg"), 1600, 900)
@@ -682,10 +671,6 @@ func TestDownsizeIfNeeded_SkipsVariant(t *testing.T) {
 }
 
 func TestOptimizeFile_OversizedSkipsFullWebP(t *testing.T) {
-	if _, err := exec.LookPath("cwebp"); err != nil {
-		t.Skip("cwebp not available")
-	}
-
 	dir := t.TempDir()
 	imgPath := filepath.Join(dir, "big.jpg")
 	createTestJPEG(t, imgPath, 4000, 2000)
