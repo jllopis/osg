@@ -3,10 +3,10 @@
   <p class="subtitle">Pages discovered in the content directory.</p>
 
   {{with .NewPostOp}}{{if .Name}}
-  <section class="page-section">
-    <h3 class="section-heading">Create new post</h3>
+  <details class="page-section collapsible-section">
+    <summary>Create new post</summary>
     {{template "task-form.html" .}}
-  </section>
+  </details>
   {{end}}{{end}}
 
   <h3 class="section-heading">Pages</h3>

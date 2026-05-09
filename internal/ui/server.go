@@ -130,6 +130,7 @@ func (s *Server) routes() {
 	// Generic operations endpoints used by /actions cards (Etapa 3) and
 	// safe to call directly with curl during Etapa 2 testing.
 	s.mux.HandleFunc("POST /operations/{name}/run", s.handleOperationRun)
+	s.mux.HandleFunc("POST /operations/{name}/run-flow", s.handleOperationRunFlow)
 	s.mux.HandleFunc("POST /operations/{name}/stop", s.handleOperationStop)
 	s.mux.HandleFunc("GET /operations/{name}/logs", s.handleOperationLogs)
 	s.mux.HandleFunc("GET /operations.json", s.handleOperationsJSON)

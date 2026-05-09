@@ -38,6 +38,7 @@ type viewData struct {
 	AuditOp         OperationView
 	AuditReport     *audit.Report
 	AuditFindings   []FindingView
+	FlowNodes       []FlowNodeView
 	State
 }
 
@@ -103,9 +104,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleActions(w http.ResponseWriter, r *http.Request) {
 	v := s.buildView("actions", "Actions", r)
 	all := operationsViewFromRunner(s.opts.Runner)
-	v.Operations = operationsForPage(all, "actions")
-	v.QuickBuild = findOperationView(all, "build")
-	v.QuickDeploy = findOperationView(all, "deploy")
+	v.FlowNodes = flowNodesFromViews(all)
 	s.render(w, "actions", v)
 }
 

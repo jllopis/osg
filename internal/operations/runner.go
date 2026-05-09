@@ -310,6 +310,37 @@ func (r *Runner) Logs(ctx context.Context, name string) <-chan string {
 	return run.logs.Subscribe(ctx)
 }
 
+// RunFlow triggers the given operations sequentially. Each step waits
+// for the previous run to finish; the chain aborts as soon as one
+// returns an error or is cancelled. Returns the name of the failed
+// step (or empty if the whole chain succeeded).
+//
+// This is the building block for the "Run from here" affordance on
+// /actions: the UI passes a slice starting at the chosen node so the
+// downstream pipeline is executed in order.
+func (r *Runner) RunFlow(names []string) (string, error) {
+	for _, name := range names {
+		run, err := r.Trigger(name, nil)
+		if err != nil {
+			return name, fmt.Errorf("trigger %s: %w", name, err)
+		}
+		// Block until the run goroutine signals completion. The done
+		// channel is closed regardless of success/failure.
+		<-run.done
+		r.mu.Lock()
+		state := run.State
+		lastErr := run.LastError
+		r.mu.Unlock()
+		if state == StateError || state == StateCancelled {
+			if lastErr == "" {
+				lastErr = string(state)
+			}
+			return name, fmt.Errorf("%s: %s", name, lastErr)
+		}
+	}
+	return "", nil
+}
+
 // History returns audit-log rows from the store with the given filter.
 func (r *Runner) History(filter Filter) ([]HistoryRun, error) {
 	if r.store == nil {

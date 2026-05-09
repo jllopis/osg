@@ -1,29 +1,48 @@
 {{define "page"}}
   <h2>Actions</h2>
-  <p class="subtitle">One-click access to every OSG command. Each card runs the corresponding CLI invocation in a goroutine; logs flow live to the drawer.</p>
+  <p class="subtitle">The OSG pipeline. Each node runs the underlying CLI command in a goroutine. <strong>Run</strong> executes only that step; <strong>Run from here</strong> walks the rest of the pipeline left-to-right and aborts on the first failure.</p>
 
-  {{/* Quick-action banner: the two most-frequent commands surfaced as
-       prominent buttons. Their state is mirrored from the runner so a
-       running build / deploy is visible from anywhere. */}}
-  {{with .QuickBuild}}
-  <section class="quick-actions">
-    {{template "quick-button.html" .}}
-    {{template "quick-button.html" $.QuickDeploy}}
-  </section>
-  {{end}}
-
-  <section class="action-cards" data-operations-poll>
-    {{range .Operations}}
-      {{if and (ne .Name "build") (ne .Name "deploy")}}
-        {{template "operation-card.html" .}}
-      {{end}}
+  <div class="flow" data-operations-poll>
+    {{range .FlowNodes}}
+    <article class="flow-node" data-operation="{{.Op.Name}}">
+      <header class="flow-node-head">
+        <svg class="flow-node-icon" aria-hidden="true"><use href="/assets/icons.svg#icon-{{.Op.IconName}}"/></svg>
+        <div class="flow-node-name">{{.Op.Name}}</div>
+        <span class="status-pill {{.Op.PillClass}}" data-state-pill>{{.Op.StateLabel}}</span>
+      </header>
+      <p class="flow-node-desc">{{.Op.Description}}</p>
+      <div class="flow-node-meta mono">
+        {{if .Op.Running}}
+          running for {{.Op.UptimeLabel}}
+        {{else if .Op.HasLastRun}}
+          last {{.Op.LastStatusLabel}} {{.Op.LastRanRelative}}{{if .Op.LastDurationLabel}} · {{.Op.LastDurationLabel}}{{end}}
+        {{else}}
+          never run
+        {{end}}
+      </div>
+      <div class="flow-node-actions">
+        <form method="post" action="/operations/{{.Op.Name}}/run">
+          <button type="submit" class="btn btn-run" title="Run only this step">
+            <svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Run
+          </button>
+        </form>
+        <form method="post" action="/operations/{{.Op.Name}}/run-flow">
+          <button type="submit" class="btn btn-flow" title="Run this step and every step after it">
+            Run from here →
+          </button>
+        </form>
+      </div>
+      <div class="flow-node-links">
+        <a href="/history?name={{.Op.Name}}">History</a>
+        <button type="button" class="op-card-inspect"
+                hx-get="/operations/{{.Op.Name}}/drawer"
+                hx-target="#drawer"
+                hx-swap="innerHTML">Inspect</button>
+      </div>
+    </article>
+    {{if not .IsLast}}
+    <div class="flow-arrow" aria-hidden="true">→</div>
     {{end}}
-  </section>
-
-  <p class="fg-dim subtitle" style="margin-top:1.25rem">
-    Other commands live in their domain page: New post in <a href="/vault">Vault</a>,
-    plugin install in <a href="/plugins">Plugins</a>, themes in <a href="/themes">Themes</a>,
-    imports in <a href="/import">Import</a>, audit in <a href="/audit">Audit</a>,
-    services in <a href="/services">Services</a>.
-  </p>
+    {{end}}
+  </div>
 {{end}}

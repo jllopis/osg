@@ -137,6 +137,17 @@ func buildOperationDefinitions(parent CLIOptions, cfg config.Config, store *oper
 			},
 		},
 		{
+			Name:        "init",
+			Kind:        operations.KindTask,
+			Description: "Scaffold project structure (config, content, theme)",
+			Run: func(ctx context.Context, _ map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				return RunInit(ctx, o)
+			},
+		},
+		{
 			Name:        "build",
 			Kind:        operations.KindTask,
 			Description: "Render the site to public/ (one-shot)",

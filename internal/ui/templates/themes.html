@@ -3,10 +3,10 @@
   <p class="subtitle">Installed themes and scaffolding for new ones. The active theme is set in <code class="mono">config.yaml</code> via the <code class="mono">theme</code> field.</p>
 
   {{with .ThemeInitOp}}{{if .Name}}
-  <section class="page-section">
-    <h3 class="section-heading">Scaffold a new theme</h3>
+  <details class="page-section collapsible-section">
+    <summary>Scaffold a new theme</summary>
     {{template "task-form.html" .}}
-  </section>
+  </details>
   {{end}}{{end}}
 
   <h3 class="section-heading">Installed themes</h3>

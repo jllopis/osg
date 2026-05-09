@@ -3,10 +3,10 @@
   <p class="subtitle">WASM plugins discovered in the plugins directory. Toggling persists to <code class="mono">config.yaml</code>.</p>
 
   {{with .PluginInstallOp}}{{if .Name}}
-  <section class="page-section">
-    <h3 class="section-heading">Install plugin</h3>
+  <details class="page-section collapsible-section">
+    <summary>Install plugin</summary>
     {{template "task-form.html" .}}
-  </section>
+  </details>
   {{end}}{{end}}
 
   <h3 class="section-heading">Installed plugins</h3>

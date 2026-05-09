@@ -136,6 +136,27 @@ func findOperationView(views []OperationView, name string) OperationView {
 	return OperationView{}
 }
 
+// FlowNodeView is a single node in the /actions pipeline. CanRunFlow
+// is set on every node (each is a valid starting point); IsLast hides
+// the trailing arrow on the final node.
+type FlowNodeView struct {
+	Op     OperationView
+	IsLast bool
+}
+
+// flowNodesFromViews builds the ordered slice of FlowNodeView for the
+// canonical actionFlow, looking each operation up by name.
+func flowNodesFromViews(views []OperationView) []FlowNodeView {
+	out := make([]FlowNodeView, 0, len(actionFlow))
+	for i, name := range actionFlow {
+		out = append(out, FlowNodeView{
+			Op:     findOperationView(views, name),
+			IsLast: i == len(actionFlow)-1,
+		})
+	}
+	return out
+}
+
 // historyRowsFromRuns formats a slice of HistoryRun for the /history
 // table: pretty status labels, pill classes, durations.
 func historyRowsFromRuns(runs []operations.HistoryRun) []HistoryRow {

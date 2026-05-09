@@ -54,6 +54,39 @@ func (s *Server) handleOperationRun(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, dest, http.StatusSeeOther)
 }
 
+// handleOperationRunFlow walks the canonical action flow starting at
+// the named operation and triggers each downstream step in sequence in
+// a background goroutine. Returns 303 immediately so the user can
+// watch progress via /history; aborts on the first failure.
+func (s *Server) handleOperationRunFlow(w http.ResponseWriter, r *http.Request) {
+	if s.opts.Runner == nil {
+		http.Error(w, "runner not configured", http.StatusServiceUnavailable)
+		return
+	}
+	name := r.PathValue("name")
+	chain := flowDownstream(name)
+	if len(chain) == 0 {
+		http.Error(w, "operation is not part of the action flow", http.StatusBadRequest)
+		return
+	}
+	go func(seq []string) {
+		failed, err := s.opts.Runner.RunFlow(seq)
+		if err != nil && s.opts.Logger != nil {
+			s.opts.Logger.Warn("run-flow aborted", "from", name, "failed_at", failed, "error", err)
+		}
+	}(chain)
+	if wantsJSON(r) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "chain": chain})
+		return
+	}
+	dest := r.Header.Get("Referer")
+	if dest == "" {
+		dest = "/actions"
+	}
+	http.Redirect(w, r, dest, http.StatusSeeOther)
+}
+
 // handleOperationStop cancels the active run by name. 303 redirect to
 // Referer for HTML callers, JSON when the client asked for it.
 func (s *Server) handleOperationStop(w http.ResponseWriter, r *http.Request) {

@@ -84,6 +84,7 @@ var confirmOperations = map[string]string{
 // for the long-running ones, Audit for audit). Operations not listed
 // here default to "actions".
 var operationPage = map[string]string{
+	"init":             "actions",
 	"build":            "actions",
 	"deploy":           "actions",
 	"update-content":   "actions",
@@ -98,6 +99,28 @@ var operationPage = map[string]string{
 	"api":              "services",
 	"watcher":          "services",
 	"scheduler":        "services",
+}
+
+// actionFlow is the canonical pipeline rendered on /actions. Order
+// matters: "Run from here" walks this list starting at the named
+// operation and triggers each downstream step in sequence.
+var actionFlow = []string{
+	"init",
+	"update-content",
+	"check",
+	"build",
+	"deploy",
+}
+
+// flowDownstream returns the slice of operations from name onwards in
+// actionFlow. Returns nil when name isn't part of the flow.
+func flowDownstream(name string) []string {
+	for i, n := range actionFlow {
+		if n == name {
+			return append([]string(nil), actionFlow[i:]...)
+		}
+	}
+	return nil
 }
 
 // pageForOperation returns the dashboard page where an operation lives.
