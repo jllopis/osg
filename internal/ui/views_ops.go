@@ -29,6 +29,7 @@ type OperationView struct {
 	LastDurationLabel string
 	Params            []ParamDef // form schema for parameterised operations
 	Confirm           string     // when set, JS prompts before submitting
+	ParamsCollapsed   bool       // wrap Params in a closed <details>
 }
 
 // HistoryRow is the table-row view of an operations.HistoryRun.
@@ -119,6 +120,7 @@ func operationViewFromSnapshot(snap operations.Snapshot, now time.Time) Operatio
 	}
 	v.Params = paramsForOperation(v.Name)
 	v.Confirm = confirmTextFor(v.Name)
+	v.ParamsCollapsed = hasCollapsibleParams(v.Name)
 	return v
 }
 

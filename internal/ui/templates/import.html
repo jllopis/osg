@@ -1,0 +1,14 @@
+{{define "page"}}
+  <h2>Import</h2>
+  <p class="subtitle">Bring content into the vault from another platform. Both importers create new files inside <code class="mono">{{.ContentDir}}</code>; nothing is overwritten.</p>
+
+  {{range .ImportOps}}
+  <section class="page-section">
+    {{template "task-form.html" .}}
+  </section>
+  {{end}}
+
+  {{if not .ImportOps}}
+  <div class="empty">No importers available.</div>
+  {{end}}
+{{end}}

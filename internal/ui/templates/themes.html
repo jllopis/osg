@@ -1,0 +1,37 @@
+{{define "page"}}
+  <h2>Themes</h2>
+  <p class="subtitle">Installed themes and scaffolding for new ones. The active theme is set in <code class="mono">config.yaml</code> via the <code class="mono">theme</code> field.</p>
+
+  {{with .ThemeInitOp}}{{if .Name}}
+  <section class="page-section">
+    <h3 class="section-heading">Scaffold a new theme</h3>
+    {{template "task-form.html" .}}
+  </section>
+  {{end}}{{end}}
+
+  <h3 class="section-heading">Installed themes</h3>
+  {{if .Themes}}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Parent</th>
+        <th>Source</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Themes}}
+      <tr>
+        <td><strong>{{.Name}}</strong>{{if .Description}}<br><span class="fg-dim mono">{{.Description}}</span>{{end}}</td>
+        <td class="mono">{{or .Parent "—"}}</td>
+        <td class="mono">{{.SourceLabel}}</td>
+        <td>{{if .Active}}<span class="status-pill is-ok">active</span>{{else}}<span class="status-pill is-idle">installed</span>{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <div class="empty">No themes discovered. The default theme is always available embedded in the binary.</div>
+  {{end}}
+{{end}}

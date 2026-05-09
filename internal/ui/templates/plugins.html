@@ -2,6 +2,14 @@
   <h2>Plugins</h2>
   <p class="subtitle">WASM plugins discovered in the plugins directory. Toggling persists to <code class="mono">config.yaml</code>.</p>
 
+  {{with .PluginInstallOp}}{{if .Name}}
+  <section class="page-section">
+    <h3 class="section-heading">Install plugin</h3>
+    {{template "task-form.html" .}}
+  </section>
+  {{end}}{{end}}
+
+  <h3 class="section-heading">Installed plugins</h3>
   {{if .Plugins}}
   <table>
     <thead>

@@ -1,0 +1,28 @@
+{{/* op-field renders a single ParamDef as a labelled input. Shared
+     between operation-card.html and the standalone task forms in
+     /vault, /plugins, /import, /themes. Argument: a ParamDef. */}}
+{{if eq .Kind "bool"}}
+<label class="op-field op-field-bool">
+  <input type="hidden" name="{{.Name}}" value="false">
+  <input type="checkbox" name="{{.Name}}" value="true" {{if eq .Default "true"}}checked{{end}}>
+  <span>{{.Label}}</span>
+  {{if .Help}}<small class="op-field-help">{{.Help}}</small>{{end}}
+</label>
+{{else if eq .Kind "select"}}
+<label class="op-field">
+  <span>{{.Label}}</span>
+  <select name="{{.Name}}">
+    {{range .Options}}
+    <option value="{{.}}" {{if eq . $.Default}}selected{{end}}>{{if .}}{{.}}{{else}}— from config —{{end}}</option>
+    {{end}}
+  </select>
+  {{if .Help}}<small class="op-field-help">{{.Help}}</small>{{end}}
+</label>
+{{else}}
+<label class="op-field">
+  <span>{{.Label}}{{if .Required}} <em>*</em>{{end}}</span>
+  <input type="text" name="{{.Name}}" value="{{.Default}}"
+         placeholder="{{.Placeholder}}" {{if .Required}}required{{end}}>
+  {{if .Help}}<small class="op-field-help">{{.Help}}</small>{{end}}
+</label>
+{{end}}

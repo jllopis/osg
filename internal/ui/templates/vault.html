@@ -2,6 +2,14 @@
   <h2>Vault</h2>
   <p class="subtitle">Pages discovered in the content directory.</p>
 
+  {{with .NewPostOp}}{{if .Name}}
+  <section class="page-section">
+    <h3 class="section-heading">Create new post</h3>
+    {{template "task-form.html" .}}
+  </section>
+  {{end}}{{end}}
+
+  <h3 class="section-heading">Pages</h3>
   {{if .Pages}}
   <div class="vault-toolbar">
     <input type="search" class="vault-filter" placeholder="Filter by title, path or section…"

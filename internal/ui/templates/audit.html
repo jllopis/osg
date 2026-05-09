@@ -1,0 +1,55 @@
+{{define "page"}}
+  <h2>Audit</h2>
+  <p class="subtitle">Static checks over the rendered site (HTML validity, accessibility, performance). Re-run on demand; results below are computed every time you load this page.</p>
+
+  {{if .AuditReport}}
+  <div class="cards">
+    <div class="card">
+      <div class="label">Files checked</div>
+      <div class="value">{{.AuditReport.Files}}</div>
+    </div>
+    <div class="card">
+      <div class="label">Errors</div>
+      <div class="value">{{.AuditReport.ErrorCount}}<span class="sub">blocking</span></div>
+    </div>
+    <div class="card">
+      <div class="label">Findings total</div>
+      <div class="value">{{len .AuditReport.Findings}}</div>
+    </div>
+    <div class="card">
+      <div class="label">Output size</div>
+      <div class="value">{{humanSize .AuditReport.TotalSize}}</div>
+    </div>
+  </div>
+  {{else}}
+  <div class="empty">Build the site first (public/ is empty or unreadable). Run <a href="/actions">Build</a> to populate it.</div>
+  {{end}}
+
+  {{if .AuditFindings}}
+  <h3 class="section-heading">Findings</h3>
+  <table class="audit-table">
+    <thead>
+      <tr>
+        <th>Severity</th>
+        <th>Category</th>
+        <th>File</th>
+        <th>Message</th>
+        <th>Fix</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .AuditFindings}}
+      <tr>
+        <td><span class="status-pill {{.PillClass}}">{{.Severity}}</span></td>
+        <td class="mono">{{.Category}}</td>
+        <td class="mono">{{.File}}</td>
+        <td>{{.Message}}</td>
+        <td class="fg-dim">{{.Fix}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else if .AuditReport}}
+  <div class="empty"><span class="status-pill is-ok">all clean</span> No findings — the site passes every audit check.</div>
+  {{end}}
+{{end}}

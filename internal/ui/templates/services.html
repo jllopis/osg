@@ -30,14 +30,25 @@
         <dt data-error-row {{if not .LastError}}hidden{{end}}>Last error</dt>
         <dd class="mono err-text" data-error-row data-error {{if not .LastError}}hidden{{end}}>{{.LastError}}</dd>
       </dl>
-      <form class="service-actions" method="post" data-action-form action="/services/{{if or (eq (printf "%s" .State) "running") (eq (printf "%s" .State) "starting")}}stop{{else}}start{{end}}">
-        <input type="hidden" name="name" value="{{.Name}}">
-        {{if or (eq (printf "%s" .State) "running") (eq (printf "%s" .State) "starting")}}
-          <button type="submit" class="btn btn-stop" data-action-button>Stop</button>
-        {{else}}
-          <button type="submit" class="btn btn-start" data-action-button>Start</button>
-        {{end}}
-      </form>
+      <div class="service-actions">
+        <form method="post" data-action-form action="/services/{{if or (eq (printf "%s" .State) "running") (eq (printf "%s" .State) "starting")}}stop{{else}}start{{end}}">
+          <input type="hidden" name="name" value="{{.Name}}">
+          {{if or (eq (printf "%s" .State) "running") (eq (printf "%s" .State) "starting")}}
+            <button type="submit" class="btn btn-stop" data-action-button>
+              <svg class="btn-icon"><use href="/assets/icons.svg#icon-stop"/></svg> Stop
+            </button>
+          {{else}}
+            <button type="submit" class="btn btn-run" data-action-button>
+              <svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Start
+            </button>
+          {{end}}
+        </form>
+        <a class="op-card-history" href="/history?name={{.Name}}">History</a>
+        <button type="button" class="op-card-inspect"
+                hx-get="/operations/{{.Name}}/drawer"
+                hx-target="#drawer"
+                hx-swap="innerHTML">Inspect</button>
+      </div>
       <details class="service-logs" data-service-logs="{{.Name}}">
         <summary>Live logs (open to stream)</summary>
         <pre class="logs">{{range .LogTail}}{{.}}

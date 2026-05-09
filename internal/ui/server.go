@@ -114,6 +114,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/plugins", s.handlePlugins)
 	s.mux.HandleFunc("/assets", s.handleAssets)
 	s.mux.HandleFunc("/scheduler", s.handleScheduler)
+	s.mux.HandleFunc("/import", s.handleImport)
+	s.mux.HandleFunc("/themes", s.handleThemes)
+	s.mux.HandleFunc("/audit", s.handleAudit)
 	s.mux.HandleFunc("GET /operations/{name}/drawer", s.handleOperationDrawer)
 	s.mux.HandleFunc("GET /history/{id}/drawer", s.handleHistoryDrawer)
 	s.mux.HandleFunc("POST /rebuild", s.handleRebuild)
@@ -140,10 +143,12 @@ func (s *Server) routes() {
 // without the layout so individual partials (e.g. drawer.html) can be
 // rendered directly into HTMX targets.
 func loadTemplates() (map[string]*template.Template, error) {
-	pages := []string{"dashboard", "actions", "history", "vault", "plugins", "assets", "scheduler", "services"}
+	pages := []string{"dashboard", "actions", "history", "vault", "plugins", "assets", "scheduler", "services", "import", "themes", "audit"}
 	partials := []string{
 		"templates/partials/quick-button.html",
 		"templates/partials/operation-card.html",
+		"templates/partials/op-field.html",
+		"templates/partials/task-form.html",
 		"templates/partials/drawer.html",
 	}
 	out := make(map[string]*template.Template, len(pages)+1)

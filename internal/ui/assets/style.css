@@ -789,3 +789,75 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   gap: 0.5rem;
   justify-content: flex-end;
 }
+
+/* ============================================================ */
+/* Restructure: page-section + task-form + audit table          */
+/* ============================================================ */
+
+/* Reusable page-section wrapper for the standalone task forms
+   embedded in /vault, /plugins, /import, /themes. Provides spacing
+   between the form and the rest of the page content. */
+.page-section { margin-bottom: 1.75rem; }
+.section-heading {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.task-form {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 720px;
+}
+.task-form-head {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+.task-form-icon { width: 28px; height: 28px; color: var(--accent); }
+.task-form-name { font-size: 1rem; font-weight: 600; }
+.task-form-desc { color: var(--fg-dim); font-size: 0.8rem; margin-top: 0.15rem; }
+.task-form-meta { font-size: 0.75rem; color: var(--fg-dim); }
+.task-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+}
+.task-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.4rem;
+}
+
+/* Collapsed Options block on /actions cards (e.g. check). */
+.op-card-params {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 0.7rem;
+}
+.op-card-params summary {
+  cursor: pointer;
+  color: var(--fg-dim);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.4rem 0;
+}
+.op-card-params[open] summary { color: var(--fg-muted); margin-bottom: 0.4rem; }
+.op-card-params .op-field { padding: 0.2rem 0; }
+
+/* /audit findings table */
+.audit-table { width: 100%; }
+.audit-table .status-pill { min-width: 4.5rem; justify-content: center; }

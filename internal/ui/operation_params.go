@@ -77,6 +77,61 @@ var confirmOperations = map[string]string{
 	"import-hugo":      "Import will create new files in the vault. Continue?",
 }
 
+// operationPage assigns each operation to the page it should appear
+// on. /actions only shows the small set of "global" tasks; the rest
+// are surfaced in domain-specific pages (Vault for new, Plugins for
+// install, Themes for theme-init, Import for the importers, Services
+// for the long-running ones, Audit for audit). Operations not listed
+// here default to "actions".
+var operationPage = map[string]string{
+	"build":            "actions",
+	"deploy":           "actions",
+	"update-content":   "actions",
+	"check":            "actions",
+	"audit":            "audit",
+	"new":              "vault",
+	"theme-init":       "themes",
+	"plugin-install":   "plugins",
+	"import-wordpress": "import",
+	"import-hugo":      "import",
+	"serve":            "services",
+	"api":              "services",
+	"watcher":          "services",
+	"scheduler":        "services",
+}
+
+// pageForOperation returns the dashboard page where an operation lives.
+func pageForOperation(name string) string {
+	if v, ok := operationPage[name]; ok {
+		return v
+	}
+	return "actions"
+}
+
+// operationsForPage filters a slice of OperationView to those whose
+// page is the given one. Stable order is preserved.
+func operationsForPage(views []OperationView, page string) []OperationView {
+	out := make([]OperationView, 0, len(views))
+	for _, v := range views {
+		if pageForOperation(v.Name) == page {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// collapsibleParams names operations whose param form should render
+// inside a closed <details> element to keep the card compact.
+var collapsibleParams = map[string]bool{
+	"check": true,
+}
+
+// hasCollapsibleParams reports whether the named operation should
+// have its parameters collapsed by default.
+func hasCollapsibleParams(name string) bool {
+	return collapsibleParams[name]
+}
+
 // paramsForOperation returns the schema for a given operation name (or
 // nil when the operation has no parameters).
 func paramsForOperation(name string) []ParamDef {

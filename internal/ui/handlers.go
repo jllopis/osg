@@ -9,26 +9,56 @@ import (
 	"strings"
 	"time"
 
+	"osg/internal/audit"
 	"osg/internal/config"
 	"osg/internal/operations"
+	"osg/internal/theme"
 )
 
 type viewData struct {
-	Title         string
-	Active        string
-	Version       string
-	Services      []Service
-	Now           time.Time
-	Assets        []AssetEntry
-	AssetSummary  AssetSummary
-	SchedulerRuns []SchedulerRun
-	Rebuild       RebuildSnapshot
-	Operations    []OperationView
-	QuickBuild    OperationView
-	QuickDeploy   OperationView
-	HistoryRuns   []HistoryRow
-	HistoryFilter HistoryFilter
+	Title           string
+	Active          string
+	Version         string
+	Services        []Service
+	Now             time.Time
+	Assets          []AssetEntry
+	AssetSummary    AssetSummary
+	SchedulerRuns   []SchedulerRun
+	Rebuild         RebuildSnapshot
+	Operations      []OperationView
+	QuickBuild      OperationView
+	QuickDeploy     OperationView
+	HistoryRuns     []HistoryRow
+	HistoryFilter   HistoryFilter
+	NewPostOp       OperationView
+	PluginInstallOp OperationView
+	ImportOps       []OperationView
+	ThemeInitOp     OperationView
+	Themes          []ThemeView
+	AuditOp         OperationView
+	AuditReport     *audit.Report
+	AuditFindings   []FindingView
 	State
+}
+
+// ThemeView is the template-friendly summary of one installed theme.
+type ThemeView struct {
+	Name        string
+	Description string
+	Parent      string
+	SourceLabel string // "embedded" or directory path
+	Active      bool
+}
+
+// FindingView is the template-friendly view of an audit.Finding with
+// pre-computed severity pill class.
+type FindingView struct {
+	Severity  string
+	Category  string
+	File      string
+	Message   string
+	Fix       string
+	PillClass string
 }
 
 func (s *Server) buildView(active, title string, r *http.Request) viewData {
@@ -72,10 +102,104 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleActions(w http.ResponseWriter, r *http.Request) {
 	v := s.buildView("actions", "Actions", r)
-	v.Operations = operationsViewFromRunner(s.opts.Runner)
-	v.QuickBuild = findOperationView(v.Operations, "build")
-	v.QuickDeploy = findOperationView(v.Operations, "deploy")
+	all := operationsViewFromRunner(s.opts.Runner)
+	v.Operations = operationsForPage(all, "actions")
+	v.QuickBuild = findOperationView(all, "build")
+	v.QuickDeploy = findOperationView(all, "deploy")
 	s.render(w, "actions", v)
+}
+
+func (s *Server) handleImport(w http.ResponseWriter, r *http.Request) {
+	v := s.buildView("import", "Import", r)
+	all := operationsViewFromRunner(s.opts.Runner)
+	v.ImportOps = operationsForPage(all, "import")
+	s.render(w, "import", v)
+}
+
+func (s *Server) handleThemes(w http.ResponseWriter, r *http.Request) {
+	v := s.buildView("themes", "Themes", r)
+	all := operationsViewFromRunner(s.opts.Runner)
+	v.ThemeInitOp = findOperationView(all, "theme-init")
+	v.Themes = collectThemes(s.opts.Cfg)
+	s.render(w, "themes", v)
+}
+
+func (s *Server) handleAudit(w http.ResponseWriter, r *http.Request) {
+	v := s.buildView("audit", "Audit", r)
+	all := operationsViewFromRunner(s.opts.Runner)
+	v.AuditOp = findOperationView(all, "audit")
+	if s.opts.Cfg.PublicDir != "" {
+		report, err := audit.Run(s.opts.Cfg.PublicDir)
+		if err != nil && s.opts.Logger != nil {
+			s.opts.Logger.Warn("audit run failed", "error", err)
+		}
+		v.AuditReport = report
+		v.AuditFindings = auditFindings(report)
+	}
+	s.render(w, "audit", v)
+}
+
+// collectThemes enumerates installed themes from cfg.ThemesDir plus
+// the embedded default. The active theme (cfg.Theme) is marked.
+func collectThemes(cfg config.Config) []ThemeView {
+	out := []ThemeView{}
+	seen := map[string]bool{}
+	if cfg.ThemesDir != "" {
+		if metas, err := theme.ListThemes(cfg.ThemesDir); err == nil {
+			for _, m := range metas {
+				out = append(out, ThemeView{
+					Name:        m.Name,
+					Description: m.Description,
+					Parent:      m.Parent,
+					SourceLabel: cfg.ThemesDir + "/" + m.Name,
+					Active:      m.Name == cfg.Theme,
+				})
+				seen[m.Name] = true
+			}
+		}
+	}
+	// Embedded default theme is always available even when not on disk.
+	if !seen["default"] {
+		out = append(out, ThemeView{
+			Name:        "default",
+			Description: "Built-in Nord theme bundled with the binary",
+			SourceLabel: "embedded",
+			Active:      cfg.Theme == "default",
+		})
+	}
+	return out
+}
+
+// auditFindings flattens an audit.Report into FindingView entries with
+// pre-computed pill classes for the table.
+func auditFindings(r *audit.Report) []FindingView {
+	if r == nil {
+		return nil
+	}
+	out := make([]FindingView, 0, len(r.Findings))
+	for _, f := range r.Findings {
+		out = append(out, FindingView{
+			Severity:  f.Severity,
+			Category:  f.Category,
+			File:      f.File,
+			Message:   f.Message,
+			Fix:       f.Fix,
+			PillClass: pillClassForSeverity(f.Severity),
+		})
+	}
+	return out
+}
+
+func pillClassForSeverity(sev string) string {
+	switch sev {
+	case audit.SeverityError:
+		return "is-error"
+	case audit.SeverityWarning:
+		return "is-warn"
+	case audit.SeverityInfo:
+		return "is-running" // frost blue, distinct from idle
+	}
+	return "is-idle"
 }
 
 func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
@@ -132,11 +256,17 @@ func (s *Server) renderFragment(w http.ResponseWriter, name string, data any) {
 }
 
 func (s *Server) handleVault(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "vault", s.buildView("vault", "Vault", r))
+	v := s.buildView("vault", "Vault", r)
+	all := operationsViewFromRunner(s.opts.Runner)
+	v.NewPostOp = findOperationView(all, "new")
+	s.render(w, "vault", v)
 }
 
 func (s *Server) handlePlugins(w http.ResponseWriter, r *http.Request) {
-	s.render(w, "plugins", s.buildView("plugins", "Plugins", r))
+	v := s.buildView("plugins", "Plugins", r)
+	all := operationsViewFromRunner(s.opts.Runner)
+	v.PluginInstallOp = findOperationView(all, "plugin-install")
+	s.render(w, "plugins", v)
 }
 
 // handlePluginToggle flips the enabled state of a single plugin and

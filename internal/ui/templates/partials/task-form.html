@@ -1,0 +1,46 @@
+{{/* task-form renders an operation as a standalone form section,
+     used in domain pages (/vault, /plugins, /import, /themes) instead
+     of the action-cards grid. Argument: an OperationView. Renders a
+     bordered panel with title, description, last-run summary, params
+     form (no collapse — these pages have plenty of space). */}}
+<section class="task-form" data-operation="{{.Name}}">
+  <header class="task-form-head">
+    <svg class="task-form-icon" aria-hidden="true"><use href="/assets/icons.svg#icon-{{.IconName}}"/></svg>
+    <div>
+      <div class="task-form-name">{{.Name}}</div>
+      <div class="task-form-desc">{{.Description}}</div>
+    </div>
+    <span class="status-pill {{.PillClass}}" data-state-pill>{{.StateLabel}}</span>
+  </header>
+
+  <div class="task-form-meta mono">
+    {{if .Running}}
+      running for {{.UptimeLabel}}
+    {{else if .HasLastRun}}
+      last {{.LastStatusLabel}} {{.LastRanRelative}}{{if .LastDurationLabel}} · {{.LastDurationLabel}}{{end}}
+    {{else}}
+      never run
+    {{end}}
+  </div>
+
+  <form method="post" action="/operations/{{.Name}}/run"
+        {{if .Confirm}}data-confirm="{{.Confirm}}"{{end}}>
+    {{range .Params}}{{template "op-field.html" .}}{{end}}
+    <div class="task-form-actions">
+      {{if .Running}}
+      <button type="button" formaction="/operations/{{.Name}}/stop" class="btn btn-stop">
+        <svg class="btn-icon"><use href="/assets/icons.svg#icon-stop"/></svg> Stop
+      </button>
+      {{else}}
+      <button type="submit" class="btn btn-run">
+        <svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Run
+      </button>
+      {{end}}
+      <a class="op-card-history" href="/history?name={{.Name}}">History</a>
+      <button type="button" class="op-card-inspect"
+              hx-get="/operations/{{.Name}}/drawer"
+              hx-target="#drawer"
+              hx-swap="innerHTML">Inspect</button>
+    </div>
+  </form>
+</section>
