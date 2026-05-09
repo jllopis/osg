@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 
+	"osg/internal/build"
 	"osg/internal/config"
 	"osg/internal/deploy"
 	"osg/internal/webhook"
@@ -85,8 +86,25 @@ func RunDeploy(ctx context.Context, opts CLIOptions, deployOpts DeployOptions) e
 		return nil
 	}
 
+	// Stage the deploy if the build marked any pages as deferred
+	// (drafts or scheduled-future). Stage() returns publicDir verbatim
+	// when nothing is excluded, so the common case (production with
+	// IncludeDrafts=false) pays no overhead.
+	deferred := build.LoadDeferredPaths(cfg, slog.Default())
+	staging, err := deploy.Stage(cfg.PublicDir, deferred, slog.Default())
+	if err != nil {
+		return fmt.Errorf("deploy: stage: %w", err)
+	}
+	defer staging.Cleanup()
+	if len(staging.Excluded) > 0 {
+		_, _ = fmt.Fprintf(out, "Excluding %d deferred path(s) from deploy:\n", len(staging.Excluded))
+		for _, p := range staging.Excluded {
+			_, _ = fmt.Fprintf(out, "  - %s\n", p)
+		}
+	}
+
 	_, _ = fmt.Fprintf(out, "Deploying to %s...\n", provider)
-	if err := deploy.Run(ctx, provider, providerCfg, cfg.PublicDir); err != nil {
+	if err := deploy.Run(ctx, provider, providerCfg, staging.Dir); err != nil {
 		return err
 	}
 

@@ -670,3 +670,11 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 33E) POST /summary/suggest: devuelve {suggestion} JSON; boton "Sugerencia IA" en el editor lo inyecta en la textarea (preview, sin guardar)
 [done] (Phase 33E) Iconos icon-edit / icon-trash / icon-sparkles en el sprite
 [done] (Phase 33E) setupVaultFilter compatibilidad con cards (cae a [data-search] si no hay tbody tr)
+
+[done] (Phase 34A) build_state.db (modernc/sqlite + WAL) con tabla deferred_publications(path PK, source, reason, publish_at, recorded_at)
+[done] (Phase 34A) BuildStateStore: Open/Close/LoadDeferred/ReplaceDeferred (atomic via tx) + LoadDeferredPaths helper para deploy
+[done] (Phase 34A) recordDeferredPublications post-render: drafts -> reason="draft"; scheduled futuros -> reason="scheduled"+publish_at
+[done] (Phase 34B) deploy.Stage: hardlinks publicDir -> .osg-deploy-staging excluyendo subarboles diferidos; fallback a copy en EXDEV
+[done] (Phase 34B) Sin exclusiones, Stage devuelve publicDir verbatim (overhead cero en producción)
+[done] (Phase 34B) RunDeploy invoca Stage + provider apunta al staging dir; log lista las rutas excluidas
+[done] (Phase 34B) Defensa: "/" en exclusiones se ignora (no permite vaciar el deploy entero por typo)

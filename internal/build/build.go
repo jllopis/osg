@@ -523,6 +523,16 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		}
 	}
 
+	// Record draft / scheduled-future pages so the deploy step can
+	// stage them out. Only meaningful when IncludeDrafts is true; in
+	// production builds (IncludeDrafts == false) drafts/scheduled
+	// pages are filtered out earlier and never reach public/, so the
+	// table ends up empty after this call (which is the correct
+	// state — nothing to defer).
+	if err := recordDeferredPublications(cfg, siteIndex, logger); err != nil {
+		logger.Warn("failed to record deferred publications", "error", err)
+	}
+
 	// after.build: emitted after all output is finalized (post build.finished,
 	// post cache save). Plugins can use this for deploy, notifications, etc.
 	if plugins != nil {
@@ -537,6 +547,65 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	}, logger)
 
 	return nil
+}
+
+// recordDeferredPublications walks the rendered site index and stores
+// the URL paths of every page that must NOT be deployed: drafts and
+// scheduled posts whose publish_at lies in the future. Replaces the
+// table contents on every build so the set always matches the most
+// recent render.
+func recordDeferredPublications(cfg config.Config, siteIndex *site.Site, logger *slog.Logger) error {
+	if siteIndex == nil {
+		return nil
+	}
+	store, err := OpenBuildStateStore(cfg)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = store.Close() }()
+
+	var entries []DeferredEntry
+	for _, page := range siteIndex.Pages {
+		if page == nil {
+			continue
+		}
+		switch {
+		case page.Draft:
+			entries = append(entries, DeferredEntry{
+				Path:   page.Path,
+				Source: relSourcePath(cfg.ContentDir, page.SourcePath),
+				Reason: DeferredReasonDraft,
+			})
+		case page.IsScheduled():
+			entries = append(entries, DeferredEntry{
+				Path:      page.Path,
+				Source:    relSourcePath(cfg.ContentDir, page.SourcePath),
+				Reason:    DeferredReasonScheduled,
+				PublishAt: page.PublishAt,
+			})
+		}
+	}
+	if err := store.ReplaceDeferred(entries); err != nil {
+		return err
+	}
+	if logger != nil && len(entries) > 0 {
+		logger.Info("deferred publications recorded", "count", len(entries))
+	}
+	return nil
+}
+
+// relSourcePath returns the source markdown path relative to
+// contentDir when possible. Used purely for human-readable rows in
+// the deferred_publications table; it never affects exclusion.
+func relSourcePath(contentDir, sourcePath string) string {
+	if contentDir == "" || sourcePath == "" {
+		return sourcePath
+	}
+	rel, err := filepath.Rel(contentDir, sourcePath)
+	if err != nil {
+		return sourcePath
+	}
+	return filepath.ToSlash(rel)
 }
 
 func buildOutputsIndex(siteIndex *site.Site, publicDir string) map[string]string {

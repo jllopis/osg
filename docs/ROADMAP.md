@@ -1255,3 +1255,47 @@ desde la UI sin tener que tocar el cache a mano.
   `AICached` / `HasAICached`; `state.collectPages` carga el
   cache una sola vez via `build.LoadAISummaries`
 
+## Phase 34 — Deferred publications: drafts y scheduled fuera del deploy (done)
+
+Con `include_drafts: true` el build procesa drafts y posts con
+`publish_at` futuro (ideal para pre-cachear resumenes IA, optimizar
+imagenes, validar HTML local) pero acababa subiendolos al hosting.
+Esta fase desacopla "render local" de "publicar": el deploy lee la
+lista de paths diferidos del build state y los excluye antes de
+invocar al provider.
+
+### 34A — build_state.db con `deferred_publications` (done)
+- [done] Nueva DB SQLite (`.osg/cache/build_state.db`, modernc/sqlite
+  + WAL, mismo patron que summaries.db) con la tabla
+  `deferred_publications(path PK, source, reason, publish_at,
+  recorded_at)`
+- [done] `BuildStateStore`: `OpenBuildStateStore`, `LoadDeferred`,
+  `ReplaceDeferred`, `Close`. La build llama `ReplaceDeferred` al
+  final dejando el set siempre alineado con la ultima ejecucion
+- [done] Helper publico `build.LoadDeferredPaths(cfg, logger)` para
+  el deploy: leer-y-cerrar, devuelve `nil` ante cualquier error
+  (un DB roto no bloquea el deploy — vuelve al comportamiento previo)
+- [done] `recordDeferredPublications` en build.go recorre el site
+  index post-render: drafts → `reason="draft"`; scheduled futuros
+  (`page.IsScheduled()`) → `reason="scheduled"` con `publish_at`
+
+### 34B — deploy staging via hardlinks (done)
+- [done] `internal/deploy/staging.go`: `Stage(publicDir, excludes,
+  logger)` devuelve `*Staging{Dir, Cleanup, Excluded}`
+- [done] Sin exclusiones → devuelve `publicDir` verbatim y un
+  `Cleanup` no-op (overhead cero en producción)
+- [done] Con exclusiones → crea `.osg-deploy-staging/` junto a
+  `public/`, recorre el arbol con `os.Link` (hardlink: zero copy,
+  instantaneo) saltando los subarboles excluidos. Fallback a
+  `copyFile` en cross-device (EXDEV)
+- [done] `RunDeploy` en `app/deploy.go` llama a `Stage` antes de
+  invocar al provider y pasa el dir resultante. Imprime al log las
+  rutas excluidas para que el usuario vea exactamente que no se
+  publica
+- [done] Defensa contra typos: una entrada `"/"` se ignora (jamas
+  vacia el deploy). Entries vacias o whitespace-only tambien
+- [done] Tests: round-trip del store, replace que limpia rows
+  previas, replace vacio que vacia tabla, `LoadDeferredPaths` con
+  store ausente; staging que excluye subarboles, mantiene siblings,
+  cleanup elimina el dir
+
