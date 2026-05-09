@@ -678,3 +678,10 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 34B) Sin exclusiones, Stage devuelve publicDir verbatim (overhead cero en producción)
 [done] (Phase 34B) RunDeploy invoca Stage + provider apunta al staging dir; log lista las rutas excluidas
 [done] (Phase 34B) Defensa: "/" en exclusiones se ignora (no permite vaciar el deploy entero por typo)
+
+[done] (Phase 35A) update_content deja pasar drafts con osg.publish_at (sin él, siguen filtrados)
+[done] (Phase 35A) build.ComputeStats: case "scheduled" gana sobre "draft"; NextScheduled avanza con drafts+publish_at
+[done] (Phase 35B) publish.PromoteDueDrafts: walk vault, flip osg.publish: draft -> true cuando publish_at <= now (write atomic, salta dot-dirs)
+[done] (Phase 35B) publish.PublishAt: helper que extrae osg.publish_at o top-level publish_at via date.Parse
+[done] (Phase 35B) RunScheduler dispara secuencia completa: PromoteDueDrafts -> RunUpdateContent -> RunBuild (audit registra fallos en cualquier paso)
+[done] (Phase 35B) Tests: 7 escenarios de PromoteDueDrafts (due, future, no-fecha, non-draft, vault vacio/inexistente, dot-dirs)

@@ -116,7 +116,13 @@ func RunUpdateContent(_ context.Context, opts CLIOptions) error {
 			stats.Skipped++
 			continue
 		}
-		if isDraft && !cfg.IncludeDrafts {
+		// Drafts with a publish_at frontmatter field bypass the draft
+		// filter so the scheduler can pick them up from content/ and
+		// the auto-publish flow (PromoteDueDrafts) can flip them when
+		// the date arrives. They still carry osg.publish:draft so the
+		// build keeps gating their HTML output via deferred_publications
+		// — only the vault → content sync gets relaxed.
+		if isDraft && !cfg.IncludeDrafts && publish.PublishAt(fm).IsZero() {
 			stats.Drafts++
 			continue
 		}

@@ -1299,3 +1299,47 @@ invocar al provider.
   store ausente; staging que excluye subarboles, mantiene siblings,
   cleanup elimina el dir
 
+## Phase 35 — Auto-publish de drafts con publish_at (done)
+
+Hasta ahora `osg.publish: draft` + `osg.publish_at: <fecha>` era una
+combinacion muerta: el filtro de drafts en `update_content` bloqueaba
+el post antes de que llegara a `content/`, asi que el scheduler nunca
+lo encontraba y la fecha no disparaba nada. Esta fase la convierte en
+el flujo natural de "schedule a draft": ahora cuando llega la fecha
+el scheduler reescribe el frontmatter del vault flipeando
+`osg.publish: draft` → `osg.publish: true` y propaga el cambio.
+
+### 35A — Pipeline scheduled-draft (done)
+- [done] `update_content.go`: drafts con `osg.publish_at` (cualquier
+  fecha) bypasean el filtro `IncludeDrafts=false` y se sincronizan a
+  `content/`. Sin `publish_at` siguen filtrados como hasta ahora
+- [done] `build.ComputeStats`: el case "scheduled" gana sobre
+  "draft" en la clasificacion. Un draft+publish_at futuro cuenta
+  como `Scheduled` y actualiza `NextScheduled`, asi que el scheduler
+  service lo ve y duerme hasta la fecha
+- [done] El gating de output sigue intacto: build salta drafts y
+  deferred_publications los excluye del deploy mientras el flag
+  `draft` siga vigente
+
+### 35B — Vault rewrite + publish flow (done)
+- [done] `internal/publish.PromoteDueDrafts(vaultPath, now, logger)`
+  recorre el vault, encuentra `.md` con `osg.publish: draft` y
+  `osg.publish_at <= now`, y reescribe `osg.publish: true` via
+  `frontmatter.UpdateField` (preserva resto del FM y body).
+  Escritura atomica (tmp file + rename); errores por fichero se
+  loguean pero no abortan el barrido
+- [done] `internal/publish.PublishAt(fm)` extrae `osg.publish_at`
+  o el top-level `publish_at` con `date.Parse` (mismas layouts que
+  el resto del pipeline)
+- [done] `RunScheduler` al despertar dispara la secuencia completa:
+  `PromoteDueDrafts` (flip vault) → `RunUpdateContent` (sync
+  vault→content) → `RunBuild` (renderiza y descarga del set
+  diferido). El audit row del scheduler trigger registra el
+  resultado del flujo entero
+- [done] Salta dot-dirs (`.obsidian/`, `.git/`, etc.) durante el
+  walk; idempotente (segundo run no hace nada si todo esta ya
+  promocionado)
+- [done] Tests: flip de draft vencido, no-flip de draft futuro,
+  no-flip de draft sin fecha, no-flip de non-draft, no-op con
+  vault path vacio o inexistente, dot-dirs ignorados
+

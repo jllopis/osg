@@ -79,13 +79,18 @@ func ComputeStats(cfg config.Config) (*SiteStats, error) {
 	now := time.Now()
 	for _, p := range siteIndex.Pages {
 		switch {
-		case p.Draft:
-			stats.Drafts++
+		// Scheduled-with-future-date wins over draft so a draft that
+		// has been scheduled to auto-publish counts toward Scheduled
+		// (and updates NextScheduled). Without this swap the scheduler
+		// service couldn't see the post: ComputeStats would classify
+		// it as a plain draft and NextScheduled would never advance.
 		case !p.PublishAt.IsZero() && p.PublishAt.After(now):
 			stats.Scheduled++
 			if stats.NextScheduled.IsZero() || p.PublishAt.Before(stats.NextScheduled) {
 				stats.NextScheduled = p.PublishAt
 			}
+		case p.Draft:
+			stats.Drafts++
 		default:
 			stats.Published++
 		}

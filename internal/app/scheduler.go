@@ -8,6 +8,7 @@ import (
 	"osg/internal/config"
 	"osg/internal/logging"
 	"osg/internal/operations"
+	"osg/internal/publish"
 )
 
 // schedulerFallback is the maximum sleep between checks when no
@@ -78,12 +79,12 @@ func RunScheduler(ctx context.Context, opts CLIOptions, store schedulerStore) er
 			return nil
 		}
 
-		// Only run a build if we actually woke up because a scheduled
-		// post is now due. Periodic wake-ups (no upcoming next) skip
-		// the rebuild — the watcher service is the right way to pick up
-		// content changes.
+		// Only run the publish flow if we actually woke up because a
+		// scheduled post is now due. Periodic wake-ups (no upcoming
+		// next) skip everything — the watcher service is the right
+		// way to pick up content changes.
 		if !next.IsZero() && !time.Now().Before(next) {
-			logger.Info("scheduler triggering build",
+			logger.Info("scheduler triggering publish flow",
 				"due_at", next.Format(time.RFC3339),
 			)
 			startedAt := time.Now()
@@ -102,10 +103,35 @@ func RunScheduler(ctx context.Context, opts CLIOptions, store schedulerStore) er
 			o.SkipAI = true
 			status := operations.StatusOK
 			errMsg := ""
-			if err := RunBuild(ctx, o); err != nil {
-				logger.Warn("scheduler build failed", "error", err)
+
+			// 1. Promote drafts whose publish_at has just arrived: the
+			//    vault file's osg.publish flips draft → true, atomically.
+			vaultPath, vErr := config.ResolveVaultPath(cfg)
+			if vErr != nil {
+				logger.Warn("scheduler vault resolve failed", "error", vErr)
+			} else if promoted, pErr := publish.PromoteDueDrafts(vaultPath, time.Now(), logger); pErr != nil {
+				logger.Warn("scheduler promote failed", "error", pErr)
+			} else if len(promoted) > 0 {
+				logger.Info("scheduler promoted drafts", "count", len(promoted), "paths", promoted)
+			}
+
+			// 2. Sync the (possibly rewritten) vault into content/ so
+			//    the build sees the new state.
+			if err := RunUpdateContent(ctx, o); err != nil {
+				logger.Warn("scheduler update-content failed", "error", err)
 				status = operations.StatusError
 				errMsg = err.Error()
+			}
+
+			// 3. Build. Drafts are still drafts (filtered out); newly-
+			//    promoted posts are now non-draft and past-dated, so
+			//    they reach public/ and the next deploy.
+			if status == operations.StatusOK {
+				if err := RunBuild(ctx, o); err != nil {
+					logger.Warn("scheduler build failed", "error", err)
+					status = operations.StatusError
+					errMsg = err.Error()
+				}
 			}
 			if store != nil && auditID > 0 {
 				if err := store.Finish(auditID, status, errMsg, time.Now()); err != nil {
