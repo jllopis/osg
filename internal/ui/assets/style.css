@@ -963,7 +963,11 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* Collapsed task-form on domain pages (/vault new, /plugins install,
    /themes scaffold). Closed by default so the page leads with its
-   primary content (pages list / installed list / theme list). */
+   primary content (pages list / installed list / theme list). The
+   wrapper inherits the task-form's max-width so the summary and the
+   body align — without this, the summary would span the full page
+   width while the body stayed capped at 720px. */
+.collapsible-section { max-width: 720px; }
 .collapsible-section > summary {
   cursor: pointer;
   padding: 0.6rem 0.8rem;
