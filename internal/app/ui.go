@@ -35,7 +35,16 @@ func RunUI(ctx context.Context, opts CLIOptions) error {
 	}
 
 	logger := logging.NewWithWriter(cfg.Logging, opts.Verbose, opts.LogWriter)
-	logger.Info("starting ui dashboard", "addr", addr)
+	logger.Info("starting ui dashboard",
+		"addr", addr,
+		"version", Version,
+		"theme", cfg.Theme,
+		"summary_strategy", cfg.SummaryStrategy,
+		"ai_provider", cfg.AI.Provider,
+		"ai_model", cfg.AI.Model,
+		"ai_base_url", cfg.AI.BaseURL,
+		"ai_timeout_s", cfg.AI.Timeout,
+	)
 
 	store, err := operations.NewStore(OperationsDBPath(opts.ConfigPath))
 	if err != nil {
