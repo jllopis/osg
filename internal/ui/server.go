@@ -120,6 +120,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("/services/stop", s.handleServiceStop)
 	s.mux.HandleFunc("GET /services.json", s.handleServicesJSON)
 	s.mux.HandleFunc("GET /services/{name}/logs", s.handleServiceLogs)
+	// Generic operations endpoints used by /actions cards (Etapa 3) and
+	// safe to call directly with curl during Etapa 2 testing.
+	s.mux.HandleFunc("POST /operations/{name}/run", s.handleOperationRun)
+	s.mux.HandleFunc("POST /operations/{name}/stop", s.handleOperationStop)
+	s.mux.HandleFunc("GET /operations/{name}/logs", s.handleOperationLogs)
+	s.mux.HandleFunc("GET /operations.json", s.handleOperationsJSON)
 }
 
 // loadTemplates parses each page template against the layout into its own

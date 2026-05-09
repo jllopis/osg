@@ -148,7 +148,93 @@ func buildOperationDefinitions(parent CLIOptions, cfg config.Config, store *oper
 				return RunBuild(ctx, o)
 			},
 		},
+		{
+			Name:        "update-content",
+			Kind:        operations.KindTask,
+			Description: "Sync content from the configured Obsidian vault",
+			Run: func(ctx context.Context, _ map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				return RunUpdateContent(ctx, o)
+			},
+		},
+		{
+			Name:        "deploy",
+			Kind:        operations.KindTask,
+			Description: "Deploy the built site to the configured remote",
+			Run: func(ctx context.Context, params map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				return RunDeploy(ctx, o, deployOptionsFromParams(params, cfg))
+			},
+		},
+		{
+			Name:        "check",
+			Kind:        operations.KindTask,
+			Description: "Validate content (links, images, frontmatter)",
+			Run: func(ctx context.Context, params map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				return RunCheck(ctx, o, checkOptionsFromParams(params))
+			},
+		},
+		{
+			Name:        "audit",
+			Kind:        operations.KindTask,
+			Description: "Audit the rendered site for quality issues",
+			Run: func(ctx context.Context, params map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				jsonOutput, _ := params["json"].(bool)
+				return RunAudit(ctx, o, jsonOutput)
+			},
+		},
 	}
+}
+
+// deployOptionsFromParams builds DeployOptions from a Run's params map,
+// falling back to the project's deploy config defaults when keys are
+// missing. Used by the deploy task closure so /actions can supply
+// provider/preview/build overrides without changing the runner API.
+func deployOptionsFromParams(params map[string]any, cfg config.Config) DeployOptions {
+	opts := DeployOptions{
+		Provider: cfg.Deploy.Provider,
+		Build:    true,
+	}
+	if v, ok := params["provider"].(string); ok && v != "" {
+		opts.Provider = v
+	}
+	if v, ok := params["build"].(bool); ok {
+		opts.Build = v
+	}
+	if v, ok := params["preview"].(bool); ok {
+		opts.DryRun = v
+	}
+	return opts
+}
+
+// checkOptionsFromParams builds CheckOptions from a Run's params map.
+// When no flags are set, RunCheck itself defaults to running every
+// check, so passing zero-value here is a sensible default.
+func checkOptionsFromParams(params map[string]any) CheckOptions {
+	opts := CheckOptions{}
+	if v, ok := params["links"].(bool); ok {
+		opts.Links = v
+	}
+	if v, ok := params["images"].(bool); ok {
+		opts.Images = v
+	}
+	if v, ok := params["frontmatter"].(bool); ok {
+		opts.Frontmatter = v
+	}
+	if v, ok := params["json"].(bool); ok {
+		opts.JSON = v
+	}
+	return opts
 }
 
 // normalizeLoopbackAddr ensures the dashboard binds only to loopback. Empty
