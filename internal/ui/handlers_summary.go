@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,6 +68,15 @@ func (s *Server) handleSummaryInvalidate(w http.ResponseWriter, r *http.Request)
 	}
 	if s.opts.Logger != nil {
 		s.opts.Logger.Info("ai summary invalidated", "source", rel, "hash", hash, "removed", removed)
+	}
+	if wantsJSON(r) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":      true,
+			"source":  rel,
+			"removed": removed,
+		})
+		return
 	}
 	dest := r.Header.Get("Referer")
 	if dest == "" {
@@ -270,6 +280,13 @@ func (s *Server) handleSummaryRegenerate(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if s.opts.Logger != nil {
+		s.opts.Logger.Info("ai summary regenerate triggered",
+			"source", rel,
+			"provider", s.opts.Cfg.AI.Provider,
+			"model", s.opts.Cfg.AI.Model)
+	}
+	started := time.Now()
 	_, text, hash, err := s.generateSummaryNow(r.Context(), abs)
 	if err != nil {
 		if s.opts.Logger != nil {
@@ -283,12 +300,29 @@ func (s *Server) handleSummaryRegenerate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if s.opts.Logger != nil {
-		s.opts.Logger.Info("ai summary regenerated", "source", rel, "hash", hash, "chars", len(text))
+		s.opts.Logger.Info("ai summary regenerated",
+			"source", rel,
+			"hash", hash,
+			"chars", len(text),
+			"duration_ms", time.Since(started).Milliseconds())
+	}
+	if wantsJSON(r) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":          true,
+			"source":      rel,
+			"summary":     text,
+			"chars":       len(text),
+			"duration_ms": time.Since(started).Milliseconds(),
+		})
+		return
 	}
 	dest := r.Header.Get("Referer")
 	if dest == "" {
 		dest = "/vault"
 	}
+	// Append a flash query so /vault can render a confirmation banner.
+	dest = appendFlash(dest, "summary", "regenerated:"+rel)
 	http.Redirect(w, r, dest, http.StatusSeeOther)
 }
 
@@ -304,17 +338,33 @@ func (s *Server) handleSummarySuggest(w http.ResponseWriter, r *http.Request) {
 	if source == "" {
 		source = r.URL.Query().Get("source")
 	}
-	_, abs, err := s.resolveVaultSource(source)
+	rel, abs, err := s.resolveVaultSource(source)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if s.opts.Logger != nil {
+		s.opts.Logger.Info("ai summary suggest triggered",
+			"source", rel,
+			"provider", s.opts.Cfg.AI.Provider,
+			"model", s.opts.Cfg.AI.Model)
+	}
+	started := time.Now()
 	_, text, _, err := s.generateSummaryNow(r.Context(), abs)
 	if err != nil {
+		if s.opts.Logger != nil {
+			s.opts.Logger.Warn("ai summary suggest failed", "source", rel, "error", err)
+		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusBadGateway)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
+	}
+	if s.opts.Logger != nil {
+		s.opts.Logger.Info("ai summary suggest ok",
+			"source", rel,
+			"chars", len(text),
+			"duration_ms", time.Since(started).Milliseconds())
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(map[string]string{"suggestion": text})
@@ -373,4 +423,16 @@ func errOrEmpty(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+// appendFlash adds a query parameter to the given URL so the page
+// rendered after a redirect can show a transient confirmation banner.
+// Used to surface "summary regenerated" / "summary saved" feedback on
+// /vault and friends without persisting state across requests.
+func appendFlash(rawURL, key, value string) string {
+	sep := "?"
+	if strings.Contains(rawURL, "?") {
+		sep = "&"
+	}
+	return rawURL + sep + key + "=" + url.QueryEscape(value)
 }

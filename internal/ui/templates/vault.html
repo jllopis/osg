@@ -60,22 +60,24 @@
               <svg class="btn-icon"><use href="/assets/icons.svg#icon-edit"/></svg>
               Editar
             </a>
-            <form method="post" action="/summary/regenerate" style="display:inline"
-                  data-confirm="Re-generate the AI summary for this page now? This calls the LLM and replaces the cached value.">
-              <input type="hidden" name="source" value="{{.Source}}">
-              <button type="submit" class="btn btn-flow">
-                <svg class="btn-icon"><use href="/assets/icons.svg#icon-update"/></svg>
-                Resumir
-              </button>
-            </form>
-            <form method="post" action="/summary/invalidate" style="display:inline"
-                  data-confirm="Drop the AI summary cache for this page? The next build will re-call the LLM.">
-              <input type="hidden" name="source" value="{{.Source}}">
-              <button type="submit" class="btn btn-stop">
-                <svg class="btn-icon"><use href="/assets/icons.svg#icon-trash"/></svg>
-                Eliminar
-              </button>
-            </form>
+            <button type="button" class="btn btn-flow"
+                    data-async-action="/summary/regenerate"
+                    data-async-source="{{.Source}}"
+                    data-async-busy="Resumiendo…"
+                    data-async-success="Summary regenerated"
+                    data-confirm="Re-generate the AI summary for this page now? This calls the LLM and replaces the cached value.">
+              <svg class="btn-icon"><use href="/assets/icons.svg#icon-update"/></svg>
+              Resumir
+            </button>
+            <button type="button" class="btn btn-stop"
+                    data-async-action="/summary/invalidate"
+                    data-async-source="{{.Source}}"
+                    data-async-busy="Eliminando…"
+                    data-async-success="Cache cleared"
+                    data-confirm="Drop the AI summary cache for this page? The next build will re-call the LLM.">
+              <svg class="btn-icon"><use href="/assets/icons.svg#icon-trash"/></svg>
+              Eliminar
+            </button>
           </div>
         </div>
       </details>

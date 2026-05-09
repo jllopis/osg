@@ -54,7 +54,129 @@
     setupOperationsPolling();
     setupConfirmDialogs();
     setupSummarySuggest();
+    setupAsyncActions();
   });
+
+  // setupAsyncActions wires <button data-async-action="..."> elements
+  // that POST to a JSON endpoint with form-encoded body. The button
+  // shows a busy label while the request is in flight, surfaces the
+  // result in a top-right toast, and reloads the page on success so
+  // any stored value (cache pill, summary preview) is in sync.
+  // Buttons may carry [data-confirm] — the existing modal kicks in
+  // before the fetch is fired.
+  function setupAsyncActions() {
+    document.body.addEventListener("click", function (ev) {
+      const btn = ev.target.closest("[data-async-action]");
+      if (!btn) return;
+      ev.preventDefault();
+      const url = btn.getAttribute("data-async-action");
+      if (!url) return;
+
+      function fire() {
+        runAsync(btn, url);
+      }
+      const prompt = btn.getAttribute("data-confirm");
+      if (prompt) {
+        showConfirm(prompt, fire);
+      } else {
+        fire();
+      }
+    });
+  }
+
+  function runAsync(btn, url) {
+    const source = btn.getAttribute("data-async-source") || "";
+    const busy = btn.getAttribute("data-async-busy") || "Working…";
+    const okLabel = btn.getAttribute("data-async-success") || "Done";
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = busy;
+
+    const body = new URLSearchParams();
+    if (source) body.set("source", source);
+
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
+      },
+      body: body.toString(),
+    })
+      .then(function (r) {
+        return r.text().then(function (txt) {
+          let data = null;
+          try { data = txt ? JSON.parse(txt) : null; } catch (_) {}
+          return { ok: r.ok, status: r.status, data: data, raw: txt };
+        });
+      })
+      .then(function (res) {
+        if (!res.ok) {
+          const msg = (res.data && res.data.error) || res.raw || ("HTTP " + res.status);
+          showToast("error", msg);
+          btn.disabled = false;
+          btn.innerHTML = original;
+          return;
+        }
+        showToast("ok", okLabel);
+        // Brief delay so the user sees the toast before the reload
+        // wipes it. Reload picks up fresh state (cache pill, etc.).
+        setTimeout(function () { window.location.reload(); }, 700);
+      })
+      .catch(function (err) {
+        showToast("error", String(err));
+        btn.disabled = false;
+        btn.innerHTML = original;
+      });
+  }
+
+  // showConfirm shows the same dialog setupConfirmDialogs creates,
+  // but driven by an explicit callback instead of a form submit. Used
+  // by data-async-action buttons (which aren't form submitters).
+  function showConfirm(message, onOk) {
+    let dialog = document.getElementById("confirm-dialog");
+    if (!dialog) return; // setupConfirmDialogs runs first; defensive.
+    const text = dialog.querySelector("[data-confirm-text]");
+    const okBtn = dialog.querySelector("[data-confirm-ok]");
+    const cancelBtn = dialog.querySelector("[data-confirm-cancel]");
+    text.textContent = message;
+    function cleanup() {
+      okBtn.removeEventListener("click", okHandler);
+      cancelBtn.removeEventListener("click", cancelHandler);
+    }
+    function okHandler() { dialog.close(); cleanup(); onOk(); }
+    function cancelHandler() { dialog.close(); cleanup(); }
+    okBtn.addEventListener("click", okHandler);
+    cancelBtn.addEventListener("click", cancelHandler);
+    if (typeof dialog.showModal === "function") {
+      dialog.showModal();
+    } else {
+      cleanup();
+      if (window.confirm(message)) onOk();
+    }
+  }
+
+  // showToast displays a transient banner top-right. kind ∈ {"ok","error"}.
+  function showToast(kind, message) {
+    let host = document.getElementById("toast-host");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "toast-host";
+      host.className = "toast-host";
+      document.body.appendChild(host);
+    }
+    const toast = document.createElement("div");
+    toast.className = "toast toast-" + kind;
+    toast.textContent = message;
+    host.appendChild(toast);
+    // Force layout so the entry transition runs.
+    void toast.offsetWidth;
+    toast.classList.add("is-visible");
+    setTimeout(function () {
+      toast.classList.remove("is-visible");
+      setTimeout(function () { toast.remove(); }, 250);
+    }, 4000);
+  }
 
   // setupSummarySuggest wires the "Sugerencia IA" button on the
   // page editor: POST /summary/suggest with the page's source,

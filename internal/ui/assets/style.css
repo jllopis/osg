@@ -477,6 +477,67 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   flex-wrap: wrap;
 }
 
+/* Top-right toast host. Stacks newest at the top so a chain of
+   actions (Resumir → Editar → Save) reads in order. Toasts
+   auto-dismiss after a few seconds; visual style is purely
+   informational, not blocking. */
+.toast-host {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+.toast {
+  min-width: 240px;
+  max-width: 360px;
+  padding: 0.6rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--fg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.toast.is-visible { opacity: 1; transform: translateY(0); }
+.toast-ok { border-color: var(--accent); }
+.toast-error { border-color: var(--err, #bf616a); }
+
+/* Buttons in their busy/pending state get a soft pulse so a slow
+   LLM call still tells the user something is happening. The pulse
+   is gentle (4s cycle) so it doesn't compete with the content. */
+.btn:disabled,
+button[disabled] {
+  cursor: progress;
+  opacity: 0.85;
+}
+[data-async-action]:disabled,
+[data-summary-suggest]:disabled {
+  animation: osg-pulse 1.4s ease-in-out infinite;
+}
+@keyframes osg-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+/* Page editor feedback line — make the inline status more visible
+   so the user notices the AI suggestion landed. */
+.page-edit-feedback {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 4px;
+  background: var(--bg-elev);
+  border-left: 3px solid var(--accent);
+}
+.page-edit-feedback.err-text { border-left-color: var(--err, #bf616a); }
+
 /* Per-page summary editor at /vault/page. The page-meta dl shows
    read-only metadata; page-summary-current frames the value the
    site is currently using; the form below holds the override. */
