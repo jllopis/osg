@@ -39,9 +39,29 @@ type CLI struct {
 	Check         CheckCmd      `cmd:"" help:"Validate content (links, images, frontmatter)"`
 	Audit         AuditCmd      `cmd:"" help:"Audit generated site for quality issues"`
 	Doctor        struct{}      `cmd:"" help:"Validate configuration and environment"`
+	Service       ServiceCmd    `cmd:"" help:"Install/manage osg ui as a system service (systemd / launchd)"`
 	Version       struct{}      `cmd:"" help:"Show version information"`
 	Completion    CompletionCmd `cmd:"" help:"Generate shell completion script" hidden:""`
 }
+
+type ServiceCmd struct {
+	Install   ServiceInstallSubCmd   `cmd:"" help:"Install osg ui as a user-level service (LaunchAgent on macOS, systemd --user on Linux)"`
+	Uninstall ServiceUninstallSubCmd `cmd:"" help:"Stop the service and remove its unit file"`
+	Start     ServiceStartSubCmd     `cmd:"" help:"Start the installed service"`
+	Stop      ServiceStopSubCmd      `cmd:"" help:"Stop the running service"`
+	Status    ServiceStatusSubCmd    `cmd:"" help:"Show service status (delegates to systemctl/launchctl)"`
+}
+
+type ServiceInstallSubCmd struct {
+	Workdir string `help:"Working directory the service runs in (default: cwd)" default:""`
+	Exec    string `help:"Path to osg binary (default: current binary)" default:""`
+	NoStart bool   `help:"Write the unit file but do not start the service" name:"no-start"`
+}
+
+type ServiceUninstallSubCmd struct{}
+type ServiceStartSubCmd struct{}
+type ServiceStopSubCmd struct{}
+type ServiceStatusSubCmd struct{}
 
 type CompletionCmd struct {
 	Shell string `arg:"" enum:"bash,zsh,fish" help:"Shell type (bash, zsh, fish)"`
@@ -311,6 +331,20 @@ func main() {
 		runErr = app.RunImportWordpress(context.Background(), opts, cli.Import.Wordpress.File, cli.DryRun)
 	case strings.HasPrefix(command, "import hugo"):
 		runErr = app.RunImportHugo(context.Background(), opts, cli.Import.Hugo.Dir, cli.DryRun)
+	case strings.HasPrefix(command, "service install"):
+		runErr = app.RunServiceInstall(context.Background(), opts, app.ServiceInstallOptions{
+			Workdir: cli.Service.Install.Workdir,
+			Exec:    cli.Service.Install.Exec,
+			NoStart: cli.Service.Install.NoStart,
+		})
+	case strings.HasPrefix(command, "service uninstall"):
+		runErr = app.RunServiceUninstall(context.Background(), opts)
+	case strings.HasPrefix(command, "service start"):
+		runErr = app.RunServiceStart(context.Background(), opts)
+	case strings.HasPrefix(command, "service stop"):
+		runErr = app.RunServiceStop(context.Background(), opts)
+	case strings.HasPrefix(command, "service status"):
+		runErr = app.RunServiceStatus(context.Background(), opts)
 	case command == "version":
 		fmt.Println(app.VersionInfo())
 	case strings.HasPrefix(command, "completion"):

@@ -73,8 +73,18 @@ osg check                    # Validate content (links, images, frontmatter)
 osg audit                    # Audit rendered site for SEO / performance issues
 osg doctor                   # Validate configuration
 osg deploy                   # Deploy to Cloudflare/rsync/S3
+osg service install          # Install osg ui as a system service (systemd / launchd)
+osg service start|stop|status|uninstall
 osg version                  # Show version info
 ```
+
+`osg service install` writes a user-level unit file (LaunchAgent on
+macOS at `~/Library/LaunchAgents/com.jllopis.osg-ui.plist`, systemd
+user service on Linux at `~/.config/systemd/user/osg-ui.service`),
+loads it and starts the dashboard. Restart-on-failure and load-at-login
+are baked in. Pair with `ui.autostart: [scheduler, watcher]` in
+`config.yaml` so the auto-publish flow keeps watching across
+restarts.
 
 `osg ui` and `osg` (TUI) are independent: the TUI runs in your terminal,
 the web dashboard runs as a loopback HTTP server (`127.0.0.1:1314` by
