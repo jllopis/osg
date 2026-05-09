@@ -532,8 +532,14 @@
         .then(function (data) {
           if (!data || !Array.isArray(data.operations)) return;
           const byName = new Map(data.operations.map(function (op) { return [op.name, op]; }));
+          // Only one-shot tasks drive the flow drawer. Services
+          // (serve, api, watcher, scheduler) run continuously, so
+          // picking them as "the running op" would pin the drawer
+          // to a service log forever and hide the actual pipeline
+          // step the user just triggered.
           let running = null;
           data.operations.forEach(function (op) {
+            if (op.kind !== "task") return;
             if (!running && (op.state === "running" || op.state === "starting")) {
               running = op;
             }
