@@ -19,7 +19,7 @@ A fast, opinionated static site generator that turns your [Obsidian](https://obs
 - **TUI** — two-panel Bubble Tea interface with slash commands
 - **Related posts** — automatic recommendations by shared taxonomy terms
 - **Reading progress** — scroll progress bar on article pages
-- **Sidebar widgets** — optional 3-column homepage with author / newsletter / popular widgets (responsive ≥1400px)
+- **Sidebar widgets** — optional homepage with author / newsletter / popular widgets; sticky right sidebar at ≥1400px, stacked below content on narrower viewports
 
 ## Quick Start
 

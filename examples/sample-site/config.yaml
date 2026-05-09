@@ -54,9 +54,10 @@ taxonomies:
 # Sidebar widgets (homepage)
 # -----------------------------------------------------------------------------
 # Optional 3-column homepage layout. When sidebar_widgets is set the
-# homepage gains a right sidebar with the listed widgets. Sidebars are
-# visible at >=1400px viewport; below that the layout collapses to a
-# single column. Each widget self-hides when its data is missing.
+# homepage gains a right sidebar with the listed widgets. At >=1400px
+# viewport the widgets render in a sticky sidebar on the right; below
+# 1400px they stack beneath the post list. Each widget self-hides when
+# its data is missing.
 #
 # Available: author / newsletter / popular.
 #

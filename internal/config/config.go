@@ -852,10 +852,12 @@ doctor_profile: dev
 # -----------------------------------------------------------------------------
 # Sidebar widgets (homepage)
 # -----------------------------------------------------------------------------
-# Activate the optional 3-column homepage layout. When sidebar_widgets is
-# set the homepage renders with a right sidebar containing the listed
-# widgets in the given order. The layout collapses to a single column
-# below 1400px viewport — sidebars are desktop-only by design.
+# Activate the optional 3-column homepage layout. When sidebar_widgets
+# is set the homepage renders with a right sidebar containing the listed
+# widgets in the given order.
+#
+# Responsive: >=1400px shows the 3-column desktop layout (sticky sidebar);
+# <1400px stacks the widgets below the post list at container width.
 #
 # Each widget self-hides when its data is missing, so it is safe to
 # enable a widget you have not fully configured yet.

@@ -342,13 +342,22 @@ a {
 
 /* Homepage 3-column layout. Activated only when sidebar_widgets is set
    in the config; otherwise the page renders single-column as before.
-   The center column keeps its width and viewport-center position
-   regardless of sidebar presence: both sidebar tracks are fixed at
-   240px and the grid is centered. Below 1400px sidebars hide and
-   the center column reverts to standard .container behaviour. */
+   At >=1400px the layout becomes a 3-track grid (240 | 1080 | 240)
+   centered in viewport, keeping the central column width and position
+   stable regardless of sidebar presence. Below 1400px the wrapper goes
+   back to display:contents so the children flow normally and the right
+   sidebar stacks beneath the main column. The left sidebar is reserved
+   for future overrides and hidden in stacked mode (in v1 it has no
+   default content). */
 .home-layout {
   display: contents;
 }
+.home-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
 @media (min-width: 1400px) {
   .home-layout--with-sidebars {
     display: grid;
@@ -358,17 +367,22 @@ a {
     align-items: start;
   }
   .home-layout--with-sidebars > .home-main { width: 100%; }
+  .home-sidebar {
+    width: 240px;
+    position: sticky;
+    top: var(--sp-6);
+  }
 }
-.home-sidebar {
-  width: 240px;
-  position: sticky;
-  top: var(--sp-6);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-}
+
 @media (max-width: 1399px) {
-  .home-sidebar { display: none; }
+  /* Stacked mode: widgets flow below the main column at .container
+     width. Top margin separates them from the post list above. */
+  .home-sidebar {
+    width: min(1080px, 100% - var(--sp-8));
+    margin-inline: auto;
+    margin-top: var(--sp-8);
+  }
+  .home-sidebar-left { display: none; }
 }
 
 .container-narrow {

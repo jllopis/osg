@@ -213,9 +213,11 @@ newsletter_action: "https://buttondown.email/api/emails/embed-subscribe/handle"
 ### Comportamiento del layout
 
 - **Activacion:** solo cuando `sidebar_widgets` no esta vacio. Sin la clave, la home se renderiza single-column igual que antes.
-- **Breakpoint responsive:** los sidebars solo se muestran a partir de 1400px de viewport. Por debajo (mobile, tablet, monitor pequeno) se ocultan via `display: none` y la columna central conserva su ancho de `.container` (1080px max).
-- **Centrado del contenido:** la columna central mantiene la misma posicion en viewport con o sin sidebars (grid simetrico de `240px | 1080px | 240px`, centrado).
+- **Desktop (>=1400px):** layout 3-col con grid `240px | 1080px | 240px` centrado. Los widgets viven en la columna derecha con `position: sticky` para que sigan al lector mientras hace scroll.
+- **Por debajo de 1400px:** los widgets pasan a apilarse **debajo** del listado de posts (no se ocultan). El ancho se ajusta al de `.container` (1080px max) y se centran horizontalmente, separados del contenido por un margen superior.
+- **Centrado del contenido:** en modo desktop la columna central mantiene la misma posicion en viewport con o sin sidebars (grid simetrico, `justify-content: center`).
 - **Wrapper transparente:** sin widgets configurados, el layout usa `display: contents` para no introducir cambios visibles en el DOM render.
+- **Sidebar izquierda:** reservada para overrides de temas hijos. En v1 no tiene contenido por defecto y se oculta en stacked mode.
 
 ### Widgets disponibles
 
