@@ -1543,6 +1543,27 @@ func buildURL(baseURL string, path string) string {
 	return strings.TrimRight(baseURL, "/") + path
 }
 
+// absolutePermalink ensures a sitemap <loc> is an absolute URL. When
+// the stored permalink already starts with http(s):// it is returned
+// untouched; otherwise the path-only fallback is composed from the
+// configured BaseURL. Sections auto-created for date archives via
+// ensureSection() store a path-only Permalink (no baseURL access at
+// creation time), so this guard is what keeps the sitemap valid for
+// Google Search Console.
+func absolutePermalink(baseURL, permalink, fallbackPath string) string {
+	p := strings.TrimSpace(permalink)
+	if p == "" {
+		p = strings.TrimSpace(fallbackPath)
+	}
+	if p == "" {
+		return ""
+	}
+	if strings.HasPrefix(p, "http://") || strings.HasPrefix(p, "https://") {
+		return p
+	}
+	return buildURL(baseURL, p)
+}
+
 func ensureTrailingSlash(input string) string {
 	if strings.HasSuffix(input, "/") {
 		return input
@@ -1949,7 +1970,7 @@ func collectSitemapEntries(cfg config.Config, siteIndex *site.Site, indices map[
 			continue
 		}
 		entry := SitemapEntry{
-			Permalink:  page.Permalink,
+			Permalink:  absolutePermalink(cfg.BaseURL, page.Permalink, page.Path),
 			Updated:    page.Date,
 			Priority:   0.8,
 			ChangeFreq: "monthly",
@@ -1976,7 +1997,13 @@ func collectSitemapEntries(cfg config.Config, siteIndex *site.Site, indices map[
 			priority = 1.0
 			changefreq = "daily"
 		}
-		addEntry(section.Permalink, sectionUpdated(section), priority, changefreq)
+		// Section.Permalink is set on creation. Auto-created sections
+		// (date archives like /2026/, /2026/02/) end up with a
+		// path-only value because ensureSection has no access to
+		// baseURL — wrap with buildURL so the sitemap always emits an
+		// absolute <loc>, which is what the sitemaps.org schema (and
+		// Google Search Console) requires.
+		addEntry(absolutePermalink(cfg.BaseURL, section.Permalink, section.Path), sectionUpdated(section), priority, changefreq)
 	}
 
 	for _, taxCfg := range cfg.Taxonomies {

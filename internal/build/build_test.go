@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -1768,5 +1769,28 @@ func TestRelatedPages_RespectsLimit(t *testing.T) {
 	related := relatedPages(pageA, indices, 3)
 	if len(related) != 3 {
 		t.Errorf("expected limit of 3, got %d", len(related))
+	}
+}
+
+func TestCollectSitemapEntries_AbsoluteSectionLocs(t *testing.T) {
+	// Auto-created sections (date archives) carry a path-only Permalink
+	// because ensureSection has no access to baseURL. The sitemap must
+	// still emit absolute <loc> values per the sitemaps.org schema.
+	cfg := config.Config{BaseURL: "https://example.com"}
+	s := &site.Site{
+		Sections: map[string]*site.Section{
+			"/2026/":       {Path: "/2026/", Permalink: "/2026/"},
+			"/2026/02/":    {Path: "/2026/02/", Permalink: "/2026/02/"},
+			"/2026/02/28/": {Path: "/2026/02/28/", Permalink: "/2026/02/28/"},
+		},
+	}
+	entries := collectSitemapEntries(cfg, s, nil)
+	if len(entries) != 3 {
+		t.Fatalf("expected 3 sitemap entries, got %d", len(entries))
+	}
+	for _, e := range entries {
+		if !strings.HasPrefix(e.Permalink, "https://example.com/") {
+			t.Errorf("entry %q is not absolute (must start with https://example.com/)", e.Permalink)
+		}
 	}
 }
