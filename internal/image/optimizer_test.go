@@ -176,45 +176,48 @@ func TestURLDir(t *testing.T) {
 }
 
 func TestOptimizeFile_JPEG(t *testing.T) {
+	if _, err := exec.LookPath("cwebp"); err != nil {
+		t.Skip("cwebp not available")
+	}
+
 	dir := t.TempDir()
 	imgPath := filepath.Join(dir, "hero.jpg")
 	createTestJPEG(t, imgPath, 1600, 900)
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	opts := Options{Quality: 75, Widths: []int{640, 1200}, WebP: false}
+	opts := Options{Quality: 75, Widths: []int{640, 1200}}
 
-	res, count, err := optimizeFile(imgPath, "/img/hero.jpg", opts, false, false, logger)
+	res, count, err := optimizeFile(imgPath, "/img/hero.jpg", opts, true, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res == nil {
 		t.Fatal("expected non-nil result")
 	}
+	// Two WebP variants (640w + 1200w). JPEG variants are no longer
+	// emitted — modern browsers all read WebP / AVIF from <picture>.
 	if count != 2 {
-		t.Errorf("count = %d, want 2 (640w + 1200w JPEG)", count)
+		t.Errorf("count = %d, want 2 (640w + 1200w WebP)", count)
 	}
 	if res.Original != "/img/hero.jpg" {
 		t.Errorf("Original = %q, want /img/hero.jpg", res.Original)
 	}
-	// OriginalWidth is capped to the largest configured width (1200)
-	// because the source (1600px) exceeds it.
 	if res.OriginalWidth != 1200 {
 		t.Errorf("OriginalWidth = %d, want 1200 (capped)", res.OriginalWidth)
 	}
 
-	// Check 640w variant exists on disk.
-	jpgPath := filepath.Join(dir, "hero-640w.jpg")
-	if _, err := os.Stat(jpgPath); err != nil {
-		t.Errorf("640w JPEG not found: %v", err)
+	// Intermediate JPEG used to feed cwebp must be cleaned up.
+	for _, w := range []int{640, 1200} {
+		jpgPath := filepath.Join(dir, fmt.Sprintf("hero-%dw.jpg", w))
+		if _, err := os.Stat(jpgPath); err == nil {
+			t.Errorf("intermediate JPEG %s should have been removed", jpgPath)
+		}
+		webpPath := filepath.Join(dir, fmt.Sprintf("hero-%dw.webp", w))
+		if _, err := os.Stat(webpPath); err != nil {
+			t.Errorf("WebP variant not found: %v", err)
+		}
 	}
 
-	// Check 1200w variant exists on disk.
-	jpgPath1200 := filepath.Join(dir, "hero-1200w.jpg")
-	if _, err := os.Stat(jpgPath1200); err != nil {
-		t.Errorf("1200w JPEG not found: %v", err)
-	}
-
-	// Variants should have width keys.
 	if _, ok := res.Variants[640]; !ok {
 		t.Error("missing 640 width in Variants")
 	}
@@ -275,42 +278,43 @@ func TestOptimizeFile_WebP(t *testing.T) {
 	_ = os.Remove(pngPath) // only keep the webp
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
+	opts := Options{Quality: 80, Widths: []int{640, 1200}}
 
-	res, count, err := optimizeFile(webpPath, "/photo.webp", opts, false, false, logger)
+	res, count, err := optimizeFile(webpPath, "/photo.webp", opts, true, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res == nil {
 		t.Fatal("expected non-nil result for WebP source")
 	}
-	// OriginalWidth is capped to the largest configured width (1200)
-	// because the source (2000px) exceeds it.
 	if res.OriginalWidth != 1200 {
 		t.Errorf("OriginalWidth = %d, want 1200 (capped)", res.OriginalWidth)
 	}
-	// Two JPEG variants (640, 1200) — no full-size webp copy since source is already webp.
+	// Two WebP variants (640, 1200) — no full-size copy since source
+	// is already webp and the per-original block is gated on format != "webp".
 	if count != 2 {
-		t.Errorf("count = %d, want 2 (jpeg variants only, no full-size webp copy)", count)
+		t.Errorf("count = %d, want 2 (webp variants, no full-size copy)", count)
 	}
-	// Verify variants exist on disk.
 	for _, w := range []int{640, 1200} {
-		jpgPath := filepath.Join(dir, fmt.Sprintf("photo-%dw.jpg", w))
-		if _, err := os.Stat(jpgPath); err != nil {
-			t.Errorf("expected JPEG variant at %s", jpgPath)
+		webpVariant := filepath.Join(dir, fmt.Sprintf("photo-%dw.webp", w))
+		if _, err := os.Stat(webpVariant); err != nil {
+			t.Errorf("expected WebP variant at %s", webpVariant)
 		}
 	}
 }
 
 func TestOptimizeFile_PNG(t *testing.T) {
+	if _, err := exec.LookPath("cwebp"); err != nil {
+		t.Skip("cwebp not available")
+	}
 	dir := t.TempDir()
 	imgPath := filepath.Join(dir, "chart.png")
 	createTestPNG(t, imgPath, 2000, 1000)
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
+	opts := Options{Quality: 80, Widths: []int{640, 1200}}
 
-	res, count, err := optimizeFile(imgPath, "/chart.png", opts, false, false, logger)
+	res, count, err := optimizeFile(imgPath, "/chart.png", opts, true, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -323,6 +327,9 @@ func TestOptimizeFile_PNG(t *testing.T) {
 }
 
 func TestOptimize_FullWalk(t *testing.T) {
+	if _, err := exec.LookPath("cwebp"); err != nil {
+		t.Skip("cwebp not available")
+	}
 	dir := t.TempDir()
 
 	// Create subdirectory structure like public/
@@ -334,7 +341,7 @@ func TestOptimize_FullWalk(t *testing.T) {
 	_ = os.WriteFile(svgPath, []byte(`<svg></svg>`), 0o644)
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
+	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: true}
 
 	results, err := Optimize(dir, opts, logger)
 	if err != nil {
@@ -460,23 +467,27 @@ func TestPictureHTML_DefaultLoading(t *testing.T) {
 }
 
 func TestOptimizeFile_OnlyOneWidth(t *testing.T) {
+	if _, err := exec.LookPath("cwebp"); err != nil {
+		t.Skip("cwebp not available")
+	}
 	dir := t.TempDir()
 	imgPath := filepath.Join(dir, "medium.jpg")
 	createTestJPEG(t, imgPath, 800, 600) // 800 > 640 but 800 < 1200
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	opts := Options{Quality: 80, Widths: []int{640, 1200}, WebP: false}
+	opts := Options{Quality: 80, Widths: []int{640, 1200}}
 
-	res, count, err := optimizeFile(imgPath, "/medium.jpg", opts, false, false, logger)
+	res, count, err := optimizeFile(imgPath, "/medium.jpg", opts, true, false, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if res == nil {
 		t.Fatal("expected non-nil result")
 	}
-	// Only 640w variant, not 1200w (would upscale).
-	if count != 1 {
-		t.Errorf("count = %d, want 1 (only 640w)", count)
+	// 640w WebP variant + WebP of original size (800 ≤ 1200 max). 1200w
+	// is skipped since it would upscale.
+	if count != 2 {
+		t.Errorf("count = %d, want 2 (640w + original-size webp)", count)
 	}
 	if _, ok := res.Variants[640]; !ok {
 		t.Error("missing 640 width in Variants")
@@ -532,6 +543,9 @@ func TestWriteJPEG(t *testing.T) {
 }
 
 func TestOptimize_SkipsDotDirs(t *testing.T) {
+	if _, err := exec.LookPath("cwebp"); err != nil {
+		t.Skip("cwebp not available")
+	}
 	dir := t.TempDir()
 	// Image inside a dot-directory should be skipped.
 	createTestJPEG(t, filepath.Join(dir, ".cache", "old.jpg"), 1600, 900)
@@ -539,7 +553,7 @@ func TestOptimize_SkipsDotDirs(t *testing.T) {
 	createTestJPEG(t, filepath.Join(dir, "photo.jpg"), 1600, 900)
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
-	opts := Options{Quality: 80, Widths: []int{640}, WebP: false}
+	opts := Options{Quality: 80, Widths: []int{640}, WebP: true}
 
 	results, err := Optimize(dir, opts, logger)
 	if err != nil {

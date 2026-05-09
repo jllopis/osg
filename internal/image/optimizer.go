@@ -218,16 +218,26 @@ func Optimize(publicDir string, opts Options, logger *slog.Logger) (map[string]*
 	// Phase 4: downsize oversized originals.  This runs for ALL images
 	// (including cached ones whose originals were restored by asset copy)
 	// so that the fallback <img src> file stays compact.
+	//
+	// The original's quality is intentionally a notch lower than the
+	// AVIF/WebP variants: it is only consumed by old browsers, social
+	// crawlers, RSS readers and direct hotlinks — none of which warrant
+	// the extra bytes. Modern browsers fetch the AVIF/WebP variants
+	// at full configured quality.
 	maxW := maxConfiguredWidth(opts.Widths)
 	if maxW > 0 {
+		originalQuality := opts.Quality - 5
+		if originalQuality < 50 {
+			originalQuality = 50
+		}
 		downsized := 0
 		for _, j := range jobs {
-			if downsizeIfNeeded(j.path, maxW, opts.Quality, hasWebP, logger) {
+			if downsizeIfNeeded(j.path, maxW, originalQuality, hasWebP, logger) {
 				downsized++
 			}
 		}
 		if downsized > 0 {
-			logger.Info("downsized oversized originals", "count", downsized, "maxWidth", maxW)
+			logger.Info("downsized oversized originals", "count", downsized, "maxWidth", maxW, "quality", originalQuality)
 		}
 	}
 
@@ -320,23 +330,31 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, hasAV
 			continue
 		}
 
-		// Resize.
-		resized := resize(src, w)
-
-		// JPEG variant.
-		jpgName := fmt.Sprintf("%s-%dw.jpg", base, w)
-		jpgPath := filepath.Join(dir, jpgName)
-		jpgURL := urlDir(urlPath) + jpgName
-
-		if err := writeJPEG(jpgPath, resized, opts.Quality); err != nil {
-			return nil, 0, fmt.Errorf("write jpeg %s: %w", jpgPath, err)
+		// Skip the per-width resize entirely when neither modern
+		// encoder is available: the only output we'd produce would
+		// be intermediate JPEGs which we no longer emit, so there's
+		// nothing useful left for this width. The original at base
+		// path still serves as <img> fallback.
+		if !hasWebP && !hasAVIF {
+			continue
 		}
 
-		variants := []Variant{{URLPath: jpgURL, Width: w, Format: "jpeg"}}
-		count++
-		logger.Debug("image variant", "src", urlPath, "variant", jpgURL, "width", w, "format", "jpeg")
+		// Resize once, then encode WebP and AVIF directly. JPEG
+		// variants are no longer emitted in <picture>: every browser
+		// that understands <picture> also understands WebP, so JPEG
+		// srcset entries were dead code in practice. We write a
+		// temporary JPEG only to feed cwebp/avifenc (they're CLI
+		// tools that take files), then delete it.
+		resized := resize(src, w)
 
-		// WebP variant via cwebp.
+		jpgName := fmt.Sprintf("%s-%dw.jpg", base, w)
+		jpgPath := filepath.Join(dir, jpgName)
+		if err := writeJPEG(jpgPath, resized, opts.Quality); err != nil {
+			return nil, 0, fmt.Errorf("write intermediate jpeg %s: %w", jpgPath, err)
+		}
+
+		variants := []Variant{}
+
 		if hasWebP {
 			webpName := fmt.Sprintf("%s-%dw.webp", base, w)
 			webpPath := filepath.Join(dir, webpName)
@@ -351,7 +369,6 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, hasAV
 			}
 		}
 
-		// AVIF variant via avifenc.
 		if hasAVIF {
 			avifName := fmt.Sprintf("%s-%dw.avif", base, w)
 			avifPath := filepath.Join(dir, avifName)
@@ -366,7 +383,13 @@ func optimizeFile(path string, urlPath string, opts Options, hasWebP bool, hasAV
 			}
 		}
 
-		res.Variants[w] = variants
+		// Drop the intermediate JPEG. It only existed to feed the
+		// modern encoders above.
+		_ = os.Remove(jpgPath)
+
+		if len(variants) > 0 {
+			res.Variants[w] = variants
+		}
 	}
 
 	// Generate WebP of the original size only when the original is not
