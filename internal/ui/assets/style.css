@@ -714,3 +714,78 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--border);
 }
+
+/* ============================================================ */
+/* Etapa 4: parameter forms on operation cards                  */
+/* ============================================================ */
+
+.op-card-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+}
+.op-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+}
+.op-field-bool {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.op-field-bool input[type="checkbox"] {
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.op-field-bool small {
+  flex-basis: 100%;
+}
+.op-field input[type="text"],
+.op-field select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: inherit;
+  padding: 0.4rem 0.55rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+.op-field input[type="text"]:focus,
+.op-field select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.op-field em {
+  color: var(--err);
+  font-style: normal;
+}
+.op-field-help {
+  color: var(--fg-dim);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+/* Confirmation dialog (deploy / import-*) */
+.confirm-dialog {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-elev);
+  color: var(--fg);
+  padding: 1.25rem 1.4rem;
+  max-width: min(420px, 90vw);
+  font-family: inherit;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+.confirm-dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+.confirm-dialog h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.confirm-dialog p { margin: 0 0 1rem; color: var(--fg-muted); }
+.confirm-dialog .actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}

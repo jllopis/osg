@@ -16,7 +16,8 @@
       <button type="submit" class="btn btn-stop"><svg class="btn-icon"><use href="/assets/icons.svg#icon-stop"/></svg> Stop</button>
     </form>
     {{else}}
-    <form method="post" action="/operations/{{.Name}}/run">
+    <form method="post" action="/operations/{{.Name}}/run"
+          {{if .Confirm}}data-confirm="{{.Confirm}}"{{end}}>
       <button type="submit" class="btn btn-run"><svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Run</button>
     </form>
     {{end}}

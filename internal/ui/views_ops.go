@@ -27,6 +27,8 @@ type OperationView struct {
 	LastStatusLabel   string
 	LastRanRelative   string
 	LastDurationLabel string
+	Params            []ParamDef // form schema for parameterised operations
+	Confirm           string     // when set, JS prompts before submitting
 }
 
 // HistoryRow is the table-row view of an operations.HistoryRun.
@@ -115,6 +117,8 @@ func operationViewFromSnapshot(snap operations.Snapshot, now time.Time) Operatio
 			v.State = string(operations.StateError)
 		}
 	}
+	v.Params = paramsForOperation(v.Name)
+	v.Confirm = confirmTextFor(v.Name)
 	return v
 }
 

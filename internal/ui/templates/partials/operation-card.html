@@ -1,6 +1,7 @@
 {{/* OperationView card. Used on /actions for every defined operation.
      Header: icon + name + description; pill state; meta line with last
-     run summary; footer with Run/Stop button + History link. */}}
+     run summary; optional collapsible params form; footer with Run /
+     Stop / History / Inspect controls. */}}
 <article class="op-card" data-operation="{{.Name}}">
   <header class="op-card-head">
     <svg class="op-card-icon" aria-hidden="true"><use href="/assets/icons.svg#icon-{{.IconName}}"/></svg>
@@ -21,6 +22,48 @@
     {{end}}
   </div>
 
+  {{if and (not .Running) .Params}}
+  <form class="op-card-form" method="post" action="/operations/{{.Name}}/run"
+        {{if .Confirm}}data-confirm="{{.Confirm}}"{{end}}>
+    {{range .Params}}
+      {{if eq .Kind "bool"}}
+      <label class="op-field op-field-bool">
+        <input type="hidden" name="{{.Name}}" value="false">
+        <input type="checkbox" name="{{.Name}}" value="true" {{if eq .Default "true"}}checked{{end}}>
+        <span>{{.Label}}</span>
+        {{if .Help}}<small class="op-field-help">{{.Help}}</small>{{end}}
+      </label>
+      {{else if eq .Kind "select"}}
+      <label class="op-field">
+        <span>{{.Label}}</span>
+        <select name="{{.Name}}">
+          {{range .Options}}
+          <option value="{{.}}" {{if eq . $.Default}}selected{{end}}>{{if .}}{{.}}{{else}}— from config —{{end}}</option>
+          {{end}}
+        </select>
+        {{if .Help}}<small class="op-field-help">{{.Help}}</small>{{end}}
+      </label>
+      {{else}}
+      <label class="op-field">
+        <span>{{.Label}}{{if .Required}} <em>*</em>{{end}}</span>
+        <input type="text" name="{{.Name}}" value="{{.Default}}"
+               placeholder="{{.Placeholder}}" {{if .Required}}required{{end}}>
+        {{if .Help}}<small class="op-field-help">{{.Help}}</small>{{end}}
+      </label>
+      {{end}}
+    {{end}}
+    <div class="op-card-actions">
+      <button type="submit" class="btn btn-run">
+        <svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Run
+      </button>
+      <a class="op-card-history" href="/history?name={{.Name}}">History</a>
+      <button type="button" class="op-card-inspect"
+              hx-get="/operations/{{.Name}}/drawer"
+              hx-target="#drawer"
+              hx-swap="innerHTML">Inspect</button>
+    </div>
+  </form>
+  {{else}}
   <footer class="op-card-actions">
     {{if .Running}}
     <form method="post" action="/operations/{{.Name}}/stop">
@@ -29,7 +72,8 @@
       </button>
     </form>
     {{else}}
-    <form method="post" action="/operations/{{.Name}}/run">
+    <form method="post" action="/operations/{{.Name}}/run"
+          {{if .Confirm}}data-confirm="{{.Confirm}}"{{end}}>
       <button type="submit" class="btn btn-run">
         <svg class="btn-icon"><use href="/assets/icons.svg#icon-play"/></svg> Run
       </button>
@@ -41,4 +85,5 @@
             hx-target="#drawer"
             hx-swap="innerHTML">Inspect</button>
   </footer>
+  {{end}}
 </article>

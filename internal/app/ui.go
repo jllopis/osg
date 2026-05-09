@@ -193,7 +193,109 @@ func buildOperationDefinitions(parent CLIOptions, cfg config.Config, store *oper
 				return RunAudit(ctx, o, jsonOutput)
 			},
 		},
+		{
+			Name:        "new",
+			Kind:        operations.KindTask,
+			Description: "Create a new draft post in the vault",
+			Run: func(ctx context.Context, params map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				postOpts, err := newPostOptionsFromParams(params)
+				if err != nil {
+					return err
+				}
+				return RunNew(ctx, o, postOpts)
+			},
+		},
+		{
+			Name:        "theme-init",
+			Kind:        operations.KindTask,
+			Description: "Scaffold a new theme (optionally inheriting from another)",
+			Run: func(ctx context.Context, params map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				name, _ := params["name"].(string)
+				if name == "" {
+					return fmt.Errorf("theme-init: name is required")
+				}
+				parentName, _ := params["parent"].(string)
+				return RunThemeInit(ctx, o, name, parentName)
+			},
+		},
+		{
+			Name:        "plugin-install",
+			Kind:        operations.KindTask,
+			Description: "Install a WASM plugin from a path or GitHub repo",
+			Run: func(ctx context.Context, params map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				path, _ := params["path"].(string)
+				if path == "" {
+					return fmt.Errorf("plugin-install: path is required")
+				}
+				return RunPluginInstall(ctx, o, path, "")
+			},
+		},
+		{
+			Name:        "import-wordpress",
+			Kind:        operations.KindTask,
+			Description: "Import posts from a WordPress WXR export",
+			Run: func(ctx context.Context, params map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				file, _ := params["file"].(string)
+				if file == "" {
+					return fmt.Errorf("import-wordpress: file is required")
+				}
+				return RunImportWordpress(ctx, o, file, parent.DryRun)
+			},
+		},
+		{
+			Name:        "import-hugo",
+			Kind:        operations.KindTask,
+			Description: "Import posts from a Hugo content directory",
+			Run: func(ctx context.Context, params map[string]any, w io.Writer) error {
+				o := parent
+				o.LogWriter = w
+				o.Progress = nil
+				dir, _ := params["dir"].(string)
+				if dir == "" {
+					return fmt.Errorf("import-hugo: dir is required")
+				}
+				return RunImportHugo(ctx, o, dir, parent.DryRun)
+			},
+		},
 	}
+}
+
+// newPostOptionsFromParams builds NewPostOptions from a Run's params.
+// Title is required. Tags are split on comma; whitespace trimmed.
+func newPostOptionsFromParams(params map[string]any) (NewPostOptions, error) {
+	title, _ := params["title"].(string)
+	if title == "" {
+		return NewPostOptions{}, fmt.Errorf("new: title is required")
+	}
+	publish, _ := params["publish"].(bool)
+	notesDir, _ := params["notes-dir"].(string)
+	tagsRaw, _ := params["tags"].(string)
+	var tags []string
+	for _, t := range strings.Split(tagsRaw, ",") {
+		t = strings.TrimSpace(t)
+		if t != "" {
+			tags = append(tags, t)
+		}
+	}
+	return NewPostOptions{
+		Title:    title,
+		Tags:     tags,
+		Publish:  publish,
+		NotesDir: notesDir,
+		Editor:   false, // never auto-open from the dashboard
+	}, nil
 }
 
 // deployOptionsFromParams builds DeployOptions from a Run's params map,

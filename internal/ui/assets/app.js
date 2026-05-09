@@ -52,7 +52,63 @@
     setupRebuildBar();
     setupDrawer();
     setupOperationsPolling();
+    setupConfirmDialogs();
   });
+
+  // setupConfirmDialogs intercepts submit on any form with [data-confirm]
+  // and shows a native <dialog> modal. Submission is blocked until the
+  // user clicks "Continue" — Cancel just closes the dialog.
+  function setupConfirmDialogs() {
+    let dialog = document.getElementById("confirm-dialog");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.id = "confirm-dialog";
+      dialog.className = "confirm-dialog";
+      dialog.innerHTML =
+        '<h3>Confirm action</h3>' +
+        '<p data-confirm-text></p>' +
+        '<div class="actions">' +
+        '<button type="button" class="btn" data-confirm-cancel>Cancel</button>' +
+        '<button type="button" class="btn btn-run" data-confirm-ok>Continue</button>' +
+        '</div>';
+      document.body.appendChild(dialog);
+    }
+    const text = dialog.querySelector("[data-confirm-text]");
+    const cancelBtn = dialog.querySelector("[data-confirm-cancel]");
+    const okBtn = dialog.querySelector("[data-confirm-ok]");
+    let pendingForm = null;
+
+    cancelBtn.addEventListener("click", function () { dialog.close(); pendingForm = null; });
+    okBtn.addEventListener("click", function () {
+      const f = pendingForm;
+      dialog.close();
+      pendingForm = null;
+      if (f) {
+        // Bypass interception for the second submit.
+        f.dataset.confirmed = "1";
+        f.submit();
+      }
+    });
+
+    document.body.addEventListener("submit", function (e) {
+      const form = e.target;
+      if (!form || !form.hasAttribute("data-confirm")) return;
+      if (form.dataset.confirmed === "1") return;
+      e.preventDefault();
+      text.textContent = form.getAttribute("data-confirm");
+      pendingForm = form;
+      if (typeof dialog.showModal === "function") {
+        dialog.showModal();
+      } else {
+        // Older browsers: fall back to confirm().
+        if (window.confirm(form.getAttribute("data-confirm"))) {
+          form.dataset.confirmed = "1";
+          form.submit();
+        }
+        pendingForm = null;
+      }
+    });
+  }
 
   // Drawer: opens on htmx:afterSwap when target is #drawer; closes on
   // backdrop click, Esc key, or any element with [data-drawer-close].
