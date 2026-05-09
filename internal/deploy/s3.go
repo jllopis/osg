@@ -113,10 +113,9 @@ func (p *S3Provider) Deploy(ctx context.Context, publicDir string) error {
 		}
 	}
 
-	fmt.Printf("Deploying to S3: %s ...\n", destination)
+	logf(ctx, "Deploying to S3: %s ...\n", destination)
 	cmd := exec.CommandContext(ctx, "aws", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	wireCommandOutput(ctx, cmd)
 	cmd.Env = env
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("s3: %w", err)
@@ -124,18 +123,17 @@ func (p *S3Provider) Deploy(ctx context.Context, publicDir string) error {
 
 	// Invalidate CloudFront if distribution ID is set
 	if cfDist := os.Getenv("CLOUDFRONT_DISTRIBUTION_ID"); cfDist != "" {
-		fmt.Printf("Invalidating CloudFront distribution %s ...\n", cfDist)
+		logf(ctx, "Invalidating CloudFront distribution %s ...\n", cfDist)
 		cfCmd := exec.CommandContext(ctx, "aws", "cloudfront", "create-invalidation",
 			"--distribution-id", cfDist,
 			"--paths", "/*")
-		cfCmd.Stdout = os.Stdout
-		cfCmd.Stderr = os.Stderr
+		wireCommandOutput(ctx, cfCmd)
 		cfCmd.Env = env
 		if err := cfCmd.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: CloudFront invalidation failed: %v\n", err)
+			logf(ctx, "Warning: CloudFront invalidation failed: %v\n", err)
 		}
 	}
 
-	fmt.Printf("Deployed to s3://%s\n", p.Bucket)
+	logf(ctx, "Deployed to s3://%s\n", p.Bucket)
 	return nil
 }

@@ -103,10 +103,10 @@ func (p *RsyncProvider) Deploy(ctx context.Context, publicDir string) error {
 
 	args := p.buildArgs(absPublic)
 
-	fmt.Printf("Deploying via rsync to %s:%s ...\n", p.Host, p.Path)
+	logf(ctx, "Deploying via rsync to %s:%s ...\n", p.Host, p.Path)
 	if err := runCommand(ctx, "rsync", args...); err != nil {
 		return fmt.Errorf("rsync: %w", err)
 	}
-	fmt.Printf("Deployed to %s:%s\n", p.Host, p.Path)
+	logf(ctx, "Deployed to %s:%s\n", p.Host, p.Path)
 	return nil
 }

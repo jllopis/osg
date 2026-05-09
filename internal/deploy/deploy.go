@@ -7,11 +7,55 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
 )
+
+// logWriterKey is the unexported context key used to thread a
+// preferred output destination through to the deploy subprocess. The
+// /vault flow drawer (and any other caller that already has a writer
+// it wants subprocess output mirrored to) passes its writer via
+// WithLogWriter; runCommand reads it back.
+type logWriterKey struct{}
+
+// WithLogWriter returns a derived context that carries w as the
+// destination for subprocess stdout/stderr. A nil writer is a no-op.
+// Callers in internal/app use this so wrangler/rsync output reaches
+// the osg ui flow drawer without losing the terminal stream — the
+// caller can pass an io.MultiWriter when both are wanted.
+func WithLogWriter(ctx context.Context, w io.Writer) context.Context {
+	if w == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, logWriterKey{}, w)
+}
+
+// logWriterFromContext returns the writer registered with WithLogWriter,
+// or nil when none is set. runCommand falls back to os.Stdout/Stderr
+// in that case so the CLI behaviour is unchanged.
+func logWriterFromContext(ctx context.Context) io.Writer {
+	if w, ok := ctx.Value(logWriterKey{}).(io.Writer); ok {
+		return w
+	}
+	return nil
+}
+
+// logf writes a formatted status line to the ctx-registered writer
+// (same one runCommand uses for subprocess stdout/stderr) or to
+// os.Stdout when none is set. Providers use this so their
+// "Deploying to X…" / "Deployed to X" lines reach the flow drawer
+// alongside the subprocess output, instead of going only to the
+// terminal.
+func logf(ctx context.Context, format string, args ...any) {
+	w := logWriterFromContext(ctx)
+	if w == nil {
+		w = os.Stdout
+	}
+	_, _ = fmt.Fprintf(w, format, args...)
+}
 
 // Provider deploys a static site to a remote destination.
 type Provider interface {
@@ -70,13 +114,29 @@ func Run(ctx context.Context, provider string, cfg map[string]any, publicDir str
 	return p.Deploy(ctx, publicDir)
 }
 
-// runCommand executes a shell command, streaming output to stdout/stderr.
+// runCommand executes a shell command, streaming output to the writer
+// registered with WithLogWriter on ctx, or os.Stdout/os.Stderr when
+// none is set.
 func runCommand(ctx context.Context, name string, args ...string) error {
 	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	wireCommandOutput(ctx, cmd)
 	cmd.Env = os.Environ()
 	return cmd.Run()
+}
+
+// wireCommandOutput points cmd's stdout/stderr at the ctx-registered
+// log writer, falling back to os.Stdout/os.Stderr. Providers that
+// build their own exec.Cmd (because they need cmd.Env or cmd.Dir
+// customisation runCommand doesn't expose) call this so subprocess
+// output reaches the same destination as runCommand-style calls.
+func wireCommandOutput(ctx context.Context, cmd *exec.Cmd) {
+	if w := logWriterFromContext(ctx); w != nil {
+		cmd.Stdout = w
+		cmd.Stderr = w
+		return
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 }
 
 // getEnv returns an environment variable or an error if missing.

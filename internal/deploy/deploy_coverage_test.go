@@ -1,6 +1,7 @@
 package deploy
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -420,5 +421,23 @@ func TestS3Deploy_InvalidEndpointURL(t *testing.T) {
 	err := p.Deploy(context.Background(), tmpDir)
 	if err == nil {
 		t.Fatal("expected error")
+	}
+}
+
+func TestRunCommand_StreamsToContextWriter(t *testing.T) {
+	var buf bytes.Buffer
+	ctx := WithLogWriter(context.Background(), &buf)
+	if err := runCommand(ctx, "sh", "-c", "echo hello-from-subprocess"); err != nil {
+		t.Fatalf("runCommand error: %v", err)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("hello-from-subprocess")) {
+		t.Errorf("subprocess output missing from ctx writer; got %q", buf.String())
+	}
+}
+
+func TestWithLogWriter_NilIsNoOp(t *testing.T) {
+	ctx := WithLogWriter(context.Background(), nil)
+	if w := logWriterFromContext(ctx); w != nil {
+		t.Errorf("nil writer must not be stored; got %v", w)
 	}
 }

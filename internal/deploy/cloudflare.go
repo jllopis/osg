@@ -109,16 +109,15 @@ not_found_handling = %q
 		env = append(env, "CLOUDFLARE_ACCOUNT_ID="+p.AccountID)
 	}
 
-	fmt.Printf("Deploying to Cloudflare Workers: %s ...\n", p.WorkerName)
+	logf(ctx, "Deploying to Cloudflare Workers: %s ...\n", p.WorkerName)
 	cmd := exec.CommandContext(ctx, "wrangler", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	wireCommandOutput(ctx, cmd)
 	cmd.Env = env
 	cmd.Dir = tmpDir
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("cloudflare: wrangler deploy failed: %w", err)
 	}
 
-	fmt.Printf("Deployed to Cloudflare Workers: %s\n", p.WorkerName)
+	logf(ctx, "Deployed to Cloudflare Workers: %s\n", p.WorkerName)
 	return nil
 }
