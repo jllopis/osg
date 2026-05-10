@@ -21,18 +21,18 @@ func RunServiceInstall(_ context.Context, _ CLIOptions, _ ServiceInstallOptions)
 	return unsupportedService()
 }
 
-func RunServiceUninstall(_ context.Context, _ CLIOptions) error {
+func RunServiceUninstall(_ context.Context, _ CLIOptions, _ string) error {
 	return unsupportedService()
 }
 
-func RunServiceStart(_ context.Context, _ CLIOptions) error {
+func RunServiceStart(_ context.Context, _ CLIOptions, _ string) error {
 	return unsupportedService()
 }
 
-func RunServiceStop(_ context.Context, _ CLIOptions) error {
+func RunServiceStop(_ context.Context, _ CLIOptions, _ string) error {
 	return unsupportedService()
 }
 
-func RunServiceStatus(_ context.Context, _ CLIOptions) error {
+func RunServiceStatus(_ context.Context, _ CLIOptions, _ string) error {
 	return unsupportedService()
 }

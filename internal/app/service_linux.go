@@ -11,13 +11,13 @@ import (
 )
 
 // linuxUnitPath returns the absolute path of the systemd user unit
-// file. ~/.config/systemd/user/<label>.service.
-func linuxUnitPath() (string, error) {
+// file for the given label. ~/.config/systemd/user/<label>.service.
+func linuxUnitPath(label string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("locate home dir: %w", err)
 	}
-	return filepath.Join(home, ".config", "systemd", "user", ServiceLabel+".service"), nil
+	return filepath.Join(home, ".config", "systemd", "user", label+".service"), nil
 }
 
 // RunServiceInstall writes the systemd user unit file and (unless
@@ -33,7 +33,7 @@ func RunServiceInstall(ctx context.Context, opts CLIOptions, sopts ServiceInstal
 	if err := ensureLogsDir(params); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: could not create logs dir: %v\n", err)
 	}
-	unitPath, err := linuxUnitPath()
+	unitPath, err := linuxUnitPath(params.Label)
 	if err != nil {
 		return err
 	}
@@ -50,54 +50,55 @@ func RunServiceInstall(ctx context.Context, opts CLIOptions, sopts ServiceInstal
 		return err
 	}
 	if sopts.NoStart {
-		fmt.Println("Unit installed. Run `osg service start` when you're ready to enable it.")
+		fmt.Printf("Unit installed. Run `osg service start%s` when you're ready to enable it.\n", nameFlag(sopts.Name))
 		return nil
 	}
-	if err := runSystemctl(ctx, "enable", "--now", ServiceLabel+".service"); err != nil {
+	if err := runSystemctl(ctx, "enable", "--now", params.Label+".service"); err != nil {
 		return err
 	}
-	fmt.Printf("Service %s enabled and started. Use `osg service status` to check.\n", ServiceLabel)
+	fmt.Printf("Service %s enabled and started. Use `osg service status%s` to check.\n",
+		params.Label, nameFlag(sopts.Name))
 	return nil
 }
 
 // RunServiceUninstall stops the service, disables auto-start, and
 // removes the unit file. Tolerates a missing unit (returns success
 // after the daemon-reload).
-func RunServiceUninstall(ctx context.Context, opts CLIOptions) error {
-	_ = opts
-	unitPath, err := linuxUnitPath()
+func RunServiceUninstall(ctx context.Context, _ CLIOptions, name string) error {
+	label := serviceLabel(name)
+	unitPath, err := linuxUnitPath(label)
 	if err != nil {
 		return err
 	}
 	// Best-effort stop+disable: if the unit doesn't exist these
 	// commands fail with a recognisable error — we keep going.
-	_ = runSystemctl(ctx, "disable", "--now", ServiceLabel+".service")
+	_ = runSystemctl(ctx, "disable", "--now", label+".service")
 	if err := os.Remove(unitPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("remove unit file: %w", err)
 	}
 	if err := runSystemctl(ctx, "daemon-reload"); err != nil {
 		return err
 	}
-	fmt.Printf("Service %s uninstalled.\n", ServiceLabel)
+	fmt.Printf("Service %s uninstalled.\n", label)
 	return nil
 }
 
 // RunServiceStart, RunServiceStop and RunServiceStatus delegate to
 // systemctl. They surface its output verbatim so the user gets
 // systemd's own diagnostics.
-func RunServiceStart(ctx context.Context, _ CLIOptions) error {
-	return runSystemctl(ctx, "start", ServiceLabel+".service")
+func RunServiceStart(ctx context.Context, _ CLIOptions, name string) error {
+	return runSystemctl(ctx, "start", serviceLabel(name)+".service")
 }
 
-func RunServiceStop(ctx context.Context, _ CLIOptions) error {
-	return runSystemctl(ctx, "stop", ServiceLabel+".service")
+func RunServiceStop(ctx context.Context, _ CLIOptions, name string) error {
+	return runSystemctl(ctx, "stop", serviceLabel(name)+".service")
 }
 
-func RunServiceStatus(ctx context.Context, _ CLIOptions) error {
+func RunServiceStatus(ctx context.Context, _ CLIOptions, name string) error {
 	// status returns non-zero when the service is inactive or failed;
 	// that's diagnostic data, not an OSG error, so we discard the
 	// exit code and let stdout/stderr inform the user.
-	cmd := exec.CommandContext(ctx, "systemctl", "--user", "status", ServiceLabel+".service")
+	cmd := exec.CommandContext(ctx, "systemctl", "--user", "status", serviceLabel(name)+".service")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	_ = cmd.Run()
@@ -115,4 +116,14 @@ func runSystemctl(ctx context.Context, args ...string) error {
 		return fmt.Errorf("systemctl %v: %w", args, err)
 	}
 	return nil
+}
+
+// nameFlag formats the --name flag for inclusion in printed hints
+// after install. Returns "" when the install used the bare default.
+func nameFlag(name string) string {
+	n := sanitiseServiceName(name)
+	if n == "" {
+		return ""
+	}
+	return " --name " + n
 }

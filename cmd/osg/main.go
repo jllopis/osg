@@ -53,15 +53,24 @@ type ServiceCmd struct {
 }
 
 type ServiceInstallSubCmd struct {
+	Name    string `help:"Instance suffix for the service label (empty = single-instance default 'osg-ui'; pass e.g. 'blogA' for multi-instance setups)" default:""`
 	Workdir string `help:"Working directory the service runs in (default: cwd)" default:""`
 	Exec    string `help:"Path to osg binary (default: current binary)" default:""`
 	NoStart bool   `help:"Write the unit file but do not start the service" name:"no-start"`
 }
 
-type ServiceUninstallSubCmd struct{}
-type ServiceStartSubCmd struct{}
-type ServiceStopSubCmd struct{}
-type ServiceStatusSubCmd struct{}
+type ServiceUninstallSubCmd struct {
+	Name string `help:"Instance suffix matching install --name" default:""`
+}
+type ServiceStartSubCmd struct {
+	Name string `help:"Instance suffix matching install --name" default:""`
+}
+type ServiceStopSubCmd struct {
+	Name string `help:"Instance suffix matching install --name" default:""`
+}
+type ServiceStatusSubCmd struct {
+	Name string `help:"Instance suffix matching install --name" default:""`
+}
 
 type CompletionCmd struct {
 	Shell string `arg:"" enum:"bash,zsh,fish" help:"Shell type (bash, zsh, fish)"`
@@ -333,18 +342,19 @@ func main() {
 		runErr = app.RunImportHugo(context.Background(), opts, cli.Import.Hugo.Dir, cli.DryRun)
 	case strings.HasPrefix(command, "service install"):
 		runErr = app.RunServiceInstall(context.Background(), opts, app.ServiceInstallOptions{
+			Name:    cli.Service.Install.Name,
 			Workdir: cli.Service.Install.Workdir,
 			Exec:    cli.Service.Install.Exec,
 			NoStart: cli.Service.Install.NoStart,
 		})
 	case strings.HasPrefix(command, "service uninstall"):
-		runErr = app.RunServiceUninstall(context.Background(), opts)
+		runErr = app.RunServiceUninstall(context.Background(), opts, cli.Service.Uninstall.Name)
 	case strings.HasPrefix(command, "service start"):
-		runErr = app.RunServiceStart(context.Background(), opts)
+		runErr = app.RunServiceStart(context.Background(), opts, cli.Service.Start.Name)
 	case strings.HasPrefix(command, "service stop"):
-		runErr = app.RunServiceStop(context.Background(), opts)
+		runErr = app.RunServiceStop(context.Background(), opts, cli.Service.Stop.Name)
 	case strings.HasPrefix(command, "service status"):
-		runErr = app.RunServiceStatus(context.Background(), opts)
+		runErr = app.RunServiceStatus(context.Background(), opts, cli.Service.Status.Name)
 	case command == "version":
 		fmt.Println(app.VersionInfo())
 	case strings.HasPrefix(command, "completion"):

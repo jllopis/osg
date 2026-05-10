@@ -11,14 +11,14 @@ import (
 	"strconv"
 )
 
-// darwinPlistPath returns the absolute path of the LaunchAgent plist:
-// ~/Library/LaunchAgents/com.jllopis.<label>.plist.
-func darwinPlistPath() (string, error) {
+// darwinPlistPath returns the absolute path of the LaunchAgent plist
+// for the given label: ~/Library/LaunchAgents/com.jllopis.<label>.plist.
+func darwinPlistPath(label string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("locate home dir: %w", err)
 	}
-	return filepath.Join(home, "Library", "LaunchAgents", "com.jllopis."+ServiceLabel+".plist"), nil
+	return filepath.Join(home, "Library", "LaunchAgents", "com.jllopis."+label+".plist"), nil
 }
 
 // darwinDomain returns the launchctl domain for the current GUI user
@@ -30,8 +30,8 @@ func darwinDomain() string {
 
 // darwinServiceTarget returns the full service target launchctl wants
 // for kickstart/print/bootout: "gui/<uid>/com.jllopis.<label>".
-func darwinServiceTarget() string {
-	return fmt.Sprintf("gui/%d/com.jllopis.%s", os.Getuid(), ServiceLabel)
+func darwinServiceTarget(label string) string {
+	return fmt.Sprintf("gui/%d/com.jllopis.%s", os.Getuid(), label)
 }
 
 // RunServiceInstall writes the LaunchAgent plist and (unless NoStart
@@ -46,7 +46,7 @@ func RunServiceInstall(ctx context.Context, opts CLIOptions, sopts ServiceInstal
 	if err := ensureLogsDir(params); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: could not create logs dir: %v\n", err)
 	}
-	plistPath, err := darwinPlistPath()
+	plistPath, err := darwinPlistPath(params.Label)
 	if err != nil {
 		return err
 	}
@@ -62,46 +62,48 @@ func RunServiceInstall(ctx context.Context, opts CLIOptions, sopts ServiceInstal
 	// Boot out a previous instance so the bootstrap below picks up
 	// the new exec/workdir/config. Failure is expected (and ignored)
 	// when no previous instance exists.
-	_ = runLaunchctl(ctx, "bootout", darwinServiceTarget())
+	_ = runLaunchctl(ctx, "bootout", darwinServiceTarget(params.Label))
 
 	if sopts.NoStart {
-		fmt.Println("Plist installed. Run `osg service start` when you're ready to enable it.")
+		fmt.Printf("Plist installed. Run `osg service start%s` when you're ready to enable it.\n", nameFlag(sopts.Name))
 		return nil
 	}
 	if err := runLaunchctl(ctx, "bootstrap", darwinDomain(), plistPath); err != nil {
 		return err
 	}
-	fmt.Printf("Service %s loaded and started. Use `osg service status` to check.\n", ServiceLabel)
+	fmt.Printf("Service %s loaded and started. Use `osg service status%s` to check.\n",
+		params.Label, nameFlag(sopts.Name))
 	return nil
 }
 
 // RunServiceUninstall boots out the LaunchAgent and deletes its plist.
 // Tolerates a missing plist or already-booted-out service.
-func RunServiceUninstall(ctx context.Context, opts CLIOptions) error {
-	_ = opts
-	plistPath, err := darwinPlistPath()
+func RunServiceUninstall(ctx context.Context, _ CLIOptions, name string) error {
+	label := serviceLabel(name)
+	plistPath, err := darwinPlistPath(label)
 	if err != nil {
 		return err
 	}
-	_ = runLaunchctl(ctx, "bootout", darwinServiceTarget())
+	_ = runLaunchctl(ctx, "bootout", darwinServiceTarget(label))
 	if err := os.Remove(plistPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("remove plist: %w", err)
 	}
-	fmt.Printf("Service %s uninstalled.\n", ServiceLabel)
+	fmt.Printf("Service %s uninstalled.\n", label)
 	return nil
 }
 
 // RunServiceStart kickstarts the agent. Required when KeepAlive
 // missed a restart (rare) or when --no-start was used at install time.
-func RunServiceStart(ctx context.Context, _ CLIOptions) error {
-	plistPath, err := darwinPlistPath()
+func RunServiceStart(ctx context.Context, _ CLIOptions, name string) error {
+	label := serviceLabel(name)
+	plistPath, err := darwinPlistPath(label)
 	if err != nil {
 		return err
 	}
 	// Try kickstart first (faster path when already bootstrapped).
 	// Fall back to a fresh bootstrap so a one-step `osg service start`
 	// works even if the agent was never loaded.
-	if err := runLaunchctl(ctx, "kickstart", darwinServiceTarget()); err == nil {
+	if err := runLaunchctl(ctx, "kickstart", darwinServiceTarget(label)); err == nil {
 		return nil
 	}
 	return runLaunchctl(ctx, "bootstrap", darwinDomain(), plistPath)
@@ -109,15 +111,15 @@ func RunServiceStart(ctx context.Context, _ CLIOptions) error {
 
 // RunServiceStop boots out the agent. The plist stays on disk, so a
 // later `osg service start` resurrects it without re-installing.
-func RunServiceStop(ctx context.Context, _ CLIOptions) error {
-	return runLaunchctl(ctx, "bootout", darwinServiceTarget())
+func RunServiceStop(ctx context.Context, _ CLIOptions, name string) error {
+	return runLaunchctl(ctx, "bootout", darwinServiceTarget(serviceLabel(name)))
 }
 
 // RunServiceStatus calls `launchctl print` on the service target and
 // pipes the output verbatim. Exit codes from print are diagnostic
 // (non-zero when the service isn't loaded), not OSG errors.
-func RunServiceStatus(ctx context.Context, _ CLIOptions) error {
-	cmd := exec.CommandContext(ctx, "launchctl", "print", darwinServiceTarget())
+func RunServiceStatus(ctx context.Context, _ CLIOptions, name string) error {
+	cmd := exec.CommandContext(ctx, "launchctl", "print", darwinServiceTarget(serviceLabel(name)))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -138,4 +140,14 @@ func runLaunchctl(ctx context.Context, args ...string) error {
 		return fmt.Errorf("launchctl %v: %w", args, err)
 	}
 	return nil
+}
+
+// nameFlag formats the --name flag for inclusion in printed hints
+// after install. Returns "" when the install used the bare default.
+func nameFlag(name string) string {
+	n := sanitiseServiceName(name)
+	if n == "" {
+		return ""
+	}
+	return " --name " + n
 }

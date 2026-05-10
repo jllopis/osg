@@ -140,10 +140,56 @@ without altering exit codes — read the native output for diagnostics.
 
 | Flag         | Default                    | When you'd change it                          |
 |--------------|----------------------------|-----------------------------------------------|
+| `--name`     | empty (single-instance label `osg-ui`) | Run several blogs as separate services on the same machine — see *Multiple instances* below |
 | `--workdir`  | current shell directory    | Service should run as if invoked from another folder (`/var/www/blog`, etc.) |
 | `--config`   | global `-c` value or `config.yaml` (joined to workdir if relative) | Keep multiple sites on one machine, each with its own config |
 | `--exec`     | `os.Executable()`          | The binary lives somewhere different from where you ran install (e.g. you ran from a build dir but want the unit to point at `/usr/local/bin/osg`) |
 | `--no-start` | unset                      | Inspect the generated unit before letting it run |
+
+## Multiple instances
+
+If you author more than one site on the same machine, install each
+one with a different `--name`:
+
+```bash
+# blog A
+cd /Users/me/blogA
+osg service install --name blogA
+
+# blog B
+cd /Users/me/blogB
+osg service install --name blogB
+```
+
+Each install gets its own unit file, label, and log files:
+
+| Asset                  | `--name` empty (default)        | `--name blogA`                          |
+|------------------------|---------------------------------|-----------------------------------------|
+| Linux unit name        | `osg-ui.service`                | `osg-ui-bloga.service`                  |
+| macOS launchd label    | `com.jllopis.osg-ui`            | `com.jllopis.osg-ui-bloga`              |
+| Linux unit path        | `~/.config/systemd/user/osg-ui.service` | `~/.config/systemd/user/osg-ui-bloga.service` |
+| macOS plist path       | `~/Library/LaunchAgents/com.jllopis.osg-ui.plist` | `~/Library/LaunchAgents/com.jllopis.osg-ui-bloga.plist` |
+| Log files              | `osg-ui.{out,err}.log`          | `osg-ui-bloga.{out,err}.log`            |
+
+Day-to-day commands accept the same `--name` flag so they target the
+right instance:
+
+```bash
+osg service status --name blogA
+osg service stop --name blogB
+osg service uninstall --name blogA
+```
+
+`--name` is sanitised: lowercased, non-alphanumeric characters
+become single dashes, and leading/trailing dashes are stripped. So
+`--name "Blog A"`, `--name blog-a` and `--name BLOG/A` all resolve
+to the same `osg-ui-blog-a` label.
+
+> **Important:** each instance must use a different `ui.addr` in its
+> `config.yaml` (or `osg ui --addr ...` per-run). Two services trying
+> to bind `127.0.0.1:1314` will conflict and the second one will fail
+> with "address already in use". A common pattern: `:1314` for the
+> primary blog, `:1315` and up for the rest.
 
 Example for a system-wide setup (Linux):
 

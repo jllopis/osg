@@ -221,3 +221,76 @@ func TestXMLEscape(t *testing.T) {
 		}
 	}
 }
+
+func TestSanitiseServiceName(t *testing.T) {
+	cases := map[string]string{
+		"":            "",
+		"  ":          "",
+		"blogA":       "bloga",
+		"My Site":     "my-site",
+		"blog/A":      "blog-a",
+		"blog__A":     "blog-a",
+		"---blog---":  "blog",
+		"blog-A.B":    "blog-a-b",
+		"123-numeric": "123-numeric",
+		"<<weird>>":   "weird",
+		"UPPER-CASE":  "upper-case",
+	}
+	for in, want := range cases {
+		if got := sanitiseServiceName(in); got != want {
+			t.Errorf("sanitiseServiceName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestServiceLabel(t *testing.T) {
+	cases := map[string]string{
+		"":        "osg-ui",         // historical default
+		"   ":     "osg-ui",         // whitespace only collapses to default
+		"blogA":   "osg-ui-bloga",   // suffixed for multi-instance
+		"my site": "osg-ui-my-site", // sanitised
+		"!!!":     "osg-ui",         // no usable chars → default
+	}
+	for in, want := range cases {
+		if got := serviceLabel(in); got != want {
+			t.Errorf("serviceLabel(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestResolveServiceParams_LabelFromName(t *testing.T) {
+	tmp := t.TempDir()
+	got, err := resolveServiceParams(CLIOptions{}, ServiceInstallOptions{
+		Name:    "blogA",
+		Workdir: tmp,
+	})
+	if err != nil {
+		t.Fatalf("resolveServiceParams: %v", err)
+	}
+	if got.Label != "osg-ui-bloga" {
+		t.Errorf("Label = %q, want %q", got.Label, "osg-ui-bloga")
+	}
+	// Log paths must include the label so two instances don't share logs.
+	if !strings.HasSuffix(got.LogOut, "osg-ui-bloga.out.log") {
+		t.Errorf("LogOut = %q, want suffix osg-ui-bloga.out.log", got.LogOut)
+	}
+	if !strings.HasSuffix(got.LogErr, "osg-ui-bloga.err.log") {
+		t.Errorf("LogErr = %q, want suffix osg-ui-bloga.err.log", got.LogErr)
+	}
+}
+
+func TestResolveServiceParams_DefaultLabelWhenNameEmpty(t *testing.T) {
+	tmp := t.TempDir()
+	got, err := resolveServiceParams(CLIOptions{}, ServiceInstallOptions{
+		Workdir: tmp,
+	})
+	if err != nil {
+		t.Fatalf("resolveServiceParams: %v", err)
+	}
+	if got.Label != "osg-ui" {
+		t.Errorf("Label = %q, want bare default osg-ui (back-compat)", got.Label)
+	}
+	if !strings.HasSuffix(got.LogOut, "osg-ui.out.log") {
+		t.Errorf("LogOut = %q, want suffix osg-ui.out.log", got.LogOut)
+	}
+}

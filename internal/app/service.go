@@ -7,13 +7,67 @@ import (
 	"strings"
 )
 
-// ServiceLabel is the canonical identifier used across platforms.
-// Linux systemd unit name is `<ServiceLabel>.service`, macOS LaunchAgent
-// label is the dotted form `com.jllopis.<ServiceLabel>`.
+// ServiceLabel is the canonical base identifier used across platforms.
+// When ServiceInstallOptions.Name is empty the unit file uses this as
+// the literal label; when Name is set it becomes the suffix
+// (`osg-ui-<name>`), enabling multiple parallel installs in the same
+// user account.
 const ServiceLabel = "osg-ui"
+
+// serviceLabel returns the platform-neutral label for a given install
+// name. Empty name yields the historical bare ServiceLabel so existing
+// single-instance setups keep working without changes; non-empty name
+// produces a sanitised suffix so two installs in different workdirs
+// can coexist as `osg-ui-blogA`, `osg-ui-blogB`, etc.
+func serviceLabel(name string) string {
+	n := sanitiseServiceName(name)
+	if n == "" {
+		return ServiceLabel
+	}
+	return ServiceLabel + "-" + n
+}
+
+// sanitiseServiceName lowercases the input, keeps `[a-z0-9-]`, and
+// collapses every other run into a single dash so the result is safe
+// to drop into systemd unit names, launchd labels, file paths and
+// log filenames. Returns "" when the input contains no usable
+// characters.
+func sanitiseServiceName(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(len(s))
+	lastDash := false
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+			lastDash = false
+		case r == '-':
+			if !lastDash && b.Len() > 0 {
+				b.WriteRune('-')
+				lastDash = true
+			}
+		default:
+			if !lastDash && b.Len() > 0 {
+				b.WriteRune('-')
+				lastDash = true
+			}
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
 
 // ServiceInstallOptions configures the unit file installer.
 type ServiceInstallOptions struct {
+	// Name is the optional instance suffix. Empty produces the
+	// historical "osg-ui" label (single-instance default); non-empty
+	// produces "osg-ui-<sanitised>" so several blogs/sites can run
+	// as concurrent services. Pair each install with a different
+	// ui.addr in its config.yaml to avoid bind conflicts.
+	Name string
 	// Workdir is the working directory the service runs in. Defaults
 	// to the current directory at install time so subsequent runs
 	// resolve config.yaml / vault paths the way the user expects.
@@ -48,7 +102,7 @@ type serviceParams struct {
 // system (os.Executable, os.Getwd) so a typo-driven failure is
 // easy to diagnose.
 func resolveServiceParams(opts CLIOptions, sopts ServiceInstallOptions) (serviceParams, error) {
-	p := serviceParams{Label: ServiceLabel}
+	p := serviceParams{Label: serviceLabel(sopts.Name)}
 
 	exec := strings.TrimSpace(sopts.Exec)
 	if exec == "" {
@@ -90,11 +144,12 @@ func resolveServiceParams(opts CLIOptions, sopts ServiceInstallOptions) (service
 	}
 	p.Config = cfg
 
-	// Logs live next to the rest of OSG state. Created lazily on
-	// first start by systemd/launchd; we don't need to mkdir here.
+	// Logs live next to the rest of OSG state, using the resolved
+	// label so multi-instance installs (osg-ui-blogA, osg-ui-blogB)
+	// get distinct log files even when they share a workdir prefix.
 	logsDir := filepath.Join(p.Workdir, ".osg", "logs")
-	p.LogOut = filepath.Join(logsDir, "osg-ui.out.log")
-	p.LogErr = filepath.Join(logsDir, "osg-ui.err.log")
+	p.LogOut = filepath.Join(logsDir, p.Label+".out.log")
+	p.LogErr = filepath.Join(logsDir, p.Label+".err.log")
 	return p, nil
 }
 
