@@ -939,15 +939,19 @@ logging:
 # UI dashboard (osg ui)
 # -----------------------------------------------------------------------------
 # Local web dashboard for the author. Loopback-only by default —
-# non-loopback bind addresses are rejected. Pages:
+# non-loopback bind addresses are rejected. Pages exposed:
 #   /              dashboard with stats + Build/Deploy quick actions
-#   /vault         page list as cards; expand for summary + Editar/Resumir/Eliminar
-#   /vault/page    per-page editor (osg.summary + AI Suggestion + Save/Build/Deploy)
-#   /actions       horizontal pipeline (init→update-content→check→build→deploy)
-#                  with "Run" and "Run from here →"; bottom drawer auto-follows
-#                  the running step's live log
+#   /vault         page list as cards; expand for summary +
+#                  Editar/Resumir/Eliminar
+#   /vault/page    per-page editor (osg.summary + AI Suggestion +
+#                  Save/Build/Deploy)
+#   /actions       horizontal pipeline (init->update-content->check->
+#                  build->deploy) with "Run" and "Run from here";
+#                  bottom drawer auto-follows the running step's
+#                  live log
 #   /history       audit log with filters (name / kind / status)
-#   /services      long-running services (serve, api, watcher, scheduler)
+#   /services      long-running services (serve, api, watcher,
+#                  scheduler) — start/stop here or set autostart
 #   /assets        image inventory + Rebuild now
 #   /scheduler     persistent scheduler audit
 #   /plugins       enable/disable + install
@@ -955,14 +959,43 @@ logging:
 #   /themes        installed themes + scaffold
 #   /audit         site quality audit (HTML / a11y / perf)
 #
+# ui.addr: Bind address. A bare ":port" form (e.g. ":1314") is
+#   normalised to "127.0.0.1:port"; binds to a non-loopback
+#   interface (0.0.0.0, public IP, etc.) are rejected. Override
+#   per-run with "osg ui --addr ...". Default: ":1314".
+#
+# ui.autostart: List of services that start automatically when
+#   "osg ui" boots. The runner already prevents double-starts so
+#   re-runs are idempotent (e.g. after a systemd-managed crash
+#   restart). Unknown names log a warning instead of failing;
+#   one-shot tasks listed here (build, deploy, ...) are skipped
+#   with a warning — autostart is for long-running services only.
+#   Recognised service names:
+#     scheduler  Watches osg.publish_at dates and auto-publishes
+#                drafts when due. REQUIRED for the auto-publish
+#                workflow to keep working across dashboard
+#                restarts.
+#     watcher    Re-runs update-content + build whenever a file
+#                in the vault changes. Useful for live preview
+#                while writing.
+#     serve      Local HTTP server for public/ (the "osg serve"
+#                command). Pair with watcher for live-reload of
+#                rendered output during writing sessions.
+#     api        Standalone interactions API (views, likes,
+#                comments). Only needed if the site uses
+#                interactions.enabled=true.
+#   Default: empty list (no autostart). For the typical authoring
+#   setup, listing scheduler+watcher matches the "I want osg ui to
+#   just work in the background" expectation.
+#
+# Tip: pair ui.autostart with "osg service install" (writes a
+#   user-level LaunchAgent on macOS or systemd --user unit on
+#   Linux) so the dashboard itself comes back at login and survives
+#   crashes. See docs/SERVICE.md.
+#
 # ui:
-#   addr: ":1314"        # Bind address. Bare ":port" is normalised to
-#                        # 127.0.0.1:port. Override with --addr at the CLI.
-#   autostart:           # Services triggered automatically when osg ui
-#                        # boots. Names match the operation registry
-#                        # (kind=service): scheduler, watcher, serve, api.
-#                        # Unknown / non-service names are skipped with a
-#                        # warning. Empty list = nothing auto-starts.
+#   addr: ":1314"
+#   autostart:
 #     - scheduler        # required for auto-publish (osg.publish_at) to fire
 #     - watcher          # auto-rebuild on vault changes
 # -----------------------------------------------------------------------------
