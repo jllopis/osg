@@ -47,6 +47,45 @@ binds publicos). Desde el navegador puedes:
 La TUI y la Web UI son independientes y comparten los mismos comandos
 internos — uses la que prefieras.
 
+## 5c) Mantener `osg ui` siempre activo
+
+Para que el flujo de auto-publish funcione (drafts con `osg.publish_at`)
+necesitas que el scheduler service esté corriendo de forma persistente.
+Dos pasos:
+
+**1. Auto-arrancar servicios al levantar `osg ui`** — añade `autostart`
+a `config.yaml`:
+
+```yaml
+ui:
+  addr: ":1314"
+  autostart:
+    - scheduler   # imprescindible para auto-publish
+    - watcher     # opcional: rebuild automatico al guardar en el vault
+```
+
+**2. Instalar `osg ui` como servicio del sistema** — para que arranque
+al login y se reinicie ante crashes:
+
+```bash
+osg service install
+```
+
+En macOS escribe un LaunchAgent en `~/Library/LaunchAgents/`; en Linux
+un servicio `--user` de systemd en `~/.config/systemd/user/`. Ambos
+son "user-level" — no piden `sudo`. Los comandos del día a día son:
+
+```bash
+osg service status      # ver estado
+osg service stop        # parar (la unit file se queda)
+osg service start       # rearrancar
+osg service uninstall   # quitar la unit del sistema
+```
+
+Documentacion completa, opciones (`--workdir`, `--config`, `--exec`,
+`--no-start`), logs y troubleshooting en
+[docs/SERVICE.md](SERVICE.md).
+
 ## 6) Crear un post nuevo
 
 ```bash

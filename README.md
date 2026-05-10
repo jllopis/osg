@@ -84,7 +84,7 @@ user service on Linux at `~/.config/systemd/user/osg-ui.service`),
 loads it and starts the dashboard. Restart-on-failure and load-at-login
 are baked in. Pair with `ui.autostart: [scheduler, watcher]` in
 `config.yaml` so the auto-publish flow keeps watching across
-restarts.
+restarts. Full reference: [docs/SERVICE.md](docs/SERVICE.md).
 
 `osg ui` and `osg` (TUI) are independent: the TUI runs in your terminal,
 the web dashboard runs as a loopback HTTP server (`127.0.0.1:1314` by
@@ -278,6 +278,7 @@ make build-all         # Cross-compile for all platforms
 - [PLUGINS.md](docs/PLUGINS.md) — Plugin system, WASM SDK, hooks
 - [SHORTCODES.md](docs/SHORTCODES.md) — Shortcode reference and examples
 - [QUICKSTART.md](docs/QUICKSTART.md) — Getting started guide
+- [SERVICE.md](docs/SERVICE.md) — Run `osg ui` as a system service (systemd / launchd)
 - [ROADMAP.md](docs/ROADMAP.md) — Project roadmap
 
 ## License

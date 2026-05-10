@@ -685,3 +685,12 @@ Formato: [todo|doing|done] Tarea
 [done] (Phase 35B) publish.PublishAt: helper que extrae osg.publish_at o top-level publish_at via date.Parse
 [done] (Phase 35B) RunScheduler dispara secuencia completa: PromoteDueDrafts -> RunUpdateContent -> RunBuild (audit registra fallos en cualquier paso)
 [done] (Phase 35B) Tests: 7 escenarios de PromoteDueDrafts (due, future, no-fecha, non-draft, vault vacio/inexistente, dot-dirs)
+
+[done] (Phase 36A) UIConfig.Autostart []string ; RunUI invoca autostartServices al arrancar; tasks saltadas con warning, services triggeados (idempotente)
+[done] (Phase 36A) Tests autostartServices: happy path + nil/empty inputs; doc en config.yaml.example + DefaultConfigYAML mirror
+[done] (Phase 36B) osg service install/uninstall/start/stop/status (Kong subcommand) con flags --workdir / --config / --exec / --no-start
+[done] (Phase 36B) Pure-text generators linuxUnitContent + darwinPlistContent (testables sin systemctl/launchctl)
+[done] (Phase 36B) macOS: ~/Library/LaunchAgents/com.jllopis.osg-ui.plist con launchctl bootstrap gui/<uid>; KeepAlive + RunAtLoad
+[done] (Phase 36B) Linux: ~/.config/systemd/user/osg-ui.service con systemctl --user enable --now; Restart=on-failure
+[done] (Phase 36B) Plataformas no soportadas: error claro via service_other.go (build tag)
+[done] (Phase 36B) docs/SERVICE.md con install, comandos, opciones, logs, troubleshooting; cross-links desde README/QUICKSTART/REQUIREMENTS

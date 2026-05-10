@@ -72,6 +72,14 @@ US08 - Schedule de publicaciones
   vault, sincroniza y construye. Drafts y scheduled-futuros nunca se
   publican antes de tiempo (deferred_publications).
 
+US09 - Dashboard persistente
+- Como autor, quiero que `osg ui` y sus servicios (scheduler, watcher)
+  arranquen al login y sobrevivan a reboots / crashes para no perder
+  publish_at por tener el terminal cerrado.
+- Aceptacion: `osg service install` escribe una LaunchAgent (macOS)
+  o servicio systemd --user (Linux); `ui.autostart` declara que
+  servicios deben arrancar dentro del dashboard al boot.
+
 ## Functional requirements
 - Leer vault dado `--vault-path`.
 - Parsear frontmatter YAML entre `---`.
@@ -90,6 +98,11 @@ US08 - Schedule de publicaciones
 - `clean_public` permite limpiar `public/` en rebuilds completos o cuando se eliminan contenidos.
 - `osg serve` sirve `public/`.
 - `osg ui` levanta dashboard web en loopback (rechaza binds no-loopback).
+- `ui.autostart` (lista) arranca servicios automaticamente al boot
+  del dashboard (typical: scheduler, watcher).
+- `osg service {install,uninstall,start,stop,status}` instala el
+  dashboard como servicio de usuario (LaunchAgent en macOS, systemd
+  --user en Linux). Plataformas no soportadas devuelven error claro.
 - TUI y Web UI ambas ejecutan los mismos `RunBuild`/`RunDeploy`/...
 - Plugins WASM opcionales con hooks definidos (activados via `plugins_enabled`).
 - `osg doctor` valida configuracion y entorno.

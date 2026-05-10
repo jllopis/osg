@@ -1343,3 +1343,50 @@ el scheduler reescribe el frontmatter del vault flipeando
   no-flip de draft sin fecha, no-flip de non-draft, no-op con
   vault path vacio o inexistente, dot-dirs ignorados
 
+## Phase 36 — Dashboard persistente: autostart + system service (done)
+
+Sin esta fase la auto-publicacion de drafts solo funciona mientras
+`osg ui` corre en primer plano y el usuario ha pulsado "Start" en
+cada servicio. Tras un reboot o un cierre de terminal el flujo se
+rompe en silencio. Esta fase desacopla "ejecutar el dashboard" de
+"mantenerlo encendido".
+
+### 36A — `ui.autostart` config (done)
+- [done] `UIConfig.Autostart []string` (yaml/koanf), por defecto
+  vacio. Valores tipicos: `scheduler`, `watcher`, `serve`, `api`
+- [done] `RunUI` invoca `autostartServices(runner, list, logger)`
+  tras crear el runner: triggea cada servicio listado (`kind=service`),
+  loguea warning para nombres desconocidos, salta tareas one-shot
+  para que `build`/`deploy` no se disparen al arrancar
+- [done] Idempotente: el runner rechaza dobles arranques, asi que
+  un re-run de `osg ui` (p.e. tras crash auto-restarted por systemd)
+  no duplica servicios
+- [done] Tests: happy path (servicios arrancados, tareas saltadas)
+  y nil/empty inputs
+
+### 36B — `osg service` subcomando (done)
+- [done] CLI nuevos: `service install [--workdir DIR] [--config PATH]
+  [--exec PATH] [--no-start]`, `uninstall`, `start`, `stop`, `status`
+- [done] Generadores puros (testables sin invocar systemctl/launchctl):
+  `linuxUnitContent(serviceParams)` y `darwinPlistContent(serviceParams)`
+  emiten unit / plist con paths absolutos, escapado correcto para
+  espacios y caracteres XML
+- [done] `resolveServiceParams` resuelve binario (via `os.Executable`),
+  workdir (cwd), config (-c o `config.yaml`, joined a workdir si es
+  relativo) y paths de logs (`<workdir>/.osg/logs/`)
+- [done] **macOS** (`service_darwin.go`, build tag): escribe
+  `~/Library/LaunchAgents/com.jllopis.osg-ui.plist` con
+  `RunAtLoad=true` + `KeepAlive=true`; bootstrap en `gui/<uid>` via
+  `launchctl bootstrap`; uninstall hace `bootout` antes de borrar
+- [done] **Linux** (`service_linux.go`, build tag): escribe
+  `~/.config/systemd/user/osg-ui.service` con `Restart=on-failure`,
+  `RestartSec=5`, `WantedBy=default.target`; `systemctl --user
+  daemon-reload` + `enable --now`
+- [done] **Plataformas no soportadas** (`service_other.go`):
+  Windows/BSD/etc reciben error claro "is not a supported platform"
+- [done] Idempotente: re-install boota out el anterior antes de
+  bootstrap del nuevo. Uninstall tolera unit ausente
+- [done] Logs default a `<workdir>/.osg/logs/osg-ui.{out,err}.log`
+  en ambas plataformas
+- [done] Documentacion completa en `docs/SERVICE.md`
+
