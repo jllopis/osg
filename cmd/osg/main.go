@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/alecthomas/kong"
@@ -187,7 +189,13 @@ type ImportHugoCmd struct {
 	Dir string `arg:"" help:"Path to Hugo content directory"`
 }
 
-func main() {
+func main() { os.Exit(run()) }
+
+// run wires up the CLI and dispatches the selected command, returning the
+// process exit code. It is a function (rather than inlining in main) so that
+// deferred cleanup — notably the signal-context stop — runs on every exit
+// path instead of being skipped by os.Exit.
+func run() int {
 	cli := CLI{}
 
 	parser, err := kong.New(&cli,
@@ -196,7 +204,7 @@ func main() {
 	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return 1
 	}
 
 	args := os.Args[1:]
@@ -207,7 +215,7 @@ func main() {
 	ctx, err := parser.Parse(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return 1
 	}
 
 	// When stdout is an interactive terminal, create a CLI spinner for
@@ -239,13 +247,20 @@ func main() {
 		Progress:         progress,
 	}
 
+	// Root context cancelled on SIGINT/SIGTERM so long-running commands
+	// (ui, serve, api, tui) and the operations runner shut down gracefully:
+	// in-flight runs are stopped and their audit rows marked interrupted
+	// rather than left "running" forever.
+	rootCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	var runErr error
 	command := ctx.Command()
 	switch {
 	case command == "init":
-		runErr = app.RunInit(context.Background(), opts)
+		runErr = app.RunInit(rootCtx, opts)
 	case command == "update-content":
-		runErr = app.RunUpdateContent(context.Background(), opts)
+		runErr = app.RunUpdateContent(rootCtx, opts)
 	case command == "build":
 		if cli.Build.ForceAISummaries && !cli.Build.Yes {
 			fmt.Print("This will regenerate ALL AI summaries (may incur API costs). Continue? [y/N] ")
@@ -253,19 +268,19 @@ func main() {
 			_, _ = fmt.Scanln(&answer)
 			if strings.ToLower(strings.TrimSpace(answer)) != "y" {
 				fmt.Fprintln(os.Stderr, "aborted")
-				os.Exit(0)
+				return 0
 			}
 		}
 		opts.DryRun = cli.DryRun
 		opts.TimingJSON = cli.Build.Timing
-		runErr = app.RunBuild(context.Background(), opts)
+		runErr = app.RunBuild(rootCtx, opts)
 	case strings.HasPrefix(command, "deploy"):
 		deployOpts := app.DeployOptions{
 			Provider: cli.Deploy.Provider,
 			Build:    cli.Deploy.Build,
 			DryRun:   cli.Deploy.Preview,
 		}
-		runErr = app.RunDeploy(context.Background(), opts, deployOpts)
+		runErr = app.RunDeploy(rootCtx, opts, deployOpts)
 	case strings.HasPrefix(command, "new"):
 		postOpts := app.NewPostOptions{
 			Title:    cli.New.Title,
@@ -282,30 +297,30 @@ func main() {
 			postOpts.Editor = true // auto-detect deferred to RunNew
 			postOpts.EditorAuto = true
 		}
-		runErr = app.RunNew(context.Background(), opts, postOpts)
+		runErr = app.RunNew(rootCtx, opts, postOpts)
 	case strings.HasPrefix(command, "preview"):
 		previewOpts := app.PreviewOptions{
 			FilePath: cli.Preview.File,
 			Port:     cli.Preview.Port,
 			Timeout:  time.Duration(cli.Preview.Timeout) * time.Minute,
 		}
-		runErr = app.RunPreview(context.Background(), opts, previewOpts)
+		runErr = app.RunPreview(rootCtx, opts, previewOpts)
 	case command == "serve":
 		if cli.Serve.Drafts {
 			t := true
 			opts.IncludeDrafts = &t
 		}
 		opts.ServeAPI = cli.Serve.API
-		runErr = app.RunServe(context.Background(), opts)
+		runErr = app.RunServe(rootCtx, opts)
 	case command == "api":
 		apiOpts := app.APIOptions{
 			Listen: cli.API.Listen,
 		}
-		runErr = app.RunAPI(context.Background(), opts, apiOpts)
+		runErr = app.RunAPI(rootCtx, opts, apiOpts)
 	case command == "tui":
-		runErr = app.RunTUI(context.Background(), opts)
+		runErr = app.RunTUI(rootCtx, opts)
 	case command == "ui":
-		runErr = app.RunUI(context.Background(), opts)
+		runErr = app.RunUI(rootCtx, opts)
 	case command == "check":
 		checkOpts := app.CheckOptions{
 			Links:       cli.Check.Links,
@@ -313,48 +328,48 @@ func main() {
 			Frontmatter: cli.Check.Frontmatter,
 			JSON:        cli.Check.JSON,
 		}
-		runErr = app.RunCheck(context.Background(), opts, checkOpts)
+		runErr = app.RunCheck(rootCtx, opts, checkOpts)
 	case command == "audit":
-		runErr = app.RunAudit(context.Background(), opts, cli.Audit.JSON)
+		runErr = app.RunAudit(rootCtx, opts, cli.Audit.JSON)
 	case command == "doctor":
-		runErr = app.RunDoctor(context.Background(), opts)
+		runErr = app.RunDoctor(rootCtx, opts)
 	case strings.HasPrefix(command, "theme init"):
-		runErr = app.RunThemeInit(context.Background(), opts, cli.Theme.Init.Name, cli.Theme.Init.Parent)
+		runErr = app.RunThemeInit(rootCtx, opts, cli.Theme.Init.Name, cli.Theme.Init.Parent)
 	case command == "theme list":
-		runErr = app.RunThemeList(context.Background(), opts, os.Stdout)
+		runErr = app.RunThemeList(rootCtx, opts, os.Stdout)
 	case strings.HasPrefix(command, "plugin install"):
-		runErr = app.RunPluginInstall(context.Background(), opts, cli.Plugin.Install.Path, cli.Plugin.Install.Name)
+		runErr = app.RunPluginInstall(rootCtx, opts, cli.Plugin.Install.Path, cli.Plugin.Install.Name)
 	case strings.HasPrefix(command, "plugin enable"):
-		runErr = app.RunPluginEnable(context.Background(), opts, cli.Plugin.Enable.Name)
+		runErr = app.RunPluginEnable(rootCtx, opts, cli.Plugin.Enable.Name)
 	case strings.HasPrefix(command, "plugin disable"):
-		runErr = app.RunPluginDisable(context.Background(), opts, cli.Plugin.Disable.Name)
+		runErr = app.RunPluginDisable(rootCtx, opts, cli.Plugin.Disable.Name)
 	case command == "plugin list":
-		runErr = app.RunPluginList(context.Background(), opts, os.Stdout)
+		runErr = app.RunPluginList(rootCtx, opts, os.Stdout)
 	case strings.HasPrefix(command, "plugin init"):
-		runErr = app.RunPluginInit(context.Background(), opts, cli.Plugin.Init.Name, cli.Plugin.Init.Dir, cli.Plugin.Init.Lang)
+		runErr = app.RunPluginInit(rootCtx, opts, cli.Plugin.Init.Name, cli.Plugin.Init.Dir, cli.Plugin.Init.Lang)
 	case strings.HasPrefix(command, "plugin search"):
-		runErr = app.RunPluginSearch(context.Background(), opts, cli.Plugin.Search.Query, os.Stdout)
+		runErr = app.RunPluginSearch(rootCtx, opts, cli.Plugin.Search.Query, os.Stdout)
 	case strings.HasPrefix(command, "plugin update"):
-		runErr = app.RunPluginUpdate(context.Background(), opts, cli.Plugin.Update.Name, os.Stdout)
+		runErr = app.RunPluginUpdate(rootCtx, opts, cli.Plugin.Update.Name, os.Stdout)
 	case strings.HasPrefix(command, "import wordpress"):
-		runErr = app.RunImportWordpress(context.Background(), opts, cli.Import.Wordpress.File, cli.DryRun)
+		runErr = app.RunImportWordpress(rootCtx, opts, cli.Import.Wordpress.File, cli.DryRun)
 	case strings.HasPrefix(command, "import hugo"):
-		runErr = app.RunImportHugo(context.Background(), opts, cli.Import.Hugo.Dir, cli.DryRun)
+		runErr = app.RunImportHugo(rootCtx, opts, cli.Import.Hugo.Dir, cli.DryRun)
 	case strings.HasPrefix(command, "service install"):
-		runErr = app.RunServiceInstall(context.Background(), opts, app.ServiceInstallOptions{
+		runErr = app.RunServiceInstall(rootCtx, opts, app.ServiceInstallOptions{
 			Name:    cli.Service.Install.Name,
 			Workdir: cli.Service.Install.Workdir,
 			Exec:    cli.Service.Install.Exec,
 			NoStart: cli.Service.Install.NoStart,
 		})
 	case strings.HasPrefix(command, "service uninstall"):
-		runErr = app.RunServiceUninstall(context.Background(), opts, cli.Service.Uninstall.Name)
+		runErr = app.RunServiceUninstall(rootCtx, opts, cli.Service.Uninstall.Name)
 	case strings.HasPrefix(command, "service start"):
-		runErr = app.RunServiceStart(context.Background(), opts, cli.Service.Start.Name)
+		runErr = app.RunServiceStart(rootCtx, opts, cli.Service.Start.Name)
 	case strings.HasPrefix(command, "service stop"):
-		runErr = app.RunServiceStop(context.Background(), opts, cli.Service.Stop.Name)
+		runErr = app.RunServiceStop(rootCtx, opts, cli.Service.Stop.Name)
 	case strings.HasPrefix(command, "service status"):
-		runErr = app.RunServiceStatus(context.Background(), opts, cli.Service.Status.Name)
+		runErr = app.RunServiceStatus(rootCtx, opts, cli.Service.Status.Name)
 	case command == "version":
 		fmt.Println(app.VersionInfo())
 	case strings.HasPrefix(command, "completion"):
@@ -365,8 +380,9 @@ func main() {
 
 	if runErr != nil {
 		fmt.Fprintln(os.Stderr, runErr)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 func shouldDefaultToTUI(args []string) bool {
