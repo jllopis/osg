@@ -393,9 +393,9 @@ func newRingBuffer(capacity int) *ringBuffer {
 
 func (r *ringBuffer) Write(p []byte) (int, error) {
 	r.mu.Lock()
+	defer r.mu.Unlock()
 	line := strings.TrimRight(string(p), "\n")
 	if line == "" {
-		r.mu.Unlock()
 		return len(p), nil
 	}
 	r.lines[r.next] = line
@@ -403,9 +403,10 @@ func (r *ringBuffer) Write(p []byte) (int, error) {
 	if r.next == 0 {
 		r.full = true
 	}
-	subs := append([]chan string(nil), r.subs...)
-	r.mu.Unlock()
-	for _, ch := range subs {
+	// Deliver under the lock: Subscribe removes a channel from r.subs before
+	// closing it (also under the lock), so holding it here guarantees we never
+	// send on a closed channel. Sends are non-blocking, so the lock is brief.
+	for _, ch := range r.subs {
 		select {
 		case ch <- line:
 		default:
