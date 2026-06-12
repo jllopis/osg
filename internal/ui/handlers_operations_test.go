@@ -78,7 +78,7 @@ func opsNilRunnerServer(t *testing.T) *Server {
 
 func TestHandleOperationRunHTML(t *testing.T) {
 	s := newTestServer(t, newTestRunner(t))
-	ts := httptest.NewServer(s.mux)
+	ts := httptest.NewServer(s.Handler())
 	defer ts.Close()
 
 	client := &http.Client{
@@ -89,7 +89,7 @@ func TestHandleOperationRunHTML(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post run: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", resp.StatusCode)
 	}

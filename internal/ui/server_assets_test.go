@@ -98,11 +98,11 @@ func TestWalkAssetsEmptyRoot(t *testing.T) {
 func TestWalkAssetsOnlyImages(t *testing.T) {
 	root := t.TempDir()
 	files := map[string][]byte{
-		"a.png":         []byte("PNGDATA1234"),  // image
-		"b.svg":         []byte("<svg/>"),        // image
-		"notes.md":      []byte("# markdown"),    // non-image, skipped
-		"sub/c.JPG":     []byte("jpegdata"),      // image, uppercase ext
-		"sub/data.json": []byte("{}"),            // non-image, skipped
+		"a.png":         []byte("PNGDATA1234"), // image
+		"b.svg":         []byte("<svg/>"),      // image
+		"notes.md":      []byte("# markdown"),  // non-image, skipped
+		"sub/c.JPG":     []byte("jpegdata"),    // image, uppercase ext
+		"sub/data.json": []byte("{}"),          // non-image, skipped
 	}
 	for rel, body := range files {
 		abs := filepath.Join(root, filepath.FromSlash(rel))

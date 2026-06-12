@@ -7,7 +7,10 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"osg/internal/config"
@@ -68,7 +71,7 @@ func NewServer(opts ServerOptions) (*Server, error) {
 func (s *Server) Run(ctx context.Context) error {
 	server := &http.Server{
 		Addr:              s.opts.Addr,
-		Handler:           s.mux,
+		Handler:           s.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -95,6 +98,70 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+// Handler returns the dashboard's HTTP handler wrapped in the security
+// middleware. The dashboard runs every CLI command (build, deploy, imports,
+// plugin installs), so it must not be reachable cross-origin.
+func (s *Server) Handler() http.Handler {
+	return s.securityMiddleware(s.mux)
+}
+
+// securityMiddleware protects the loopback dashboard against two browser-borne
+// attacks that loopback binding alone does not stop:
+//
+//   - DNS rebinding: a remote page rebinds its hostname to 127.0.0.1. The TCP
+//     connection is local, but the browser still sends the attacker's Host
+//     header, so requiring a loopback Host rejects it.
+//   - CSRF: a remote page auto-submits a form to http://127.0.0.1:<port>/…. The
+//     browser tags such requests Sec-Fetch-Site: cross-site (and sends a
+//     cross-origin Origin), both of which are rejected for state-changing
+//     methods. Same-origin requests and non-browser clients (curl, no Origin)
+//     are allowed.
+func (s *Server) securityMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopbackHost(r.Host) {
+			http.Error(w, "forbidden: dashboard is loopback-only", http.StatusForbidden)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+			// Safe methods: no state change, no CSRF check.
+		default:
+			if site := r.Header.Get("Sec-Fetch-Site"); site != "" {
+				if site != "same-origin" && site != "same-site" && site != "none" {
+					http.Error(w, "forbidden: cross-site request blocked", http.StatusForbidden)
+					return
+				}
+			} else if origin := r.Header.Get("Origin"); origin != "" {
+				if u, err := url.Parse(origin); err != nil || !isLoopbackHost(u.Host) {
+					http.Error(w, "forbidden: cross-origin request blocked", http.StatusForbidden)
+					return
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// isLoopbackHost reports whether host (an HTTP Host or Origin authority,
+// optionally with a port) names the loopback interface or "localhost".
+func isLoopbackHost(host string) bool {
+	if host == "" {
+		return false
+	}
+	h, _, err := net.SplitHostPort(host)
+	if err != nil {
+		h = host // no port present
+	}
+	h = strings.TrimSuffix(strings.TrimPrefix(h, "["), "]")
+	if strings.EqualFold(h, "localhost") {
+		return true
+	}
+	if ip := net.ParseIP(h); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }
 
 func (s *Server) routes() {
