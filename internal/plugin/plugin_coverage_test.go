@@ -746,7 +746,7 @@ func TestGitHubAPIDependentTests(t *testing.T) {
 		defer server.Close()
 
 		dest := filepath.Join(t.TempDir(), "out.wasm")
-		if err := downloadFile(context.Background(), server.URL+"/file.wasm", dest); err != nil {
+		if _, err := downloadFile(context.Background(), server.URL+"/file.wasm", dest, ""); err != nil {
 			t.Fatalf("downloadFile: %v", err)
 		}
 		if gotAuth != "Bearer dl-token-456" {
@@ -1067,7 +1067,7 @@ func TestDownloadFile_Success(t *testing.T) {
 	defer server.Close()
 
 	dest := filepath.Join(t.TempDir(), "output.bin")
-	if err := downloadFile(context.Background(), server.URL, dest); err != nil {
+	if _, err := downloadFile(context.Background(), server.URL, dest, ""); err != nil {
 		t.Fatalf("downloadFile: %v", err)
 	}
 
@@ -1084,7 +1084,7 @@ func TestDownloadFile_ConnectionRefused(t *testing.T) {
 	t.Parallel()
 
 	dest := filepath.Join(t.TempDir(), "output.bin")
-	err := downloadFile(context.Background(), "http://127.0.0.1:1/unreachable", dest)
+	_, err := downloadFile(context.Background(), "http://127.0.0.1:1/unreachable", dest, "")
 	if err == nil {
 		t.Fatal("expected error for connection refused")
 	}
