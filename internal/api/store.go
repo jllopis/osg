@@ -43,7 +43,9 @@ func NewStore(dbPath string, viewDedupHours int) (*Store, error) {
 		}
 	}
 
-	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_busy_timeout=5000")
+	// modernc/sqlite only applies PRAGMAs given as _pragma=...; the mattn-style
+	// _journal_mode/_busy_timeout keys are silently ignored.
+	db, err := sql.Open("sqlite", dbPath+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)")
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}

@@ -47,7 +47,9 @@ func openSummaryStore(cfg config.Config) (*summaryStore, error) {
 			return nil, fmt.Errorf("create summaries dir: %w", err)
 		}
 	}
-	db, err := sql.Open("sqlite", path+"?_journal_mode=WAL&_busy_timeout=5000")
+	// modernc/sqlite only applies PRAGMAs given as _pragma=...; the mattn-style
+	// _journal_mode/_busy_timeout keys are silently ignored.
+	db, err := sql.Open("sqlite", path+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)")
 	if err != nil {
 		return nil, fmt.Errorf("open summaries db: %w", err)
 	}

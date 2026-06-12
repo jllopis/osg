@@ -72,7 +72,10 @@ func NewCommentStore(dbPath string, authSessionDays int) (*CommentStore, error) 
 		}
 	}
 
-	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=ON")
+	// modernc/sqlite only applies PRAGMAs given as _pragma=...; the mattn-style
+	// _journal_mode/_busy_timeout/_foreign_keys keys are silently ignored, so
+	// foreign-key enforcement was previously off.
+	db, err := sql.Open("sqlite", dbPath+"?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)")
 	if err != nil {
 		return nil, fmt.Errorf("open comments db: %w", err)
 	}
