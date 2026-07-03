@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -2948,6 +2949,52 @@ func TestRenderRobots_CachedPlan(t *testing.T) {
 	}
 	if cached != 1 {
 		t.Errorf("cached = %d, want 1", cached)
+	}
+}
+
+func TestRenderRobots_ContentSignals(t *testing.T) {
+	renderer := testRenderer(t)
+	plan := buildPlan{full: true}
+
+	renderTo := func(cfg config.Config) string {
+		t.Helper()
+		baseCtx := baseContext(cfg, site.New().View(), map[string]*taxonomy.Index{}, nil)
+		if _, _, err := renderRobots(renderer, cfg, baseCtx, plan); err != nil {
+			t.Fatalf("renderRobots: %v", err)
+		}
+		data, err := os.ReadFile(filepath.Join(cfg.PublicDir, "robots.txt"))
+		if err != nil {
+			t.Fatalf("read robots.txt: %v", err)
+		}
+		return string(data)
+	}
+
+	// Defaults: the Content-Signal line is emitted with the default values.
+	got := renderTo(config.Config{BaseURL: "http://example.com", PublicDir: t.TempDir()})
+	want := "Content-Signal: ai-train=no, search=yes, ai-input=yes"
+	if !strings.Contains(got, want) {
+		t.Errorf("robots.txt missing %q:\n%s", want, got)
+	}
+	if strings.Index(got, "User-agent: *") > strings.Index(got, want) {
+		t.Errorf("Content-Signal must appear inside the wildcard User-agent group:\n%s", got)
+	}
+
+	// Disabled: no Content-Signal line at all.
+	disabled := false
+	cfg := config.Config{BaseURL: "http://example.com", PublicDir: t.TempDir()}
+	cfg.Robots.ContentSignals.Enabled = &disabled
+	got = renderTo(cfg)
+	if strings.Contains(got, "Content-Signal") {
+		t.Errorf("robots.txt should omit Content-Signal when disabled:\n%s", got)
+	}
+
+	// Override: ai_train=true flips the emitted value.
+	aiTrain := true
+	cfg = config.Config{BaseURL: "http://example.com", PublicDir: t.TempDir()}
+	cfg.Robots.ContentSignals.AITrain = &aiTrain
+	got = renderTo(cfg)
+	if !strings.Contains(got, "Content-Signal: ai-train=yes, search=yes, ai-input=yes") {
+		t.Errorf("robots.txt missing overridden Content-Signal:\n%s", got)
 	}
 }
 

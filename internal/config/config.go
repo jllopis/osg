@@ -138,9 +138,43 @@ type OrganizationConfig struct {
 // Disallow paths are emitted under the wildcard User-agent. Extra is appended
 // verbatim to the file (e.g. additional User-agent rules).
 type RobotsConfig struct {
-	Disallow   []string `koanf:"disallow" yaml:"disallow"`
-	CrawlDelay int      `koanf:"crawl_delay" yaml:"crawl_delay"`
-	Extra      string   `koanf:"extra" yaml:"extra"`
+	Disallow       []string             `koanf:"disallow" yaml:"disallow"`
+	CrawlDelay     int                  `koanf:"crawl_delay" yaml:"crawl_delay"`
+	Extra          string               `koanf:"extra" yaml:"extra"`
+	ContentSignals ContentSignalsConfig `koanf:"content_signals" yaml:"content_signals"`
+}
+
+// ContentSignalsConfig controls the Content-Signal line emitted in the
+// generated robots.txt (https://contentsignals.org). Each signal states
+// whether the site's content may be used for that purpose. Pointers
+// distinguish "unset" from an explicit false; unset values fall back to the
+// defaults: ai-train=no, search=yes, ai-input=yes. Set enabled: false to
+// omit the line entirely.
+type ContentSignalsConfig struct {
+	Enabled *bool `koanf:"enabled" yaml:"enabled"`
+	AITrain *bool `koanf:"ai_train" yaml:"ai_train"`
+	Search  *bool `koanf:"search" yaml:"search"`
+	AIInput *bool `koanf:"ai_input" yaml:"ai_input"`
+}
+
+// Line renders the effective signals as the value of a Content-Signal
+// directive, or "" when signals are disabled.
+func (c ContentSignalsConfig) Line() string {
+	if c.Enabled != nil && !*c.Enabled {
+		return ""
+	}
+	yesNo := func(v *bool, def bool) string {
+		if v != nil {
+			def = *v
+		}
+		if def {
+			return "yes"
+		}
+		return "no"
+	}
+	return "ai-train=" + yesNo(c.AITrain, false) +
+		", search=" + yesNo(c.Search, true) +
+		", ai-input=" + yesNo(c.AIInput, true)
 }
 
 // AnalyticsProviderConfig describes a third-party analytics provider.
@@ -816,7 +850,16 @@ doctor_profile: dev
 #   and the Person schema in JSON-LD when a page does not specify its own.
 # organization: schema.org Organization emitted on the homepage when name is
 #   set (publisher of the site for knowledge-graph signals).
-# robots: customize generated robots.txt (Disallow paths, Crawl-delay, raw extra).
+# robots: customize generated robots.txt (Disallow paths, Crawl-delay, raw extra,
+#   Content-Signal). content_signals emits a Content-Signal line under the
+#   wildcard User-agent (https://contentsignals.org) declaring how content may
+#   be used; defaults: ai_train=false, search=true, ai_input=true. Set
+#   enabled: false to omit the line.
+#   Note on disallow: avoid blocking JS/CSS asset paths — search engines render
+#   pages and need those resources; blocking them can hurt indexing. Use
+#   disallow for content you don't want crawled at all (e.g. /api/, search
+#   index JSON), and per-page frontmatter "robots: noindex" for pages that
+#   should stay out of the index.
 # author: ""
 # author_url: ""
 # theme_color_light: ""
@@ -830,6 +873,11 @@ doctor_profile: dev
 #   disallow: []
 #   crawl_delay: 0
 #   extra: ""
+#   content_signals:
+#     enabled: true
+#     ai_train: false
+#     search: true
+#     ai_input: true
 
 # -----------------------------------------------------------------------------
 # Social links, copyright & license

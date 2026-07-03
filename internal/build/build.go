@@ -1364,9 +1364,10 @@ func organizationView(org config.OrganizationConfig) map[string]any {
 
 func robotsView(r config.RobotsConfig) map[string]any {
 	return map[string]any{
-		"disallow":    r.Disallow,
-		"crawl_delay": r.CrawlDelay,
-		"extra":       r.Extra,
+		"disallow":       r.Disallow,
+		"crawl_delay":    r.CrawlDelay,
+		"extra":          r.Extra,
+		"content_signal": r.ContentSignals.Line(),
 	}
 }
 

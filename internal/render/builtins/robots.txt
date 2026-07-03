@@ -1,4 +1,9 @@
 User-agent: *
+{{- if and .config.robots .config.robots.content_signal }}
+# Content-Signal expresses usage preferences for automated clients.
+# See https://contentsignals.org for the vocabulary.
+Content-Signal: {{ .config.robots.content_signal }}
+{{- end }}
 Allow: /
 {{- if and .config.robots .config.robots.disallow }}
 {{- range .config.robots.disallow }}
