@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload coverage
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage.out
@@ -84,7 +84,7 @@ jobs:
           cd build && tar czf "${BINARY}.tar.gz" "${BINARY}"
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: osg-${{ matrix.goos }}-${{ matrix.goarch }}
           path: build/*.tar.gz
@@ -133,7 +133,7 @@ jobs:
           ls -la build/plugins/
 
       - name: Upload plugin artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: osg-plugins
           path: build/plugins/*.wasm
