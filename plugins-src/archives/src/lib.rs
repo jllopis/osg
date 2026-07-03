@@ -42,7 +42,9 @@ pub unsafe extern "C" fn handle_event(ptr: i32, len: i32) -> u64 {
         return 0;
     }
 
-    let _ = write_archives(&event.payload);
+    if let Err(e) = write_archives(&event.payload) {
+        eprintln!("osg-archives plugin: {}", e);
+    }
     0
 }
 

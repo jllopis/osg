@@ -177,7 +177,9 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 	if err := plugin.EnsureBundledPlugins(cfg.PluginsDir); err != nil {
 		logger.Warn("failed to extract bundled plugins", "error", err)
 	}
-	plugins, err := plugin.Load(ctx, cfg.PluginsDir, cfg.PluginsEnabled, cfg.PluginTimeout, logger)
+	// Plugins may write build artifacts (search index, llms.txt, archives),
+	// so they get the public dir — and nothing else — as their filesystem.
+	plugins, err := plugin.LoadSandboxed(ctx, cfg.PluginsDir, cfg.PublicDir, cfg.PluginsEnabled, cfg.PluginTimeout, logger)
 	if err != nil {
 		logger.Warn("plugins disabled", "error", err)
 		plugins = nil

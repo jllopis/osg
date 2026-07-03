@@ -267,6 +267,28 @@ func setupPlugin(t *testing.T, name string) (*Manager, context.Context) {
 	return m, ctx
 }
 
+// setupPluginSandbox is like setupPlugin but mounts sandboxDir at "/" so
+// the plugin can write build artifacts.
+func setupPluginSandbox(t *testing.T, name, sandboxDir string) (*Manager, context.Context) {
+	t.Helper()
+	dir := t.TempDir()
+	pluginsDir := filepath.Join(dir, "plugins")
+
+	if err := EnsureBundledPlugins(pluginsDir); err != nil {
+		t.Fatalf("EnsureBundledPlugins: %v", err)
+	}
+
+	ctx := context.Background()
+	m, err := LoadSandboxed(ctx, pluginsDir, sandboxDir, []string{name}, 0, slog.Default())
+	if err != nil {
+		t.Fatalf("LoadSandboxed: %v", err)
+	}
+	if len(m.plugins) != 1 {
+		t.Fatalf("expected 1 plugin loaded, got %d", len(m.plugins))
+	}
+	return m, ctx
+}
+
 func TestLoad_BundledSearch(t *testing.T) {
 	t.Parallel()
 	m, ctx := setupPlugin(t, "search")
@@ -324,11 +346,9 @@ func TestEmit_SearchIgnoresNonFinished(t *testing.T) {
 
 func TestEmit_SearchBuildFinished(t *testing.T) {
 	t.Parallel()
-	m, ctx := setupPlugin(t, "search")
-	defer func() { _ = m.Close(ctx) }()
-
 	publicDir := filepath.Join(t.TempDir(), "public")
-	_ = os.MkdirAll(publicDir, 0o755)
+	m, ctx := setupPluginSandbox(t, "search", publicDir)
+	defer func() { _ = m.Close(ctx) }()
 
 	pages := []any{
 		map[string]any{
@@ -383,11 +403,9 @@ func TestEmit_SearchBuildFinished(t *testing.T) {
 
 func TestEmit_SearchBuildFinished_Section(t *testing.T) {
 	t.Parallel()
-	m, ctx := setupPlugin(t, "search")
-	defer func() { _ = m.Close(ctx) }()
-
 	publicDir := filepath.Join(t.TempDir(), "public")
-	_ = os.MkdirAll(publicDir, 0o755)
+	m, ctx := setupPluginSandbox(t, "search", publicDir)
+	defer func() { _ = m.Close(ctx) }()
 
 	pages := []any{
 		map[string]any{

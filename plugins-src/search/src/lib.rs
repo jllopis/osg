@@ -41,7 +41,9 @@ pub unsafe extern "C" fn handle_event(ptr: i32, len: i32) -> u64 {
         return 0;
     }
 
-    let _ = write_search(&event.payload);
+    if let Err(e) = write_search(&event.payload) {
+        eprintln!("osg-search plugin: {}", e);
+    }
     0
 }
 

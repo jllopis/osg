@@ -21,6 +21,9 @@ type Manager struct {
 	plugins []*Plugin
 	logger  *slog.Logger
 	timeout time.Duration // per-plugin call timeout; zero means no timeout
+	// sandboxDir is the absolute host directory mounted at "/" inside each
+	// plugin module. Empty means plugins get no filesystem access at all.
+	sandboxDir string
 }
 
 type Plugin struct {
@@ -51,12 +54,34 @@ type Response struct {
 	Payload map[string]any `json:"payload"`
 }
 
-// Load discovers and loads enabled .wasm plugins from dir.
-// timeoutSec sets the per-call timeout in seconds (0 = no timeout).
+// Load discovers and loads enabled .wasm plugins from dir with NO
+// filesystem access: use it when plugins only need to be inspected or run
+// pure transforms. timeoutSec sets the per-call timeout in seconds
+// (0 = no timeout).
 func Load(ctx context.Context, dir string, enabled []string, timeoutSec int, logger *slog.Logger) (*Manager, error) {
+	return LoadSandboxed(ctx, dir, "", enabled, timeoutSec, logger)
+}
+
+// LoadSandboxed loads enabled plugins and mounts sandboxDir (created if
+// missing) read-write at "/" inside each module — the only host directory
+// a plugin can touch. Payload paths under sandboxDir are translated to the
+// guest namespace by Emit, so plugins address files as "/…". An empty
+// sandboxDir disables filesystem access entirely.
+func LoadSandboxed(ctx context.Context, dir, sandboxDir string, enabled []string, timeoutSec int, logger *slog.Logger) (*Manager, error) {
 	var timeout time.Duration
 	if timeoutSec > 0 {
 		timeout = time.Duration(timeoutSec) * time.Second
+	}
+
+	if sandboxDir != "" {
+		abs, err := filepath.Abs(sandboxDir)
+		if err != nil {
+			return nil, fmt.Errorf("resolve sandbox dir: %w", err)
+		}
+		if err := os.MkdirAll(abs, 0o755); err != nil {
+			return nil, fmt.Errorf("create sandbox dir: %w", err)
+		}
+		sandboxDir = abs
 	}
 
 	if strings.TrimSpace(dir) == "" {
@@ -79,7 +104,7 @@ func Load(ctx context.Context, dir string, enabled []string, timeoutSec int, log
 		return nil, fmt.Errorf("init wasi: %w", err)
 	}
 
-	manager := &Manager{runtime: runtime, logger: logger, timeout: timeout}
+	manager := &Manager{runtime: runtime, logger: logger, timeout: timeout, sandboxDir: sandboxDir}
 
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -113,7 +138,7 @@ func Load(ctx context.Context, dir string, enabled []string, timeoutSec int, log
 		if !enabledSet[name] {
 			continue
 		}
-		plugin, err := loadPlugin(ctx, runtime, path)
+		plugin, err := loadPlugin(ctx, runtime, path, sandboxDir)
 		if err != nil {
 			if logger != nil {
 				logger.Warn("failed to load plugin", "path", path, "error", err)
@@ -181,7 +206,7 @@ func (m *Manager) ReloadPlugin(ctx context.Context, wasmPath string) (oldVer, ne
 	}
 
 	// Load new module.
-	newPlugin, err := loadPlugin(ctx, m.runtime, wasmPath)
+	newPlugin, err := loadPlugin(ctx, m.runtime, wasmPath, m.sandboxDir)
 	if err != nil {
 		return "", "", fmt.Errorf("load plugin %s: %w", name, err)
 	}
@@ -206,12 +231,69 @@ type pluginResult struct {
 	elapsed time.Duration
 }
 
+// sandboxPayload returns payload with host paths under sandboxDir rewritten
+// to the guest namespace ("/…"), so plugins can use them with WASI file
+// operations. Only the keys plugins consume for filesystem work are
+// translated; paths outside the sandbox are left as-is (they are
+// unreachable from the module either way).
+func (m *Manager) sandboxPayload(payload map[string]any) map[string]any {
+	if m.sandboxDir == "" || payload == nil {
+		return payload
+	}
+	translate := func(v any) (any, bool) {
+		s, ok := v.(string)
+		if !ok || s == "" {
+			return v, false
+		}
+		abs, err := filepath.Abs(s)
+		if err != nil {
+			return v, false
+		}
+		rel, err := filepath.Rel(m.sandboxDir, abs)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return v, false
+		}
+		if rel == "." {
+			return "/", true
+		}
+		return "/" + filepath.ToSlash(rel), true
+	}
+
+	out := payload
+	cloned := false
+	clone := func() {
+		if !cloned {
+			c := make(map[string]any, len(out))
+			for k, v := range out {
+				c[k] = v
+			}
+			out, cloned = c, true
+		}
+	}
+	if g, ok := translate(out["public_dir"]); ok {
+		clone()
+		out["public_dir"] = g
+	}
+	if cfg, ok := out["config"].(map[string]any); ok {
+		if g, ok := translate(cfg["public_dir"]); ok {
+			clone()
+			cfgCopy := make(map[string]any, len(cfg))
+			for k, v := range cfg {
+				cfgCopy[k] = v
+			}
+			cfgCopy["public_dir"] = g
+			out["config"] = cfgCopy
+		}
+	}
+	return out
+}
+
 func (m *Manager) Emit(ctx context.Context, event string, payload map[string]any) map[string]any {
 	if len(m.plugins) == 0 {
 		return nil
 	}
 
-	request := Event{Type: event, Payload: payload}
+	request := Event{Type: event, Payload: m.sandboxPayload(payload)}
 	data, err := json.Marshal(request)
 	if err != nil {
 		if m.logger != nil {
@@ -313,7 +395,7 @@ func (m *Manager) emitSingle(ctx context.Context, plugin *Plugin, event string, 
 	return resp.Payload
 }
 
-func loadPlugin(ctx context.Context, runtime wazero.Runtime, path string) (*Plugin, error) {
+func loadPlugin(ctx context.Context, runtime wazero.Runtime, path, sandboxDir string) (*Plugin, error) {
 	code, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -326,14 +408,18 @@ func loadPlugin(ctx context.Context, runtime wazero.Runtime, path string) (*Plug
 
 	name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 
-	// Mount the host filesystem at "/" so plugins can write to public_dir
-	// and other paths via WASI file operations (e.g. std::fs::write in Rust).
-	fsConfig := wazero.NewFSConfig().WithDirMount("/", "/")
 	modConfig := wazero.NewModuleConfig().
 		WithName(name).
-		WithFSConfig(fsConfig).
 		WithStdout(os.Stdout).
 		WithStderr(os.Stderr)
+	// Mount only the sandbox directory (the build's public dir) at guest
+	// "/". Plugins address files with guest-absolute paths ("/search.json")
+	// that Emit produces when translating payload paths; the rest of the
+	// host filesystem stays out of reach.
+	if sandboxDir != "" {
+		modConfig = modConfig.WithFSConfig(
+			wazero.NewFSConfig().WithDirMount(sandboxDir, "/"))
+	}
 
 	module, err := runtime.InstantiateModule(ctx, compiled, modConfig)
 	if err != nil {

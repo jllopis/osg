@@ -91,19 +91,18 @@ func TestEmit_MultiplePlugins_BuildFinished(t *testing.T) {
 		t.Fatalf("write: %v", err)
 	}
 
+	publicDir := filepath.Join(dir, "public")
+
 	ctx := context.Background()
-	m, err := Load(ctx, pluginsDir, []string{"search", "search2"}, 0, silentLogger())
+	m, err := LoadSandboxed(ctx, pluginsDir, publicDir, []string{"search", "search2"}, 0, silentLogger())
 	if err != nil {
-		t.Fatalf("Load: %v", err)
+		t.Fatalf("LoadSandboxed: %v", err)
 	}
 	defer func() { _ = m.Close(ctx) }()
 
 	if len(m.plugins) != 2 {
 		t.Fatalf("expected 2 plugins, got %d", len(m.plugins))
 	}
-
-	publicDir := filepath.Join(dir, "public")
-	_ = os.MkdirAll(publicDir, 0o755)
 
 	pages := []any{
 		map[string]any{
@@ -133,15 +132,14 @@ func TestEmit_WithTimeout(t *testing.T) {
 		t.Fatalf("EnsureBundledPlugins: %v", err)
 	}
 
+	publicDir := filepath.Join(dir, "public")
+
 	ctx := context.Background()
-	m, err := Load(ctx, pluginsDir, []string{"search"}, 30, silentLogger())
+	m, err := LoadSandboxed(ctx, pluginsDir, publicDir, []string{"search"}, 30, silentLogger())
 	if err != nil {
-		t.Fatalf("Load: %v", err)
+		t.Fatalf("LoadSandboxed: %v", err)
 	}
 	defer func() { _ = m.Close(ctx) }()
-
-	publicDir := filepath.Join(dir, "public")
-	_ = os.MkdirAll(publicDir, 0o755)
 
 	result := m.Emit(ctx, "build.finished", map[string]any{
 		"config": map[string]any{"public_dir": publicDir},
