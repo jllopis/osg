@@ -518,6 +518,8 @@ func Run(ctx context.Context, cfg config.Config, opts BuildOptions, verbose bool
 		cacheToSave.Outputs = buildOutputsIndex(siteIndex, cfg.PublicDir)
 		cacheToSave.PageTemplates = buildPageTemplatesIndex(siteIndex)
 		cacheToSave.SectionPages = buildSectionPagesIndex(siteIndex)
+		cacheToSave.PageOrder = buildPageOrderIndex(siteIndex)
+		cacheToSave.PageLinks = buildPageLinksIndex(siteIndex)
 		if err := saveBuildCache(buildCachePath(cfg), cacheToSave); err != nil {
 			logger.Warn("cache write failed", "error", err)
 		}
@@ -668,6 +670,40 @@ func buildSectionPagesIndex(siteIndex *site.Site) map[string][]string {
 	return idx
 }
 
+// buildPageOrderIndex records the chronological (newest-first) source-path
+// order of non-menu pages, mirroring the postPages slice in renderPages.
+// The next incremental build uses it to locate a page's former neighbors.
+func buildPageOrderIndex(siteIndex *site.Site) []string {
+	if siteIndex == nil {
+		return nil
+	}
+	order := make([]string, 0, len(siteIndex.Pages))
+	for _, p := range siteIndex.Pages {
+		if !p.Menu && p.SourcePath != "" {
+			order = append(order, p.SourcePath)
+		}
+	}
+	return order
+}
+
+// buildPageLinksIndex records the forward link graph (source_path -> linked
+// page paths) so the next incremental build can dirty backlink lists when a
+// page or one of its links disappears.
+func buildPageLinksIndex(siteIndex *site.Site) map[string][]string {
+	if siteIndex == nil {
+		return nil
+	}
+	links := map[string][]string{}
+	for targetPath, sources := range buildBacklinkIndex(siteIndex.Pages) {
+		for _, s := range sources {
+			if s.SourcePath != "" {
+				links[s.SourcePath] = append(links[s.SourcePath], targetPath)
+			}
+		}
+	}
+	return links
+}
+
 func cleanupRemovedOutputs(publicDir string, removed []string, outputs map[string]string, logger *slog.Logger) int {
 	if len(removed) == 0 || len(outputs) == 0 {
 		return 0
@@ -739,6 +775,13 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 
 	// Build backlink index: page path -> pages that link to it.
 	backlinkIndex := buildBacklinkIndex(siteIndex.Pages)
+
+	// Neighbor expansion: pages whose rendered navigation references a
+	// changed or removed page must re-render even though their own source
+	// is untouched. plan is a value copy, so this stays page-scoped.
+	if plan.incremental && !plan.full && plan.contentChanged {
+		plan.alsoRender = staleNeighborSources(plan, siteIndex, postPages, pagePos, seriesIndex, backlinkIndex, indices)
+	}
 
 	// Separate pages into cached vs to-render.
 	type renderJob struct {
@@ -881,6 +924,94 @@ func renderPages(ctx context.Context, renderer *render.Renderer, cfg config.Conf
 
 // relatedPages returns up to limit pages that share taxonomy terms with page,
 // scored by how many terms they share (descending), then by date (newest first).
+// staleNeighborSources returns source paths of pages that must re-render
+// because a changed (or removed) page appears in their prev/next
+// navigation, series list, related posts or backlinks. Both the previous
+// build's ordering/link graph (from the cache) and the current indices are
+// consulted so date moves, deletions and removed links are covered. Known
+// gap: a page that drops a taxonomy term does not dirty its formerly
+// related pages (the previous taxonomy state is not cached).
+func staleNeighborSources(plan buildPlan, siteIndex *site.Site, postPages []*site.Page, pagePos map[*site.Page]int, seriesIndex map[string][]*site.Page, backlinkIndex map[string][]*site.Page, indices map[string]*taxonomy.Index) map[string]bool {
+	dirty := map[string]bool{}
+	srcPage := make(map[string]*site.Page, len(siteIndex.Pages))
+	pathPage := make(map[string]*site.Page, len(siteIndex.Pages))
+	for _, p := range siteIndex.Pages {
+		if p.SourcePath != "" {
+			srcPage[p.SourcePath] = p
+		}
+		pathPage[p.Path] = p
+	}
+	mark := func(p *site.Page) {
+		if p != nil && p.SourcePath != "" && !plan.changedFiles[p.SourcePath] {
+			dirty[p.SourcePath] = true
+		}
+	}
+
+	prevIdx := make(map[string]int, len(plan.prevPageOrder))
+	for i, src := range plan.prevPageOrder {
+		prevIdx[src] = i
+	}
+	// Neighbors in the previous build's chronological order: stale when the
+	// page between them moved or disappeared.
+	markPrevContext := func(src string) {
+		if i, ok := prevIdx[src]; ok {
+			if i > 0 {
+				mark(srcPage[plan.prevPageOrder[i-1]])
+			}
+			if i+1 < len(plan.prevPageOrder) {
+				mark(srcPage[plan.prevPageOrder[i+1]])
+			}
+		}
+		// Pages this page linked to in the previous build listed it among
+		// their backlinks.
+		for _, target := range plan.prevPageLinks[src] {
+			mark(pathPage[target])
+		}
+	}
+
+	for src := range plan.changedFiles {
+		markPrevContext(src)
+		page := srcPage[src]
+		if page == nil {
+			continue
+		}
+		// Current chronological neighbors.
+		if idx, ok := pagePos[page]; ok {
+			if idx > 0 {
+				mark(postPages[idx-1])
+			}
+			if idx+1 < len(postPages) {
+				mark(postPages[idx+1])
+			}
+		}
+		// Series mates render this page in their series navigation.
+		if page.Series != "" {
+			for _, sp := range seriesIndex[page.Series] {
+				if sp != page {
+					mark(sp)
+				}
+			}
+		}
+		// Pages sharing a taxonomy term may list this page as related.
+		for _, rp := range relatedPages(page, indices, len(siteIndex.Pages)) {
+			mark(rp)
+		}
+		// Pages this page currently links to show it among their backlinks.
+		for targetPath, sources := range backlinkIndex {
+			for _, s := range sources {
+				if s == page {
+					mark(pathPage[targetPath])
+					break
+				}
+			}
+		}
+	}
+	for _, src := range plan.removedFiles {
+		markPrevContext(src)
+	}
+	return dirty
+}
+
 func relatedPages(page *site.Page, indices map[string]*taxonomy.Index, limit int) []*site.Page {
 	if len(page.Taxonomies) == 0 || len(indices) == 0 {
 		return nil

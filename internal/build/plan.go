@@ -27,6 +27,13 @@ type buildPlan struct {
 	// Dependency graph from previous build (for granular collection re-rendering).
 	prevPageTemplates map[string]string   // source_path -> template_name
 	prevSectionPages  map[string][]string // section_path -> [source_paths]
+	prevPageOrder     []string            // newest-first source paths from previous build
+	prevPageLinks     map[string][]string // source_path -> linked page paths from previous build
+
+	// alsoRender is the neighbor-expansion set: pages whose own source did
+	// not change but whose rendered prev/next, related, series or backlink
+	// context references a changed page. Populated by renderPages.
+	alsoRender map[string]bool
 }
 
 func (p buildPlan) shouldRenderPage(page *site.Page, outputPath string, templateName string) bool {
@@ -38,6 +45,10 @@ func (p buildPlan) shouldRenderPage(page *site.Page, outputPath string, template
 	}
 	// Content changed for this specific page.
 	if p.changedFiles != nil && p.changedFiles[page.SourcePath] {
+		return true
+	}
+	// A neighboring page changed and this page's navigation shows it.
+	if p.alsoRender != nil && p.alsoRender[page.SourcePath] {
 		return true
 	}
 	// Template used by this page changed.
@@ -221,6 +232,8 @@ func buildPlanFromCache(cfg config.Config, files []string, logger *slog.Logger) 
 	plan.prevOutputs = prev.Outputs
 	plan.prevPageTemplates = prev.PageTemplates
 	plan.prevSectionPages = prev.SectionPages
+	plan.prevPageOrder = prev.PageOrder
+	plan.prevPageLinks = prev.PageLinks
 
 	// Asset-only change: skip HTML rendering entirely.
 	if assetsChanged && !plan.contentChanged && !plan.templatesChanged {

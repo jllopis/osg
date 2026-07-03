@@ -17,7 +17,7 @@ import (
 	"osg/internal/render"
 )
 
-const buildCacheVersion = 3
+const buildCacheVersion = 4
 
 type buildCache struct {
 	Version       int                  `json:"version"`
@@ -33,7 +33,14 @@ type buildCache struct {
 	// Dependency graph for smart incremental builds.
 	PageTemplates map[string]string   `json:"page_templates,omitempty"` // source_path -> template_name
 	SectionPages  map[string][]string `json:"section_pages,omitempty"`  // section_path -> [source_paths]
-	GeneratedAt   string              `json:"generated_at"`
+	// PageOrder is the chronological (newest-first) list of non-menu page
+	// source paths; used to find a page's previous neighbors when its date
+	// changes or it is removed.
+	PageOrder []string `json:"page_order,omitempty"`
+	// PageLinks maps source_path -> paths of pages it links to; used to
+	// re-render backlink lists when a page (or one of its links) goes away.
+	PageLinks   map[string][]string `json:"page_links,omitempty"`
+	GeneratedAt string              `json:"generated_at"`
 }
 
 type fileStamp struct {
