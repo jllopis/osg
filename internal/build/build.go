@@ -1706,7 +1706,9 @@ func feedContext(baseCtx map[string]any, cfg config.Config, taxCfg config.Taxono
 func feedPages(pages []*site.Page) []map[string]any {
 	out := make([]map[string]any, 0, len(pages))
 	for _, page := range pages {
-		if page.Draft {
+		// Feeds are public even in preview builds (include_drafts), so
+		// drafts and scheduled-future pages must never appear in them.
+		if page.Draft || page.IsScheduled() {
 			continue
 		}
 		out = append(out, map[string]any{
@@ -1740,7 +1742,15 @@ func renderSiteFeed(ctx context.Context, renderer *render.Renderer, cfg config.C
 	}
 
 	// Pages are already sorted by date descending in BuildHierarchy().
-	pages := siteIndex.Pages
+	// Filter drafts/scheduled before applying the limit so hidden pages
+	// do not consume feed slots in preview builds.
+	pages := make([]*site.Page, 0, len(siteIndex.Pages))
+	for _, p := range siteIndex.Pages {
+		if p.Draft || p.IsScheduled() {
+			continue
+		}
+		pages = append(pages, p)
+	}
 	if cfg.SiteFeedLimit > 0 && len(pages) > cfg.SiteFeedLimit {
 		pages = pages[:cfg.SiteFeedLimit]
 	}
@@ -2032,7 +2042,9 @@ func collectSitemapEntries(cfg config.Config, siteIndex *site.Site, indices map[
 	}
 
 	for _, page := range siteIndex.Pages {
-		if page.Draft || page.NoIndex {
+		// Scheduled pages are excluded even in preview builds: the
+		// sitemap is public and must not reveal unpublished URLs.
+		if page.Draft || page.NoIndex || page.IsScheduled() {
 			continue
 		}
 		// Skip pages whose explicit robots directive forbids indexing.
