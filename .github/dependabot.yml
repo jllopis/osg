@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go-deps:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: cargo
+    directories:
+      - /plugins-src/archives
+      - /plugins-src/llmstxt
+      - /plugins-src/mermaid
+      - /plugins-src/search
+    schedule:
+      interval: weekly
+    groups:
+      plugin-deps:
+        patterns: ["*"]
