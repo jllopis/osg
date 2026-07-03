@@ -2,6 +2,8 @@ package plugin
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -55,6 +57,10 @@ type GitHubAsset struct {
 	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
 	Size               int    `json:"size"`
+	// Digest is GitHub's content digest, e.g. "sha256:abc123...". Present on
+	// newer releases; empty otherwise. When set we verify the download against
+	// it to detect corruption or tampering in transit.
+	Digest string `json:"digest"`
 }
 
 // InstallFromGitHub downloads a .wasm plugin from a GitHub release.
@@ -80,21 +86,52 @@ func InstallFromGitHub(ctx context.Context, owner, repo, tag, pluginsDir string)
 	}
 
 	dest := filepath.Join(pluginsDir, asset.Name)
-	if err := downloadFile(ctx, asset.BrowserDownloadURL, dest); err != nil {
+	name := strings.TrimSuffix(asset.Name, ".wasm")
+
+	// Download to a temp file first so a failed checksum or tamper check never
+	// clobbers a previously-installed, good plugin.
+	tmp := dest + ".download"
+	sum, err := downloadFile(ctx, asset.BrowserDownloadURL, tmp, expectedSHA256(asset.Digest))
+	if err != nil {
 		return "", fmt.Errorf("download %s: %w", asset.Name, err)
 	}
 
-	name := strings.TrimSuffix(asset.Name, ".wasm")
-
-	// Record in lock file.
 	lock, _ := LoadLockFile(filepath.Dir(pluginsDir))
+
+	// Re-tag detection: if the same version was installed before but the bytes
+	// differ, the release was re-published (possibly tampered). Refuse rather
+	// than silently swapping the plugin.
+	if prev, ok := lock.Get(name); ok && prev.Version == release.TagName &&
+		prev.SHA256 != "" && !strings.EqualFold(prev.SHA256, sum) {
+		_ = os.Remove(tmp)
+		return "", fmt.Errorf("refusing to install %s@%s: content changed since last install (sha256 %s, recorded %s) — re-tagged or tampered release",
+			name, release.TagName, sum, prev.SHA256)
+	}
+
+	if err := os.Rename(tmp, dest); err != nil {
+		_ = os.Remove(tmp)
+		return "", fmt.Errorf("install %s: %w", asset.Name, err)
+	}
+
+	// Record in lock file, including the SHA-256 we just downloaded.
 	lock.Set(name, LockEntry{
 		Source:  fmt.Sprintf("github.com/%s/%s", owner, repo),
 		Version: release.TagName,
+		SHA256:  sum,
 	})
 	_ = lock.Save()
 
 	return name, nil
+}
+
+// expectedSHA256 extracts the hex digest from a GitHub asset Digest field
+// ("sha256:HEX"). Returns "" for empty or non-sha256 values, in which case the
+// download is recorded but not verified against a remote digest.
+func expectedSHA256(digest string) string {
+	if rest, ok := strings.CutPrefix(strings.TrimSpace(digest), "sha256:"); ok {
+		return strings.ToLower(rest)
+	}
+	return ""
 }
 
 // githubAPIBase is the base URL for the GitHub API.
@@ -154,10 +191,14 @@ func findWASMAsset(assets []GitHubAsset) *GitHubAsset {
 	return nil
 }
 
-func downloadFile(ctx context.Context, url, dest string) error {
+// downloadFile fetches url to dest and returns the hex SHA-256 of the bytes
+// written. If expectedSHA256 is non-empty, the download is verified against it
+// and the file is removed on mismatch (returning an error) so a corrupted or
+// tampered asset never lands on disk.
+func downloadFile(ctx context.Context, url, dest, expectedSHA256 string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.Header.Set("User-Agent", "osg-plugin-installer")
 
@@ -168,34 +209,43 @@ func downloadFile(ctx context.Context, url, dest string) error {
 	client := &http.Client{Timeout: 120 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download returned HTTP %d", resp.StatusCode)
+		return "", fmt.Errorf("download returned HTTP %d", resp.StatusCode)
 	}
 
 	out, err := os.Create(dest)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() { _ = out.Close() }()
 
-	if _, err := io.Copy(out, resp.Body); err != nil {
-		// Clean up partial download.
-		_ = os.Remove(dest)
-		return err
+	h := sha256.New()
+	if _, err := io.Copy(io.MultiWriter(out, h), resp.Body); err != nil {
+		_ = os.Remove(dest) // clean up partial download
+		return "", err
 	}
-	return nil
+	sum := hex.EncodeToString(h.Sum(nil))
+
+	if expectedSHA256 != "" && !strings.EqualFold(sum, expectedSHA256) {
+		_ = os.Remove(dest)
+		return "", fmt.Errorf("checksum mismatch: got %s, expected %s", sum, expectedSHA256)
+	}
+	return sum, nil
 }
 
 // ---- Plugin Lock File ----
 
-// LockEntry records the source and version of an installed plugin.
+// LockEntry records the source, version and content hash of an installed
+// plugin. SHA256 is the hex digest of the .wasm bytes that were downloaded,
+// used to detect a re-tagged or tampered release on a later update.
 type LockEntry struct {
 	Source  string `json:"source"`
 	Version string `json:"version"`
+	SHA256  string `json:"sha256,omitempty"`
 }
 
 // LockFile tracks installed plugin versions.

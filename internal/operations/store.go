@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,12 @@ import (
 
 	_ "modernc.org/sqlite"
 )
+
+// sqlitePragmas is the modernc/sqlite DSN query that enables WAL journaling
+// and a busy timeout. The modernc driver only recognises the `_pragma=`
+// form (it silently ignores the mattn-style `_journal_mode`/`_busy_timeout`
+// keys), so each PRAGMA must be expressed this way to actually take effect.
+const sqlitePragmas = "_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
 
 // Status values stored in the DB.
 const (
@@ -68,7 +75,7 @@ func NewStore(dbPath string) (*Store, error) {
 			return nil, fmt.Errorf("create db directory: %w", err)
 		}
 	}
-	db, err := sql.Open("sqlite", dbPath+"?_journal_mode=WAL&_busy_timeout=5000")
+	db, err := sql.Open("sqlite", dbPath+"?"+sqlitePragmas)
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
@@ -114,7 +121,15 @@ func (s *Store) migrateLegacyScheduler(legacyPath string) error {
 	if _, err := os.Stat(legacyPath); err != nil {
 		return nil
 	}
-	legacy, err := sql.Open("sqlite", legacyPath+"?mode=ro&_journal_mode=WAL")
+	// Open read-only so the legacy file is untouched before we rename it to
+	// .bak. modernc only honours mode=ro when the DSN is a file: URI (a plain
+	// path has its query stripped), so build one with proper escaping.
+	abs, absErr := filepath.Abs(legacyPath)
+	if absErr != nil {
+		abs = legacyPath
+	}
+	roDSN := (&url.URL{Scheme: "file", Path: abs, RawQuery: "mode=ro"}).String()
+	legacy, err := sql.Open("sqlite", roDSN)
 	if err != nil {
 		return err
 	}

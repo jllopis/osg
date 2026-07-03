@@ -131,7 +131,7 @@ func TestInstallFromGitHubWithMockServer(t *testing.T) {
 	tmpDir := t.TempDir()
 	dest := filepath.Join(tmpDir, "osg-test.wasm")
 
-	err := downloadFile(context.Background(), server.URL+"/download/osg-test.wasm", dest)
+	_, err := downloadFile(context.Background(), server.URL+"/download/osg-test.wasm", dest, "")
 	if err != nil {
 		t.Fatalf("downloadFile failed: %v", err)
 	}
@@ -369,7 +369,7 @@ func TestDownloadFileError(t *testing.T) {
 	defer server.Close()
 
 	tmpDir := t.TempDir()
-	err := downloadFile(context.Background(), server.URL+"/missing.wasm", filepath.Join(tmpDir, "out.wasm"))
+	_, err := downloadFile(context.Background(), server.URL+"/missing.wasm", filepath.Join(tmpDir, "out.wasm"), "")
 	if err == nil {
 		t.Fatal("expected error for 404 download")
 	}
@@ -558,7 +558,7 @@ func TestEnsureOfficialPlugins_DownloadsFromIndex(t *testing.T) {
 	// Test download.
 	tmpDir := t.TempDir()
 	dest := filepath.Join(tmpDir, "myplugin.wasm")
-	err = downloadFile(context.Background(), server.URL+"/download/myplugin.wasm", dest)
+	_, err = downloadFile(context.Background(), server.URL+"/download/myplugin.wasm", dest, "")
 	if err != nil {
 		t.Fatalf("downloadFile: %v", err)
 	}

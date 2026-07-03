@@ -18,6 +18,15 @@ import (
 // answer for that — it triggers a rebuild on file change anyway).
 const schedulerFallback = 5 * time.Minute
 
+// schedulerMinRetry bounds how often the publish flow re-runs for the same
+// overdue publish_at. Without it, a draft that is due but cannot be promoted
+// (e.g. an unwritable vault file) leaves NextScheduled in the past, making
+// time.Until(next) zero and spinning the loop — full ComputeStats +
+// update-content + build back-to-back with no pause. The backoff only applies
+// when the same due time recurs, so a successful promotion still triggers
+// promptly.
+const schedulerMinRetry = 30 * time.Second
+
 // schedulerStore is the subset of operations.Store the scheduler needs
 // to record build triggers. Accepting an interface keeps tests light
 // (nil is allowed and simply skips audit) and avoids a hard dependency
@@ -41,6 +50,11 @@ type schedulerStore interface {
 func RunScheduler(ctx context.Context, opts CLIOptions, store schedulerStore) error {
 	logger := logging.NewWithWriter(loadLoggingCfg(opts.ConfigPath), opts.Verbose, opts.LogWriter)
 	logger.Info("scheduler starting")
+
+	// lastDue is the publish_at we last triggered the flow for. If the next
+	// scan still reports the same overdue time, promotion isn't clearing it,
+	// so we back off instead of busy-looping.
+	var lastDue time.Time
 
 	for {
 		cfg, err := config.Load(opts.ConfigPath)
@@ -84,6 +98,19 @@ func RunScheduler(ctx context.Context, opts CLIOptions, store schedulerStore) er
 		// next) skip everything — the watcher service is the right
 		// way to pick up content changes.
 		if !next.IsZero() && !time.Now().Before(next) {
+			// Same overdue due time as last trigger: promotion didn't clear
+			// it, so pause before retrying rather than spinning.
+			if next.Equal(lastDue) {
+				logger.Warn("scheduler publish_at still due after previous trigger; backing off",
+					"due_at", next.Format(time.RFC3339),
+					"retry_in", schedulerMinRetry.String(),
+				)
+				if !sleep(ctx, schedulerMinRetry) {
+					return nil
+				}
+			}
+			lastDue = next
+
 			logger.Info("scheduler triggering publish flow",
 				"due_at", next.Format(time.RFC3339),
 			)

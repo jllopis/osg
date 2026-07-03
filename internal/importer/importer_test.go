@@ -185,6 +185,36 @@ func TestPostOutputPath(t *testing.T) {
 	}
 }
 
+func TestPostOutputPath_NoTraversal(t *testing.T) {
+	date := mustParseDate("2024-06-15")
+	cases := []struct {
+		name string
+		slug string
+		want string // expected filename segment (after 2024/06/)
+	}{
+		{"parent traversal", "../../../etc/passwd", "passwd.md"},
+		{"absolute path", "/home/user/.ssh/authorized_keys", "authorized_keys.md"},
+		{"backslash traversal", `..\..\windows\system32\evil`, "evil.md"},
+		{"dotdot only", "..", "post.md"}, // falls back to slugify(title="Post")
+		{"clean slug", "my-post", "my-post.md"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			p := Post{Title: "Post", Slug: tc.slug, Date: date}
+			got := p.OutputPath()
+			want := filepath.Join("2024", "06", tc.want)
+			if got != want {
+				t.Errorf("OutputPath(slug=%q) = %q, want %q", tc.slug, got, want)
+			}
+			// Joining with a content dir must stay inside it.
+			full := filepath.Join("content", got)
+			if rel, err := filepath.Rel("content", full); err != nil || strings.HasPrefix(rel, "..") {
+				t.Errorf("escaped content dir: full=%q rel=%q err=%v", full, rel, err)
+			}
+		})
+	}
+}
+
 func TestPostToMarkdown(t *testing.T) {
 	p := Post{
 		Title:      "Test",

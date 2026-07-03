@@ -73,9 +73,9 @@ func (p *S3Provider) Deploy(ctx context.Context, publicDir string) error {
 
 	args := []string{"s3", "sync", absPublic + "/", s3URL}
 
-	// Content type inference
-	args = append(args, "--no-guess-mime-type")
-	args = append(args, "--content-type-map", "html=text/html")
+	// Let the AWS CLI guess Content-Type from file extensions (its default).
+	// We previously passed --no-guess-mime-type with an s3cmd-style
+	// --content-type-map, which the AWS CLI rejects as an unknown option.
 
 	// ACL
 	if p.ACL != "" {

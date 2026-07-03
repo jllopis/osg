@@ -20,13 +20,28 @@ type Post struct {
 
 // OutputPath returns the relative path for this post within the content dir.
 func (p Post) OutputPath() string {
-	slug := p.Slug
-	if slug == "" {
-		slug = slugify(p.Title)
-	}
 	y := p.Date.Format("2006")
 	m := p.Date.Format("01")
-	return filepath.Join(y, m, slug+".md")
+	return filepath.Join(y, m, safeSlug(p.Slug, p.Title)+".md")
+}
+
+// safeSlug returns a single, traversal-free path segment for the output
+// filename. An importer source (WXR <wp:post_name>, Hugo frontmatter slug) is
+// attacker-controllable, so a value like "../../../etc/evil" must not let the
+// write escape the content dir. We collapse it to its base segment and reject
+// "."/".." , falling back to a slug derived from the title.
+func safeSlug(slug, title string) string {
+	slug = strings.ReplaceAll(strings.TrimSpace(slug), "\\", "/")
+	if slug != "" {
+		slug = strings.TrimSpace(filepath.Base(filepath.FromSlash(slug)))
+		if slug == "." || slug == ".." {
+			slug = ""
+		}
+	}
+	if slug == "" {
+		slug = slugify(title)
+	}
+	return slug
 }
 
 // ToMarkdown returns the full Markdown file content with YAML frontmatter.

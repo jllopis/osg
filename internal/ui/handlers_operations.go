@@ -189,7 +189,12 @@ func (s *Server) handleOperationCard(w http.ResponseWriter, r *http.Request) {
 	style := r.URL.Query().Get("style")
 	tplName := ""
 	switch style {
-	case "flow-node", "op-card", "quick-button", "task-form":
+	case "op-card":
+		// The card partial's file (and thus its template name) is
+		// "operation-card.html", but the markup tags itself with
+		// data-card-style="op-card"; map the style id to the real name.
+		tplName = "operation-card.html"
+	case "flow-node", "quick-button", "task-form":
 		tplName = style + ".html"
 	default:
 		http.Error(w, "unknown card style", http.StatusBadRequest)
