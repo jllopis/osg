@@ -24,6 +24,18 @@ import (
 // keys), so each PRAGMA must be expressed this way to actually take effect.
 const sqlitePragmas = "_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)"
 
+// storedTimeFormat is RFC 3339 UTC with the fractional seconds padded to a
+// fixed nine digits. time.RFC3339Nano trims trailing zeros, which breaks the
+// lexicographic ordering SQLite applies to TEXT timestamps ("...00Z" sorts
+// after "...00.5Z"); fixed-width strings sort chronologically. Reads keep
+// parsing with time.RFC3339Nano, which accepts both forms.
+const storedTimeFormat = "2006-01-02T15:04:05.000000000Z07:00"
+
+// storedTimeLen is the length of a UTC timestamp in storedTimeFormat; rows
+// with a different length predate the fixed-width format and get rewritten
+// by normalizeStoredTimes.
+const storedTimeLen = 30
+
 // Status values stored in the DB.
 const (
 	StatusRunning   = "running"
@@ -109,8 +121,78 @@ CREATE INDEX IF NOT EXISTS idx_operations_runs_name
 CREATE INDEX IF NOT EXISTS idx_operations_runs_started
 	ON operations_runs(started_at DESC);
 `
-	_, err := db.Exec(schema)
-	return err
+	if _, err := db.Exec(schema); err != nil {
+		return err
+	}
+	return normalizeStoredTimes(db)
+}
+
+// normalizeStoredTimes rewrites timestamps written by earlier versions with
+// time.RFC3339Nano (variable width) into storedTimeFormat so that string
+// comparisons in ORDER BY / >= filters are chronological. Unparseable values
+// are left untouched.
+func normalizeStoredTimes(db *sql.DB) error {
+	rows, err := db.Query(
+		`SELECT id, started_at, ended_at FROM operations_runs
+		 WHERE length(started_at) <> ?
+		    OR (ended_at IS NOT NULL AND length(ended_at) <> ?)`,
+		storedTimeLen, storedTimeLen,
+	)
+	if err != nil {
+		return err
+	}
+	type fix struct {
+		id             int64
+		started, ended string
+	}
+	var fixes []fix
+	for rows.Next() {
+		var (
+			id      int64
+			started string
+			ended   sql.NullString
+		)
+		if err := rows.Scan(&id, &started, &ended); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		f := fix{id: id, started: started, ended: ended.String}
+		if t, err := time.Parse(time.RFC3339Nano, started); err == nil {
+			f.started = t.UTC().Format(storedTimeFormat)
+		}
+		if ended.Valid {
+			if t, err := time.Parse(time.RFC3339Nano, ended.String); err == nil {
+				f.ended = t.UTC().Format(storedTimeFormat)
+			}
+		}
+		fixes = append(fixes, f)
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return err
+	}
+	_ = rows.Close()
+	if len(fixes) == 0 {
+		return nil
+	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	for _, f := range fixes {
+		var endedVal any
+		if f.ended != "" {
+			endedVal = f.ended
+		}
+		if _, err := tx.Exec(
+			`UPDATE operations_runs SET started_at = ?, ended_at = ? WHERE id = ?`,
+			f.started, endedVal, f.id,
+		); err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // migrateLegacyScheduler imports rows from a pre-Phase-30H scheduler.db
@@ -201,7 +283,7 @@ func (s *Store) Begin(name, kind string, params map[string]any, startedAt time.T
 	res, err := s.db.Exec(
 		`INSERT INTO operations_runs (name, kind, params, started_at, status)
 		 VALUES (?, ?, ?, ?, ?)`,
-		name, kind, paramsJSON, startedAt.UTC().Format(time.RFC3339Nano), StatusRunning,
+		name, kind, paramsJSON, startedAt.UTC().Format(storedTimeFormat), StatusRunning,
 	)
 	if err != nil {
 		return 0, err
@@ -216,7 +298,7 @@ func (s *Store) Finish(id int64, status, errMsg string, endedAt time.Time) error
 	}
 	_, err := s.db.Exec(
 		`UPDATE operations_runs SET ended_at = ?, status = ?, error = ? WHERE id = ?`,
-		endedAt.UTC().Format(time.RFC3339Nano), status, errMsg, id,
+		endedAt.UTC().Format(storedTimeFormat), status, errMsg, id,
 	)
 	return err
 }
@@ -231,7 +313,7 @@ func (s *Store) MarkInterruptedRunning(now time.Time) (int64, error) {
 	res, err := s.db.Exec(
 		`UPDATE operations_runs SET ended_at = ?, status = ?, error = ?
 		 WHERE status = 'running'`,
-		now.UTC().Format(time.RFC3339Nano), StatusCancelled, "shutdown",
+		now.UTC().Format(storedTimeFormat), StatusCancelled, "shutdown",
 	)
 	if err != nil {
 		return 0, err
@@ -268,7 +350,7 @@ func (s *Store) Recent(filter Filter) ([]HistoryRun, error) {
 	}
 	if !filter.Since.IsZero() {
 		clauses = append(clauses, "started_at >= ?")
-		args = append(args, filter.Since.UTC().Format(time.RFC3339Nano))
+		args = append(args, filter.Since.UTC().Format(storedTimeFormat))
 	}
 	where := ""
 	if len(clauses) > 0 {
@@ -279,7 +361,7 @@ func (s *Store) Recent(filter Filter) ([]HistoryRun, error) {
 	q := fmt.Sprintf(
 		`SELECT id, name, kind, params, started_at, ended_at, status, error
 		 FROM operations_runs %s
-		 ORDER BY started_at DESC LIMIT ?`, where,
+		 ORDER BY started_at DESC, id DESC LIMIT ?`, where,
 	)
 	rows, err := s.db.Query(q, args...)
 	if err != nil {

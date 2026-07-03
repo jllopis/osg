@@ -209,11 +209,16 @@ func buildOperationDefinitions(parent CLIOptions, cfg config.Config, store *oper
 			Name:        "build",
 			Kind:        operations.KindTask,
 			Description: "Render the site to public/ (one-shot)",
-			Run: func(ctx context.Context, _ map[string]any, w io.Writer) error {
+			Run: func(ctx context.Context, params map[string]any, w io.Writer) error {
 				o := parent
 				o.LogWriter = w
 				o.Progress = nil
-				o.SkipAI = true
+				// Dashboard builds skip AI generation by default to avoid
+				// surprise API costs; the force checkbox opts back in and
+				// bypasses the summary cache.
+				forceAI, _ := params["force-ai-summaries"].(bool)
+				o.SkipAI = !forceAI
+				o.ForceAISummaries = forceAI
 				return RunBuild(ctx, o)
 			},
 		},
