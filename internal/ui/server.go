@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"osg/internal/config"
@@ -27,7 +28,16 @@ type ServerOptions struct {
 	// Runner is the unified operations runner driving services and
 	// tasks. The dashboard is read-only when Runner is nil.
 	Runner *operations.Runner
+	// StateTTL is how long a Collect snapshot (vault stats, pages,
+	// plugin metadata) is reused across requests before being
+	// recomputed. Zero means the default; negative disables caching.
+	StateTTL time.Duration
 }
+
+// defaultStateTTL bounds how stale the dashboard state may be. Collect
+// re-parses the whole vault and recompiles every WASM plugin, so serving
+// each request from a short-lived snapshot keeps the dashboard responsive.
+const defaultStateTTL = 5 * time.Second
 
 // SchedulerRun is the template-friendly view of one scheduler trigger
 // row. Built from operations.HistoryRun in handleScheduler.
@@ -43,6 +53,40 @@ type Server struct {
 	opts      ServerOptions
 	templates map[string]*template.Template
 	mux       *http.ServeMux
+
+	stateMu sync.Mutex
+	state   State
+	stateAt time.Time
+}
+
+// collectState returns the current State, reusing the last snapshot while
+// it is younger than StateTTL. The mutex also single-flights concurrent
+// requests so only one Collect runs at a time.
+func (s *Server) collectState(ctx context.Context) State {
+	ttl := s.opts.StateTTL
+	if ttl == 0 {
+		ttl = defaultStateTTL
+	}
+	s.stateMu.Lock()
+	defer s.stateMu.Unlock()
+	if ttl > 0 && !s.stateAt.IsZero() && time.Since(s.stateAt) < ttl {
+		return s.state
+	}
+	// Detach from the request context: a client disconnect mid-Collect
+	// must not poison the cached snapshot with partial data.
+	st := Collect(context.WithoutCancel(ctx), s.opts.Cfg, s.opts.Logger)
+	s.state = st
+	s.stateAt = time.Now()
+	return st
+}
+
+// invalidateState drops the cached snapshot so the next request recomputes
+// it. Called after state-changing requests (plugin toggles, page edits,
+// theme changes) so their redirect target renders fresh data.
+func (s *Server) invalidateState() {
+	s.stateMu.Lock()
+	s.stateAt = time.Time{}
+	s.stateMu.Unlock()
 }
 
 // NewServer prepares the dashboard server: parses templates and registers
@@ -141,6 +185,13 @@ func (s *Server) securityMiddleware(next http.Handler) http.Handler {
 			}
 		}
 		next.ServeHTTP(w, r)
+		switch r.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+		default:
+			// The request may have changed vault/plugin/theme state;
+			// make the next page load recompute the snapshot.
+			s.invalidateState()
+		}
 	})
 }
 

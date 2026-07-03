@@ -64,7 +64,7 @@ type FindingView struct {
 }
 
 func (s *Server) buildView(active, title string, r *http.Request) viewData {
-	st := Collect(r.Context(), s.opts.Cfg, s.opts.Logger)
+	st := s.collectState(r.Context())
 	v := viewData{
 		Title:    title,
 		Active:   active,
